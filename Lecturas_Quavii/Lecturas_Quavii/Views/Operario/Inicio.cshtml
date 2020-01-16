@@ -1,0 +1,597 @@
+﻿@using System.Configuration
+
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@model List<Operario>
+
+@{
+    ViewBag.Title = "Inicio";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Styles.Render("~/Content/jquery-upload/css/uploadfile.min.css")
+    @Scripts.Render("~/Content/jquery-upload/js/jquery.uploadfile.min.js")
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+}
+
+@section styles{
+    <style type="text/css">
+        .fixed-table-toolbar .search
+        {
+            line-height: 0;
+        }
+    </style>
+}
+
+@section scripts{
+    <script type="text/javascript">
+        var $ruta = '@ConfigurationManager.AppSettings["servidor-foto"]';
+
+        $(function () {
+            $("#fileuploader").uploadFile({
+                
+                url: 'CargaImage',
+                fileName: '__a',
+                multiple: false,
+                onSuccess: function (__f, __d, __x) {
+                    console.log(__d.__a);
+                    console.log($('#_foto').val(__d.__a));
+                    console.log($('.img-foto').attr('src', $ruta + '/' + __d.__a));
+
+                    $('#_foto').val(__d.__a);
+                    $('.img-foto').attr('src', $ruta + '/' + __d.__a);
+
+
+                }
+            });
+        })
+
+        function fnModal(__a) {
+ 
+    
+            if (__a == 0) {
+                $('#_id').val('0');
+                $('#_local').val('0');
+                $('#_tipo_documento').val('0');
+                $('#_documento').val('');
+                $('#_apellido').val('');
+                $('#_nombre').val('');
+                $('#_cargo').val('0');
+                $('#_foto').val('');
+                $('#_celular').val('');
+                $('#_usuario').val('');
+                $('#_contrasenia').val('');
+                $('#_online').prop("checked", true);
+                $('#_estado').prop("checked", true);
+                $('#_correo').val('');
+
+                $('#modal-registro').modal('show');
+            } else {
+                $ajaxJson(
+                    'Busca',
+                    function () {
+                        return {
+                            __a: __a
+                        };
+                    },
+                    function (__s) {
+                        $('#_id').val(__s._a);
+                        $('#_local').val(__s._c);
+                        $('#_tipo_documento').val(__s._e);
+                        $('#_documento').val(__s._d);
+                        $('#_apellido').val(__s._f);
+                        $('#_nombre').val(__s._g);
+                        $('#_correo').val(__s._mail);
+
+                        $('#_cargo').val(__s._n);
+
+                        $('#_foto').val(__s._h);
+                        $('#_celular').val(__s._i);
+                        $('#_usuario').val(__s._j);
+                        $('#_contrasenia').val(__s._k);
+
+                        $('.img-foto').attr('src', $ruta + '/' + __s._h);
+
+                        if (__s._l == 'NO') {
+                            $('#_online').prop("checked", false);
+                        } else {
+                            $('#_online').prop("checked", true);
+                        }
+
+                        if (__s._m == 1) {
+                            $('#_estado').prop("checked", true);
+                        } else {
+                            $('#_estado').prop("checked", false);
+                        }
+
+                        $('#modal-registro').modal('show');
+                    }
+                );
+            }
+        }
+
+        function fnGuardar() {
+            var $_id = $('#_id').val(),
+                $_local = $('#_local').val(),
+                $_tipo_documento = $('#_tipo_documento').val(),
+                $_documento = $('#_documento').val(),
+                $_apellido = $('#_apellido').val(),
+                $_nombre = $('#_nombre').val(),
+                $_correo = $('#_correo').val(),
+
+                $_cargo = $('#_cargo').val(),
+
+                $_foto = $('#_foto').val(),
+                $_celular = $('#_celular').val(),
+                $_usuario = $('#_usuario').val(),
+                $_contrasenia = $('#_contrasenia').val(),
+                $_online = ($('#_online').is(":checked") ? 'SI' : 'NO'),
+                $_estado = ($('#_estado').is(":checked") ? 1 : 2);
+
+            //if ($_local == 0) {
+            //    alert('Seleccione local.');
+            //    return;
+            //}
+
+            if ($_tipo_documento == 0) {
+                alert('Seleccione tipo de documento.');
+                return;
+            }
+
+            if ($_documento.length == 0) {
+                alert('Ingrese documento de identidad');
+                return;
+            }
+
+            if ($_apellido.length == 0) {
+                alert('Ingrese apellidos.');
+                return;
+            }
+
+            if ($_nombre.length == 0) {
+                alert('Ingrese nombre.');
+                return;
+            }
+
+            if ($_cargo== 0) {
+                alert('Seleccione tipo de usuario.');
+                return;
+            }
+
+            if ($_usuario.length == 0) {
+                alert('Ingrese usuario.');
+                return;
+            }
+
+            if ($_contrasenia.length == 0) {
+                alert('Ingrese contraseña.');
+                return;
+            }
+ 
+
+            $ajaxJson(
+                ($_id == 0 ? 'Inserta' : 'Actualiza'),
+                function () {
+                    var $parametro;
+
+                    if ($_id == 0) {
+                        $parametro = {
+                            __a: 1,
+                            __b: $_documento,
+                            __c: $_tipo_documento,
+                            __d: $_apellido,
+                            __e: $_nombre,
+
+                            __l: $_cargo,
+
+                            __f: $_foto,
+                            __g: $_celular,
+                            __h: $_usuario,
+                            __i: $_contrasenia,
+                            __j: $_online,
+                            __k: $_estado,
+                            __mail: $_correo
+                        };
+                    } else {
+                        $parametro = {
+                            __a: $_id,
+                            __b: 1,
+                            __c: $_documento,
+                            __d: $_tipo_documento,
+                            __e: $_apellido,
+                            __f: $_nombre,
+
+                            __m: $_cargo,
+
+                            __g: $_foto,
+                            __h: $_celular,
+                            __i: $_usuario,
+                            __j: $_contrasenia,
+                            __k: $_online,
+                            __l: $_estado,
+                            __mail: $_correo
+                        };
+                    }
+
+                    return $parametro;
+                },
+                function (__s) {
+
+
+                    if ($_id == 0) {
+                        if (__s.__a == '1') {
+                            new PNotify({
+                                title: 'Exito',
+                                text: 'Se grabo correctamente el registro.',
+                                type: 'success'
+                            });
+
+                            $('#modal-registro').modal('hide');
+                        } else if (__s.__a == '2') {
+                            new PNotify({
+                                title: 'Información',
+                                text: 'El DNI registrado ya existe. Favor de verificar.',
+                                type: 'error'
+                            });
+
+                            //$('#modal-registro').modal('hide');
+                        } else if (__s.__a == '3') {
+                            new PNotify({
+                                title: 'Información',
+                                text: 'El USUARIO registrado ya existe. Favor de verificar.',
+                                type: 'error'
+                            });
+                        }
+                    } else {
+                        new PNotify({
+                            title: 'Exito',
+                            text: 'Se grabo correctamente el registro.',
+                            type: 'success'
+                        });
+
+                        $('#modal-registro').modal('hide');
+                    }
+ 
+
+
+
+                    $('#table-registro').bootstrapTable('refresh');
+                }
+            );
+        }
+
+        function fnAnular(__a) {
+            $ajaxJson(
+                'Anula',
+                function () {
+                    return {
+                        __a: __a.__a,
+                        __b: __a.__b
+                    };
+                },
+                function (__s) {
+                    if (__s.__a > 0) {
+                        new PNotify({
+                            title: 'Anulacion',
+                            text: 'Se anulo correctamente el registro.',
+                            type: 'success'
+                        });
+                    }
+
+                    $('#table-registro').bootstrapTable('refresh');
+                }
+            );
+        }
+
+        function fnAuditoria(__a) {
+            $ajaxJson(
+                'Auditoria',
+                function () {
+                    return {
+                        __a: __a
+                    };
+                },
+                function (__s) {
+                    console.log(__s);
+
+                    new PNotify({
+                        title: 'Auditoria: registro',
+                        text: '<b>Registrado por</b>: ' + __s.crea_nombre
+                            + '<br /><b>Fecha de registro</b>: ' + __s.crea_fecha
+                            + '<br /><b>Modificado por</b>: ' + __s.modifica_nombre
+                            + '<br /><b>Fecha de modificacion</b>: ' + __s.modifica_fecha,
+                        type: 'info'
+                    });
+                }
+            );
+        }
+
+        function rowStyle(__row, __index) {
+            if (__row._m == 2) {
+                return {
+                    classes: 'danger'
+                };
+            }
+
+            return {};
+        }
+
+        function estadoFormatter(__val) {
+            var $html;
+
+            if (__val == 2) {
+                $html = '<i style=\" color: #e73c3c; \" class=\"fa fa-times fa-lg .Inactivo\"></i>';
+            } else {
+                $html = '<i style=\" color: #4f8edc; \" class=\"fa fa-check fa-lg\ .Activo"></i>';
+            }
+
+            return $html;
+        }
+
+        function opcionFormatter(__val, __row, __index) {
+            var $html = [];
+
+            //$html.push('<button role="button" class="btn btn-default" onclick="fnModal(\'' + __row._a + '\')"><i class="fa fa-edit fa-lg"></i> Editar</button>');
+            $html.push('<button class="btn btn-xs btn-primary" onclick="fnModal(\'' + __row._a + '\')"><span class="glyphicon glyphicon-pencil"></span> Editar</button>');
+
+            if (__row._m != 2) {
+                //$html.push('<button role="button" class="btn btn-default" onclick="fnAnular({ \'__a\': ' + __row._a + ', \'__b\': 2 })"><i class="fa fa-trash-o fa-lg"></i> Anular</button>');
+                $html.push('<button class="btn btn-xs btn-danger" onclick="fnAnular({ \'__a\': ' + __row._a + ', \'__b\': 2 })"><span class="glyphicon glyphicon-trash"></span> Anular</button>');
+            }
+
+            //$html.push('<button role="button" class="btn btn-default" onclick="fnAuditoria(\'' + __row._a + '\')"><i class="fa fa-android fa-lg"></i> Auditoria</button>');
+            $html.push('<button class="btn btn-xs btn-info" onclick="fnAuditoria(\'' + __row._a + '\')"><span class="glyphicon glyphicon-edit"></span> Auditoria</button>');
+
+            return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">' + $html.join('') + '</div>';
+        }
+
+        function fnDescarga() {
+            $.ajax({
+                async: true, beforeSend: function (xhr) { $('.sige-load').show(); },
+                url: '@Url.Action("Descarga", "Operario")',
+                type: 'POST',
+                dataType: 'Json',
+                data: {
+                    __a: JSON.stringify($('#table-registro').bootstrapTable('getData'))
+                },
+                success: function (response) {
+                    if (response.Archivo == "") {
+                        alert("Sin datos disponibles para la descarga...");
+                    } else {
+                        $.fileDownload('/Lecturas/Temp/' + response.Archivo);
+                    }
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr, textStatus, errorThrown) {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema al descargar el archivo.');
+                }
+            });
+        }
+
+        function fnParametros() {
+            return {
+                type: 'owner',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 100,
+                page: 1
+            };
+        }
+
+        $(function () {
+            $('.fixed-table-toolbar > .search').css('width', '170px');
+            $('.fixed-table-toolbar > .search').addClass('input-group');
+            $('.fixed-table-toolbar > .search').append('<div class="input-group-btn"><button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onclick="fnBusca(\'\')">Estado <span class="caret"></span></button><ul class="dropdown-menu"><li onclick="fnBusca(\'.Activo\')"><a href="javascript:">Activo</a></li><li onclick="fnBusca(\'.Inactivo\')"><a href="javascript:">Inactivo</a></li></ul></div>');
+        })
+
+        $(window).resize(function () {
+            $('#table-registro').bootstrapTable('resetView');
+        });
+
+        function fnBusca(__a) {
+            $('.fixed-table-toolbar > .search > input').val(__a);
+            $('.fixed-table-toolbar > .search > input').trigger('keyup');
+        }
+
+        $table.bootstrapTable('refresh', {
+            url: 'JsonGrupo_Lider?__a=' + $info + '&__b=0'
+        });
+    </script>
+}
+
+<div class="panel panel-oscuro">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i> MAESTRO DE OPERARIOS</h6>
+    </div>
+    <div class="panel-body">
+        <div id="toolbar" role="group" class="btn-group btn-group-sm">
+            <button role="button" class="btn btn-success" onclick="fnModal('0')"><i class="fa fa-plus fa-lg"></i>Nuevo</button>
+ 
+            <a href="@Url.Action("Descarga", "Operario")" style="color: white !important;" name="ExportData" class="btn btn-success">Descarga <i class="fa fa-file-excel-o fa-lg"></i></a>
+        </div>
+        <table
+            id="table-registro"
+            data-toggle="table"
+            data-height="450"
+            data-search="true"
+            data-url="JsonOperario"
+            data-row-style="rowStyle"
+            data-toolbar="#toolbar"
+            data-pagination="true"
+            data-query-params="fnParametros">
+            <thead>
+                <tr>
+                    <th data-field="_a" data-width="40">Codigo Interno</th>
+                    <th data-field="_d">Nro. Doc.</th>
+                    <th data-field="_g">Apellidos y Nombres</th>
+                    <th data-field="_n">Tipo Usuario</th>
+                    <th data-field="_i">Nro. Celular</th>
+                    <th data-field="_x">Servicio</th>
+                    <th data-field="_m" data-formatter="estadoFormatter">Estado</th>
+                    <th data-width="220" data-formatter="opcionFormatter"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+<div id="modal-registro" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>MAESTRO OPERARIO</h6>
+            </div>
+            <div class="panel-body">
+                <form class="form-horizontal">
+                    <input type="hidden" id="_id" value="0" />
+                    <div class="row">
+                        <div class="col-md-8">
+                            <fieldset class="fieldset-border">
+                                <legend>Datos Generales</legend>
+                                <div class="form-group form-group-sm" style="display:none">
+                                    <label for="_local" class="col-sm-4 control-label">Local</label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="_local">
+                                            <option value="0" selected="selected">-- Seleccione --</option>
+                                            @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                            {
+                                                <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group form-group-sm">
+                                    <label for="_tipo_documento" class="col-sm-4 control-label">Tipo documento</label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="_tipo_documento">
+                                            <option value="0" selected="selected">-- Seleccione --</option>
+                                            <option value="DNI" selected="selected">Documento Nacional de Identidad</option>
+                                            <option value="CEX" selected="selected">Carnet de Extranjeria</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group form-group-sm">
+                                    <label for="_documento" class="col-sm-4 control-label">Nro. Documento</label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="_documento" placeholder="Numero de Documento" type="text" onkeypress="return fnIsNumeric(event)">
+                                    </div>
+                                </div>
+                                <div class="form-group form-group-sm">
+                                    <label for="_apellido" class="col-sm-4 control-label">Apellido</label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="_apellido" placeholder="Apellido Materno y Paterno" type="text">
+                                    </div>
+                                </div>
+                                <div class="form-group form-group-sm">
+                                    <label for="_nombre" class="col-sm-4 control-label">Nombre</label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="_nombre" placeholder="Nombre" type="text">
+                                    </div>
+                                </div>
+                                <div class="form-group form-group-sm">
+                                    <label for="_cargo" class="col-sm-4 control-label">Tipo Usuario</label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="_cargo">
+                                            <option value="0" selected="selected">-- Seleccione --</option>
+                                            <option value="S" selected="selected">Supervisor</option>
+                                            <option value="O" selected="selected">Operario</option>
+                                            <option value="I" selected="selected">Sistemas</option>
+                                            <option value="J" selected="selected">Jefe</option>
+                                            <option value="E" selected="selected">Edelnor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group form-group-sm">
+                                    <label for="_correo" class="col-sm-4 control-label">Correo</label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="_correo" placeholder="Correo" type="text">
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </div>
+                        <div class="col-md-4">
+                            <fieldset class="fieldset-border">
+                                <legend>Foto</legend>
+                                <input type="hidden" id="_foto" value="_foto" />
+                                <a href="javascript:" class="thumbnail">
+                                    <img class="img-foto" src="~/Content/foto/foto.png" alt="Foto" style="width: 100% !important; height: 142px;" />
+                                </a>
+                                @*<input type="file" name="file" style=" width: 100% !important; " /> 
+    <button type="button" class="btn btn-primary btn-xs btn-block" onclick="fnCargaFoto()"><i class="fa fa-file-image-o fa-1x"></i> Cargar imagen</button>*@
+                                <div id="fileuploader">Cargar foto</div>
+                            </fieldset>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <fieldset class="fieldset-border">
+                                <legend>Aplicativo Movil</legend>
+                                <div class="col-md-8">
+                                    <div class="form-group form-group-sm">
+                                        <label for="_celular" class="col-sm-4 control-label">Nro. Celular</label>
+                                        <div class="col-sm-8">
+                                            <input class="form-control" id="_celular" placeholder="Celular" type="text" onkeypress="return fnIsNumeric(event)">
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-group-sm">
+                                        <label for="_usuario" class="col-sm-4 control-label">Usuario</label>
+                                        <div class="col-sm-8">
+                                            <input class="form-control" id="_usuario"   autocomplete="off" placeholder="Usuario" type="text">
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-group-sm">
+                                        <label for="_contrasenia" class="col-sm-4 control-label">Contraseña</label>
+                                        <div class="col-sm-8">
+                                            <input class="form-control" id="_contrasenia" placeholder="Contraseña" type="text">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="_online" class="col-sm-10 control-label">Informacion OnLine</label>
+                                        <div class="col-sm-2">
+                                            <div class="checkbox block">
+                                                <label>
+                                                    <input type="checkbox" id="_online"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="_estado" class="col-sm-10 control-label">Estado</label>
+                                        <div class="col-sm-2">
+                                            <div class="checkbox block">
+                                                <label>
+                                                    <input type="checkbox" id="_estado"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="panel-footer">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                            <button role="button" class="btn btn-primary" onclick="fnGuardar()"><i class="fa fa-save fa-lg"></i>Guardar</button>
+                            <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

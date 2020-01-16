@@ -1,0 +1,1072 @@
+﻿@{
+    ViewBag.Title = "Inicio";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@model DSIGE.Modelo.Person
+@section instances{
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+
+    @Styles.Render("~/Content/TreeView/css/style.min.css")
+    @Styles.Render("~/Content/TreeView/css/style.min(1).css")
+
+
+
+
+    @Scripts.Render("~/Content/TreeView/js/jquery-ui.min.js")
+    @Scripts.Render("~/Content/TreeView/js/jstree.min.js")
+    @Scripts.Render("~/Content/TreeView/js/ui-tree.demo.min.js")
+    @Scripts.Render("~/Content/TreeView/js/apps.min.js")
+  @Scripts.Render("~/Content/angular/angular.js")
+
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        App.init();
+        TreeView.init();
+
+    });
+
+    var idbtn = "";
+    var cons="";
+    var id_opcion="";
+    var palabras="";
+
+
+    var app = angular.module('appTree', [])
+        .directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    });
+
+
+    app.controller('ctrlPermisos', function ($scope, $http, $window, $timeout) {
+        var oTable = null;
+        var tablePerfil = null;
+        $scope.listUsuarios = [];
+        $scope.listaPerfil = [];
+        var listPermisos=[];
+        var listPermisosPerfil=[];
+        $scope.menus = [];
+        $scope.idusua = "";
+        $scope.idPerfil = "";
+        $scope.nombres="";
+        var checks = false;
+        var palabras="";
+        $scope.valor="";
+
+        $scope.mensaje="";
+
+
+        $scope.onTimeout = function () {
+            getData();
+            mytimeout = $timeout($scope.onTimeout, 1000);
+        }
+        var mytimeout = $timeout($scope.onTimeout, 1000);
+
+        $scope.stop = function () {
+            $timeout.cancel(mytimeout);
+        }
+
+
+        function getData() {
+            if (idbtn != "") {
+
+
+                console.log("Id recuperado : " + idbtn)
+                $scope.getListPermisos(cons, idbtn)
+                $scope.getListPermisosPerfil(cons, idbtn)
+                id_opcion = idbtn ;
+
+                idbtn = "";
+                cons="";
+
+                // EJECUTAMOS EL PROCESO DE TRAER DETALLE .
+            } else {
+                console.log('Esperando procesoo . . . .')
+
+            }
+        }
+
+
+        $scope.getPerfiles= function(){
+
+            var req = {
+                method: 'GET',
+                url: 'JsonGetPefiles',
+                headers: {
+                    'Content-Type': undefined
+                }
+            }
+
+            $http(req).then(function (result) {
+
+                $scope.listaPerfil = result.data;
+
+                setTimeout(function () {
+                    for (var i = 0; i < $scope.listaPerfil.length; i++) {
+                        var id = $scope.listaPerfil[i]._a
+                        var check = document.getElementById(id)
+                        //$scope.Usuario=$scope.listUsuarios[i]._b;
+                        check.checked = $scope.listaPerfil[i]._g;
+                    }
+                    //$('#tblLista').DataTable();
+                }, 1000);
+
+            },function (error) {
+
+            });
+
+        }
+
+        $scope.getUsuarios = function () {
+
+
+            var req = {
+                method: 'GET',
+                url: 'JsonGetUsuarios',
+                headers: {
+                    'Content-Type': undefined
+                }
+            }
+
+            $http(req).then(function (result) {
+
+                $scope.listUsuarios = result.data;
+                setTimeout(function () {
+
+                    for (var i = 0; i < $scope.listUsuarios.length; i++) {
+                        var id = $scope.listUsuarios[i].usu_id
+                        var check = document.getElementById(id)
+                        $scope.Usuario=$scope.listUsuarios[i].usu_nom;
+                        check.checked = $scope.listUsuarios[i].usu_check;
+                    }
+                    //$('#tblLista').DataTable();
+                }, 1000);
+
+            },function (error) {
+
+            });
+        }
+
+
+
+
+
+        $scope.getNombreUsu = function (idUsu) {
+
+            if (id_opcion =="") {
+                alert('Seleccionar un Modulo')
+
+                return
+            }
+            else {
+                $scope.valor="";
+
+                $scope.valor="Usuarios";
+
+                $("#ModalPermisos").modal('show');
+                $scope.LimpiarChecks();
+
+                for (var i = 0; i < $scope.listUsuarios.length; i++) {
+                    if ($scope.listUsuarios[i].usu_id == idUsu) {
+                        $scope.idusua = $scope.listUsuarios[i].usu_id
+                        $scope.nombres = $scope.listUsuarios[i].usu_nom
+                    }
+                }
+                if (listPermisos[0].length !=0) {
+
+                    for (var i = 0; i < listPermisos[0].length; i++) {
+
+                        if(listPermisos[0][i].usu_id == idUsu){
+
+                            var str = listPermisos[0][i].permisos_opciones;
+                            var res = str.split("");
+                            for (var i = 0; i < $scope.checksRerports.length; i++) {
+
+                                for (var x = 0; x < res.length; x++) {
+                                    if ($scope.checksRerports[i].name==res[x]) {
+                                        $scope.checksRerports[i].value=true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+        $scope.getnombrePerfil= function(idPerf){
+
+            if (id_opcion =="") {
+
+                alert('Seleccionar un Modulo')
+                return
+            }else {
+
+                $scope.valor="";
+                $scope.valor="Perfiles";
+
+                $("#ModalPermisos").modal('show');
+                $scope.LimpiarChecks();
+
+
+                for (var i = 0; i < $scope.listaPerfil.length; i++) {
+                    if ($scope.listaPerfil[i]._a == idPerf) {
+                        $scope.idPerfil = $scope.listaPerfil[i]._a
+                        $scope.nombres =  $scope.listaPerfil[i]._b
+                    }
+
+                }
+
+
+                if (listPermisosPerfil.length !=0) {
+
+                    for (var i = 0; i < listPermisosPerfil[0].length; i++) {
+
+                        if(listPermisosPerfil[0][i].id_Perfil == idPerf){
+
+                            var str = listPermisosPerfil[0][i].permisos_opciones;
+                            var res = str.split("");
+
+                            for (var i = 0; i < $scope.checksRerports.length; i++) {
+
+                                for (var x = 0; x < res.length; x++) {
+                                    if ($scope.checksRerports[i].name==res[x]) {
+                                        $scope.checksRerports[i].value=true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+        }
+
+        $scope.getListPermisos = function (con, id) {
+
+            var params = {
+                con: con,
+                id: id
+            }
+
+            $http({
+                url: 'JsonGetPermisos',
+                method: 'GET',
+                params: params
+            }).success(function (data) {
+                // SI NO TRAE NINGUN REGISTRO DESCHEKEAMOS A TODOS !
+
+
+                listPermisos=[];
+
+                for (var i = 0; i < $scope.listUsuarios.length; i++) {
+                    var id = $scope.listUsuarios[i].usu_id
+                    var check = document.getElementById(id)
+                    check.checked = $scope.listUsuarios[i].usu_check;
+                    //
+
+                }
+
+
+                if (data.length != 0) {
+
+
+                    for (var i = 0; i < $scope.listUsuarios.length; i++) {
+
+                        for (var x = 0; x < data.length; x++) {
+
+                            if ($scope.listUsuarios[i].usu_id == data[x].usu_id) {
+
+                                var id = $scope.listUsuarios[i].usu_id
+                                var check = document.getElementById(id)
+                                check.checked = true;
+                            }
+                        }
+                    }
+
+                    listPermisos.push(data)
+
+
+                }
+
+            }).error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.getListPermisosPerfil = function (con, id) {
+
+            var params = {
+                con: con,
+                id: id
+            }
+            console.log(params)
+            $http({
+                url: 'JsonGetPermisosPerfil',
+                method: 'GET',
+                params: params
+            }).success(function (data) {
+                // SI NO TRAE NINGUN REGISTRO DESCHEKEAMOS A TODOS !
+
+
+                listPermisosPerfil=[];
+                for (var i = 0; i < $scope.listaPerfil.length; i++) {
+
+                    var id = "a"+$scope.listaPerfil[i]._a
+                    var check = document.getElementById(id)
+                    check.checked = false;
+
+
+                }
+
+
+                if (data.length != 0) {
+                console.log(data.length)
+
+                    for (var i = 0; i < $scope.listaPerfil.length; i++) {
+
+                        for (var x = 0; x < data.length; x++) {
+
+                            if ($scope.listaPerfil[i]._a == data[x].id_Perfil) {
+
+                                var id = "a"+$scope.listaPerfil[i]._a
+                                var check = document.getElementById(id)
+                                check.checked = true;
+                            }
+                        }
+                    }
+
+                    listPermisosPerfil.push(data)
+
+
+
+                }
+
+            }).error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        $scope.RegistrarPerfiles_AccesoOpciones= function(){
+
+            //getPalabras();
+
+            palabras="";
+
+            for (var i = 0; i < $scope.checksRerports.length; i++) {
+                if($scope.checksRerports[i].value==true){
+
+                    palabras=palabras + $scope.checksRerports[i].name;
+                }
+            }
+
+            if (palabras == "") {
+                document.getElementById('alerta').style.display = "block";
+                setTimeout(function () { document.getElementById('alerta').style.display = "none" }, 5000);
+                return false;
+            } else {
+
+                var params = {
+
+                    idPerfil: $scope.idPerfil,
+                    idOpcion: id_opcion,
+                    permisos_opciones: palabras,
+                }
+                $http({
+
+                    method: 'GET',
+                    url: 'JsonInsertaPerfil_AccesoOpciones',
+                    params: params,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+
+                }).success(function (data) {
+
+
+                    $("#ModalPermisos").modal('hide');
+                    //$("#ModalConfirmacion").modal('show');
+                    $scope.getListPermisosPerfil(1, id_opcion);
+
+                }).error(function () {
+
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+         
+
+        }
+
+        $scope.Guardar=function(){
+
+            if ( $scope.valor == "Usuarios") {
+
+                var id=$scope.idusua;
+                var check= document.getElementById(id)
+                if (check.checked!=true) {
+
+                    $scope.mensaje="Acceso Guardado Correctamente"
+
+                    $scope.RegistrarAccesoOpciones();
+
+
+                }else {
+
+                    $scope.mensaje="Acceso Actualizado Correctamente"
+
+                    $scope.ActualizarAccesoOpciones();
+
+                }
+            }else if ($scope.valor == "Perfiles") {
+
+                var id="a" +$scope.idPerfil;
+
+
+                var check= document.getElementById(id)
+                if (check.checked!=true) {
+
+                    $scope.mensaje="Acceso Guardado Correctamente"
+
+
+                    $scope.RegistrarPerfiles_AccesoOpciones();
+
+
+
+                }else {
+
+                    $scope.mensaje="Acceso Actualizado Correctamente"
+
+          
+
+                    $scope.ActualizarPerfiles_AccesoOpciones();
+
+                }
+            }
+        }
+
+
+
+        $scope.RegistrarAccesoOpciones = function () {
+
+                 //getPalabras();
+
+             palabras="";
+
+            for (var i = 0; i < $scope.checksRerports.length; i++) {
+                if($scope.checksRerports[i].value==true){
+
+                    palabras=palabras + $scope.checksRerports[i].name;
+                }
+            }
+
+            if (palabras == "") {
+
+                document.getElementById('alerta').style.display = "block";
+                setTimeout(function () { document.getElementById('alerta').style.display = "none" }, 5000);
+                return false;
+
+            } else {
+
+                var params = {
+
+                    idUsu: $scope.idusua,
+                    idOpcion: id_opcion,
+                    permisos_opciones: palabras,
+                }
+                $http({
+
+                    method: 'GET',
+                    url: 'JsonInsertaAccesoOpciones',
+                    params: params,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+
+                }).success(function (data) {
+
+
+                    $("#ModalPermisos").modal('hide');
+                    $scope.getListPermisos(1, id_opcion);
+                    //$("#ModalConfirmacion").modal('show');
+
+                }).error(function () {
+
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+      
+
+
+        }
+
+
+        $scope.ActualizarAccesoOpciones=function(){
+
+
+            palabras="";
+
+            for (var i = 0; i < $scope.checksRerports.length; i++) {
+                if($scope.checksRerports[i].value==true){
+
+                    palabras=palabras + $scope.checksRerports[i].name;
+                }
+            }
+
+
+            if (palabras == "") {
+
+                $scope.EliminarAccesoOpciones();
+
+
+            } else {
+
+                var params = {
+
+                    permisos_opciones: palabras,
+                    idUsu: $scope.idusua,
+                    idopcion: id_opcion,
+                }
+
+                $http({
+
+                    method: 'GET',
+                    url: 'JsonActualizarAccesoOpciones',
+                    params: params,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+
+                }).success(function (data) {
+
+                    $("#ModalPermisos").modal('hide');
+                    $scope.getListPermisos(1, id_opcion);
+                    //$("#ModalConfirmacion").modal('show');
+
+                }).error(function () {
+
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+         
+
+
+        }
+
+        $scope.EliminarAccesoOpciones = function () {
+      
+            var params = {
+            
+                idUsu: $scope.idusua,
+                idopcion: id_opcion,
+            }
+
+            $http({
+
+                method: 'GET',
+                url: 'JsonEliminarAccesoOpciones',
+                params: params,
+                headers: {
+                    'Content-Type': undefined
+                }
+
+            }).success(function (data) {
+
+                $("#ModalPermisos").modal('hide');
+                $scope.getListPermisos(1, id_opcion);
+                //$("#ModalConfirmacion").modal('show');
+
+            }).error(function () {
+
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+
+        }
+
+        $scope.ActualizarPerfiles_AccesoOpciones=function(){
+
+
+            palabras="";
+
+            for (var i = 0; i < $scope.checksRerports.length; i++) {
+                if($scope.checksRerports[i].value==true){
+
+                    palabras=palabras + $scope.checksRerports[i].name;
+                }
+            }
+
+            if (palabras == "") {
+                $scope.EliminarPerfiles_AccesoOpciones();
+
+            } else {
+
+                var params = {
+
+                    permisos_opciones: palabras,
+                    idperfil: $scope.idPerfil,
+                    idopcion: id_opcion,
+                }
+
+                $http({
+
+                    method: 'GET',
+                    url: 'JsonActualizarPerfil_AccesoOpciones',
+                    params: params,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+
+                }).success(function (data) {
+
+                    $("#ModalPermisos").modal('hide');
+                    //$("#ModalConfirmacion").modal('show');
+                    $scope.getListPermisosPerfil(1, id_opcion);
+                }).error(function () {
+
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+       
+        }
+
+        $scope.EliminarPerfiles_AccesoOpciones = function () {
+
+       
+            var params = {
+          
+                idperfil: $scope.idPerfil,
+                idopcion: id_opcion,
+            }
+
+            $http({
+
+                method: 'GET',
+                url: 'JsonEliminarPerfil_AccesoOpciones',
+                params: params,
+                headers: {
+                    'Content-Type': undefined
+                }
+
+            }).success(function (data) {
+
+                $("#ModalPermisos").modal('hide');
+                //$("#ModalConfirmacion").modal('show');
+                $scope.getListPermisosPerfil(1, id_opcion);
+            }).error(function () {
+
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+
+        }
+
+
+        $scope.LimpiarChecks=function(){
+
+      console.log('Limpiar')
+            for (var i = 0; i < $scope.checksRerports.length; i++) {
+                $scope.checksRerports[i].value=false;
+
+            }
+
+
+        }
+
+        $scope.checksRerports = [{ id:0 , value: false, descripcion : "Imprimir los Reportes", name: 'I'},
+                                 { id:1 , value: false, descripcion : "Exportar los Reportes", name: 'X'},
+                                 { id:2 , value: false, descripcion : "Auditoria de Procesos", name: 'U'},
+                                 { id:3 , value: false, descripcion : "Agregar / Activar nuevos Registros", name: 'A'},
+                                 { id:4 , value: false, descripcion : "Modificar Registros Existentes", name: 'M'},
+                                 { id:5 , value: false, descripcion : "Anular Registros Existentes", name: 'D'},
+                                 { id:6 , value: false, descripcion : "Procesar Datos", name: 'P'},
+        ]
+
+
+
+        $scope.validate=function(item){
+
+            if (item.id >=0 ) {
+                if (item.id <3) {
+                    return true;
+                }
+
+            }
+        }
+        $scope.validate2=function(item){
+            if (item.id >=3 ) {
+                return true;
+
+            }
+        }
+
+
+
+
+
+
+
+        function getPalabras(){
+
+            for (var i = 0; i < $scope.checksRerports.length; i++) {
+                if($scope.checksRerports[i].value==true){
+
+                    palabras=palabras + $scope.checksRerports[i].name;
+                }
+            }
+        }
+
+        //$scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+        //    oTable = $('#tblLista').DataTable();
+        //});
+
+        $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            oTable = $('#tblLista').DataTable();
+            tablePerfil = $('#tblListaPerfil').DataTable();
+        });
+
+    });
+
+
+    function getDetail(con,id) {
+        cons=con;
+        idbtn = id;
+    };
+
+
+
+</script>
+<div class="container" ng-app="appTree" ng-controller="ctrlPermisos" ng-init="getUsuarios();getPerfiles()">
+    <div class="row ">
+        <div class="col-xs-12">
+            @*<div class="panel panel-default">
+                <div class="panel-heading" style="background:#F0F3F5;">
+                    <strong>Configurar permisos de usuario y perfiles</strong>
+                </div>*@
+
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <h6><i class="fa fa-table fa-lg"></i> CONFIGURAR PERMISOS DE USUARIO Y PERFILES</h6>
+                </div>
+
+                <div class="panel-body">
+                    <div class="row fa-align-center">
+
+                        <div class="col-xs-4 col-sm-4 col-md-3 col-lg-3">
+
+                            <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <strong>Modulos del Sistema</strong>
+                                </div>
+                                <div class="panel-body ">
+                                    <div id="jstree-default">
+                                        <ul class="jstree-container-ul jstree-children" role="group">
+                                            <li role="treeitem" data-jstree="{&quot;opened&quot;:true}" aria-selected="false" aria-level="1" aria-labelledby="j1_1_anchor" aria-expanded="true" id="j1_1" class="jstree-node  jstree-open">
+                                                <i class="jstree-icon jstree-ocl" role="presentation"></i><a>
+                                                    <i class="jstree-icon jstree-themeicon fa fa-folder text-success fa-lg jstree-themeicon-custom" role="presentation"></i>
+                                                    Gestión de Proyectos
+                                                </a>
+                                                <ul></ul>
+                                                <ul>
+
+                                                    @*<li role="treeitem">
+            <a class="jstree-anchor" tabindex="-1" onclick="getDetail('2','0')">
+                Almacen
+            </a>
+            <ul role="group" class="jstree-children">
+
+                @foreach (var item in ViewBag.listModulos0)
+                {
+                    <li><a onclick="getDetail(1,@item.det_id)">@item.det_des</a></li>
+                }
+
+
+            </ul>
+        </li>*@
+
+                                                    <li role="treeitem">
+                                                        <a class="jstree-anchor" tabindex="-1" onclick="getDetail('2','2')">
+                                                            Mantenimiento
+
+                                                        </a>
+                                                        <ul role="group" class="jstree-children">
+
+                                                            @foreach (var item in ViewBag.listModulos2)
+                                                            {
+                                                                <li><a onclick="getDetail(1,@item.det_id)">@item.det_des</a></li>
+                                                            }
+                                                        </ul>
+                                                    </li>
+
+
+                                                    <li role="treeitem">
+                                                        <a class="jstree-anchor" tabindex="-1" onclick="getDetail('2','5')">
+                                                            Procesos
+
+                                                        </a>
+                                                        <ul role="group" class="jstree-children">
+                                                            @foreach (var item in ViewBag.listModulos5)
+                                                            {
+                                                                <li><a onclick="getDetail(1,@item.det_id)">@item.det_des</a></li>
+                                                            }
+
+                                                        </ul>
+                                                    </li>
+
+
+                                                    <li role="treeitem">
+                                                        <a class="jstree-anchor" tabindex="-1" onclick="getDetail('2','3')">
+                                                            Reportes
+
+                                                        </a>
+                                                        <ul role="group" class="jstree-children">
+                                                            @foreach (var item in ViewBag.listModulos3)
+                                                            {
+                                                                <li><a onclick="getDetail(1,@item.det_id)">@item.det_des</a></li>
+                                                            }
+
+                                                        </ul>
+                                                    </li>
+
+                                                    <li role="treeitem">
+                                                        <a class="jstree-anchor" tabindex="-1" onclick="getDetail('2','79')">
+                                                            No cortar
+                                                        </a>
+                                                        <ul role="group" class="jstree-children">
+
+                                                            @foreach (var item in ViewBag.listModulos7)
+                                                            {
+                                                                <li><a onclick="getDetail(1,@item.det_id)">@item.det_des</a></li>
+                                                            }
+                                                        </ul>
+                                                    </li>
+
+                                                    @*<li role="treeitem">
+                                                        <a class="jstree-anchor" tabindex="-1" onclick="getDetail('2','25')">
+                                                            No cortar
+                                                        </a>
+                                                        <ul role="group" class="jstree-children">
+                                                            @foreach (var item in ViewBag.listModulos6)
+                                                            {
+                                                                <li><a onclick="getDetail(1,@item.det_id)">@item.det_des</a></li>
+                                                            }
+
+                                                        </ul>
+                                                    </li>*@
+
+                                                    <li role="treeitem">
+                                                        <a class="jstree-anchor" tabindex="-1" onclick="getDetail('2','25')">
+                                                            Seguridad
+
+                                                        </a>
+                                                        <ul role="group" class="jstree-children">
+                                                            @foreach (var item in ViewBag.listModulos6)
+                                                            {
+                                                                <li><a onclick="getDetail(1,@item.det_id)">@item.det_des</a></li>
+                                                            }
+
+                                                        </ul>
+                                                    </li>
+                                                    }
+                                                </ul>
+
+                                            </li>
+                                            @*<li role="treeitem" aria-selected="false" aria-level="1" aria-labelledby="j1_11_anchor" id="j1_11" class="jstree-node  jstree-leaf jstree-last"><i class="jstree-icon jstree-ocl" role="presentation"></i><a class="jstree-anchor" href="http://seantheme.com/color-admin-v1.9/admin/html/ui_tree.html#" tabindex="-1" id="j1_11_anchor"><i class="jstree-icon jstree-themeicon fa fa-folder text-success fa-lg jstree-themeicon-custom" role="presentation"></i>Root node 2</a></li>*@
+                                        </ul>
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+
+
+                        </div>
+                        <div class="col-xs-8 col-sm-8 col-md-9 col-lg-9">
+
+                            <div>
+                                <!-- Nav tabs -->
+                                <ul class="nav nav-tabs" role="tablist">
+                                    <li role="presentation" class="active"><a href="#Usuarios" aria-controls="Usuarios" role="tab" data-toggle="tab">Usuarios</a></li>
+                                    <li role="presentation"><a href="#Perfiles" aria-controls="Perfiles" role="tab" data-toggle="tab">Perfiles</a></li>
+                                </ul>
+                                <!-- Tab panes -->
+                                <div class="tab-content">
+                                    <div role="tabpanel" class="tab-pane active" id="Usuarios">
+
+
+                                        <div class="form-group">
+                                            <table class="table  table-responsive table-bordered " id="tblLista">
+                                                <thead style="background:#F0F3F5;">
+                                                    <tr>
+                                                        <th></th>
+                                                        <th>Codigo</th>
+                                                        <th>Nombre</th>
+                                                        <th>Usuario</th>
+                                                        <th>Cargo</th>
+                                                        <th>Estado</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr ng-repeat="item in listUsuarios" ng-style="item.usu_estado == 'Anulado' && {'background':'rgba(202, 35, 35, 0.55)','color':'White'}" on-finish-render="ngRepeatFinished">
+                                                        <td>
+                                                            <label>
+                                                                <input disabled type="checkbox" id="{{item.usu_id}}">
+
+                                                            </label>
+                                                        </td>
+                                                        <td>{{item.usu_id}}</td>
+                                                        <td>
+                                                            {{item.usu_nom}}
+                                                        </td>
+                                                        <td>{{item.usu_usuario}}</td>
+                                                        <td>{{item.usu_cargo}}</td>
+                                                        <td>{{item.usu_estado}}</td>
+                                                        <td><input ng-disabled="item.usu_estado == 'Anulado'" type="image" src="~/Content/Imagen/edit-property-16.png" data-placement="right" title="Accesos" ng-click="getNombreUsu(item.usu_id)" /></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div role="tabpanel" class="tab-pane" id="Perfiles">
+                                        <div class="form-group">
+                                            <table class="table table-bordered" id="tblListaPerfil">
+                                                <thead style="background:#F0F3F5;">
+                                                    <tr>
+                                                        <th></th>
+                                                        <th>Codigo</th>
+                                                        <th>Perfil</th>
+                                                        <th>Descripcion</th>
+                                                        <th>Estado</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr ng-repeat="perfil in listaPerfil" ng-style="perfil._d == 'Anulado' && {'background':'rgba(202, 35, 35, 0.55)','color':'White'}" on-finish-render="ngRepeatFinished">
+                                                        <td>
+                                                            <label><input disabled type="checkbox" id="a{{perfil._a}}" /></label>
+                                                        </td>
+                                                        <td>{{perfil._a}}</td>
+                                                        <td>{{perfil._b}}</td>
+                                                        <td>{{perfil._c}}</td>
+                                                        <td>{{perfil._d}}</td>
+                                                        <td><input ng-disabled="perfil._d == 'Anulado'" type="image" src="~/Content/Imagen/edit-property-16.png" data-placement="right" title="Accesos" ng-click="getnombrePerfil(perfil._a)" /></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Modal -->
+                    <div class="modal fade" data-backdrop="static" data-keyboard="false" id="ModalPermisos">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                    <h4 class="modal-title">Acceso a Usuarios - {{nombres}}</h4>
+                                </div>
+                                <div class="modal-body bg-silver">
+
+                                    <form class="form-horizontal">
+
+                                        <strong>Aplicar todas las Opciones</strong>
+                                        <div class="panel panel-default">
+                                            <div class="panel-body">
+                                                <div class="form-group">
+                                                    <div class="col-xs-4" ng-repeat="item in checksRerports |filter:validate">
+                                                        <div class="checkbox">
+                                                            <label>
+                                                                <input type="checkbox" ng-model="item.value" />
+                                                                {{item.descripcion}}
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <strong>Edicion de Datos</strong>
+                                        <div class="panel panel-default">
+                                            <div class="panel-body">
+                                                <div class="form-group">
+                                                    <div class="col-xs-6" ng-repeat="item in checksRerports |filter:validate2">
+                                                        <div class="checkbox">
+                                                            <label>
+                                                                <input type="checkbox" ng-model="item.value" />
+                                                                {{item.descripcion}}
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+                                        <div class="alert alert-danger" role="alert" id="alerta" style="display:none;">
+                                            <strong>Alerta!</strong> Debe seleccionar por lo menos una Opción.
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-success" ng-click="Guardar()">Guardar</button>
+                                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal fade" data-backdrop="static" data-keyboard="false" id="ModalConfirmacion">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                    <h4 class="modal-title">Informacion</h4>
+                                </div>
+                                <div class="modal-body">
+                                    <p>{{mensaje}}</p>
+
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-success" data-dismiss="modal">ok</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div>
+
+    </div>
+</div>
+

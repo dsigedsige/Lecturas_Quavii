@@ -1,0 +1,817 @@
+﻿@{
+    ViewBag.Title = "Cuadro de Producción";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+@section instances{
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @*@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")*@
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.fixedColumns.min.js")
+ 
+  
+
+@Styles.Render("~/Content/jQueryUI/css/jquery-ui.css")
+@Styles.Render("~/Content/jQueryUI/css/dataTables.jqueryui.min.css")
+@Styles.Render("~/Content/jQueryUI/css/fixedColumns.jqueryui.min.css")
+@Scripts.Render("~/Content/jQueryUI/js/dataTables.jqueryui.min.js")
+
+ @*@Styles.Render("~/Content/TreeView/css/style.min.css")*@
+@*@Styles.Render("~/Content/TreeView/css/style.min(1).css")*@
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+}
+
+@section styles{
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalreasig {
+            width: 350px;
+        }
+
+        #modalhistorico {
+            width: 500px;
+        }
+
+        #modalpendientes {
+            width: 500px;
+        }
+
+        .datepicker {
+            width: 200px;
+            top: 200px !important;
+        }
+
+        #table-consulta_lec td {
+            color: black;
+        }
+
+        #table-consulta_reclec td {
+            color: black;
+        }
+
+    
+    </style>
+}
+@section scripts{
+
+    <script>
+
+
+
+    //inicializando fechas
+    $(function () {
+        $('#f_inicial').datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true
+        });
+    })
+    $(function () {
+        $('#f_final').datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true
+        });
+    })
+
+    var app = angular.module('myapp', [])
+   .directive('onFinishRender', function ($timeout) {
+       return {
+           restrict: 'A',
+           link: function (scope, element, attr) {
+               if (scope.$last === true) {
+                   $timeout(function () {
+                       scope.$emit('ngRepeatFinished');
+                   });
+               }
+           }
+       }
+   });
+
+
+    app.controller('MyController', function ($scope, $http) {
+        var oTable = null;
+        $scope.datosList = [];
+        $scope.listaFechas = [];
+
+        $scope.getLocales = function () {
+            var req = {
+                method: 'POST',
+                url: 'JsonListarLocales',
+                headers: {
+                    'Content-Type': undefined
+                }
+            }
+            $http(req).then(function (result) {
+                $scope.listaLocales = result.data;
+            }, function (error) {
+
+            });
+        }
+
+        //Operarios
+        $scope.GetOperarios = function () {
+
+            var listaservicio = [];
+            //var list = [];
+            //if ($("#idservicios").val() == 0) {
+            //    $("#idservicios option").each(function () {
+            //        var x = parseInt($(this).attr('value'))
+            //        //  alert(x);
+            //        if (x == 0 || x == -1) {
+
+            //        }
+            //        else {
+            //            //  alert('opcion ' + $(this).text() + ' valor ' + $(this).attr('value'))
+            //            list.push($(this).attr('value'));
+            //        }
+
+            //    });
+
+            //}
+            //else {
+            //    list.push($("#idservicios").val());
+            //}
+            if (parseInt(document.getElementById('idservicios').value) == 0) {
+                var listcomb = $scope.listacomboServicios
+
+                angular.forEach(listcomb, function (value, key) {
+                    // this.push(key + ': ' + value);
+                    //  alert(value.id_TipoServicio);
+                    if (value.id_TipoServicio != 0) {
+                        listaservicio.push(value.id_TipoServicio);
+                    }
+
+                });
+            }
+            else {
+                listaservicio.push(document.getElementById('idservicios').value);
+            }
+
+
+
+            var TipoServicio = document.getElementById('idservicios').value;
+
+
+            var params = {
+                idlocal: document.getElementById('local').value,
+                lista: listaservicio.toString()
+                //fechaIni: document.getElementById('f_inicial').value,
+                //fechaFin: document.getElementById('f_final').value,
+            }
+
+            $http({
+
+                method: 'POST',
+                url: 'JsonGetOperarios',
+                params: params,
+                headers: {
+                    'Content-Type': undefined
+                }
+
+            }).success(function (data) {
+
+
+
+                //if (oTable == null) {
+                //    console.log('Llenado Normal')
+                //    $scope.listaOperarios = data;
+
+                //} else {
+                //    console.log('Destroyyyyyy')
+                //    oTable.destroy();
+                //    oTable = null;
+                //    $scope.listaOperarios = data;
+
+                $scope.listaOperarios = data;
+                $scope.GetDatos();
+                //}
+
+            }).error(function () {
+
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+        }
+        //Fechas
+        $scope.GetFechas = function () {
+
+
+            var listaservicio = [];
+            //var list = [];
+            //if ($("#idservicios").val() == 0) {
+            //    $("#idservicios option").each(function () {
+            //        var x = parseInt($(this).attr('value'))
+            //        //  alert(x);
+            //        if (x == 0 || x == -1) {
+
+            //        }
+            //        else {
+            //            //  alert('opcion ' + $(this).text() + ' valor ' + $(this).attr('value'))
+            //            list.push($(this).attr('value'));
+            //        }
+
+            //    });
+
+            //}
+            //else {
+            //    list.push($("#idservicios").val());
+            //}
+            if (parseInt(document.getElementById('idservicios').value) == 0) {
+                var listcomb = $scope.listacomboServicios
+
+                angular.forEach(listcomb, function (value, key) {
+                    // this.push(key + ': ' + value);
+                    //  alert(value.id_TipoServicio);
+                    if (value.id_TipoServicio != 0) {
+                        listaservicio.push(value.id_TipoServicio);
+                    }
+
+                });
+            }
+            else {
+                listaservicio.push(document.getElementById('idservicios').value);
+            }
+
+
+
+            var TipoServicio = document.getElementById('idservicios').value;
+
+
+
+
+            $('.sige-load').show();
+
+            var params = {
+                idlocal: document.getElementById('local').value,
+                fechaInicial: document.getElementById('f_inicial').value,
+                fechaFinal: document.getElementById('f_final').value,
+                lista: listaservicio.toString()
+            }
+
+            $http({
+
+                method: 'POST',
+                url: 'JsonGetFechas',
+                params: params,
+                headers: {
+                    'Content-Type': undefined
+                }
+
+            }).success(function (data) {
+
+                //$('.sige-load').hide();
+
+                //if (oTable == null) {
+                //    console.log('Llenado Normal')
+                //    $scope.listaFechas = data;
+
+                //} else {
+                //    console.log('Destroyyyyyy')
+                //    oTable.destroy();
+                //    oTable = null;
+                //    $scope.listaFechas = data;
+
+                //}
+                $scope.listaFechas = data;
+                $scope.GetOperarios();
+
+            }).error(function () {
+
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+        }
+        //Datos
+
+        $scope.prueba = function () {
+            oTable = $('#tblLista').DataTable({
+                //retrieve: true,
+                scrollY: "600px",
+                scrollX: true,
+                scrollCollapse: true,
+                paging: false,
+                fixedColumns: {
+                    leftColumns: 7
+                }
+            });
+
+        }
+
+
+
+        $scope.GetDatos = function () {
+            var listaservicio = [];
+     
+            if (parseInt(document.getElementById('idservicios').value) == 0) {
+                var listcomb=$scope.listacomboServicios
+
+                angular.forEach(listcomb, function (value, key) {
+                   // this.push(key + ': ' + value);
+                    //  alert(value.id_TipoServicio);
+                    if (value.id_TipoServicio != 0) {
+                        listaservicio.push(value.id_TipoServicio);
+                    }
+                 
+                });
+            }
+            else
+            {
+                listaservicio.push(document.getElementById('idservicios').value);
+            }
+
+
+
+            var TipoServicio = document.getElementById('idservicios').value;
+
+           // alert(TipoServicio);
+
+         //console.log($scope.listacomboServicios)
+            //console.log(list);
+            var params = {
+                idlocal: document.getElementById('local').value,
+                fechaInicial: document.getElementById('f_inicial').value,
+                fechaFinal: document.getElementById('f_final').value,
+                lista: listaservicio.toString()
+            }
+           
+            
+            console.log(listaservicio.toString());
+            $http({
+
+                method: 'POST',
+                url: 'JsonGetDatos',
+                params: params,
+                headers: {
+                    'Content-Type': undefined
+                }
+
+            }).success(function (data) {
+
+                //$('.sige-load').show();
+
+                //if (oTable == null) {
+                //    console.log('Llenado Normal')
+                //    $scope.datosList = data;
+                //    //$scope.GetFechas();
+
+
+                //} else {
+                //    console.log('Destroyyyyyy')
+                //    oTable.destroy();
+                //    oTable = null;
+                //    $scope.datosList = data;
+                //    //$scope.GetFechas();
+
+                //}
+
+                $scope.datosList = data;
+                $('.sige-load').hide();
+                //   $scope.GetFechas();
+
+            }).error(function () {
+
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+        }
+
+        $scope.sumaDiasTrabajo = function (idoperario) {
+
+            var sumadias = 0;
+            for (var d = 0; d < $scope.datosList.length; d++) {
+                if ($scope.datosList[d].id_Operario == idoperario) {
+                    if ($scope.datosList[d].cantidad != "") {
+                        sumadias = sumadias + 1
+                    }
+
+                }
+            }
+
+            return sumadias
+        }
+
+        $scope.sumaLecturas = function (idopeario) {
+            var suma = 0;
+            for (var n = 0; n < $scope.datosList.length; n++) {
+                if ($scope.datosList[n].id_Operario == idopeario) {
+                    suma += $scope.datosList[n].cantidad;
+
+                }
+
+            }
+
+            return suma;
+        }
+
+        $scope.mysearch = function (fecha, idoperario) {
+
+
+            var cant = "";
+
+            for (var i = 0; i < $scope.datosList.length; i++) {
+                if ($scope.datosList[i].id_Operario == idoperario && $scope.datosList[i].fechaAsignacion_Lectura == fecha) {
+                    cant = $scope.datosList[i].cantidad
+
+                    return cant
+
+                }
+
+            }
+
+
+            if (cant == "") {
+
+                return "0";
+
+            }
+
+
+
+        }
+
+        //$scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+        //    //oTable = $('#tblLista').DataTable();
+
+
+        //    oTable = $('#tblLista').DataTable({
+
+        //        scrollY: "600px",
+        //        scrollX: true,
+        //        scrollCollapse: true,
+        //        fixedColumns: {
+        //            leftColumns: 6
+        //        }
+        //    });
+
+
+        //});
+        // $scope.listacombo = [];
+       
+        $scope.id_tipoServicio = '-1';
+        $scope.getServicios = function () {
+            var req = {
+                method: 'POST',
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                headers: {
+                    'Content-Type': undefined
+                }
+            }
+            $http(req).then(function (result) {
+                $scope.listacomboServicios = result.data;
+                //console.log(result.data)
+
+                if (result.data.length == $scope.listacomboServicios[0].cantidad) {
+                   
+                    $scope.listacomboServicios.push({ nombre_tiposervicio: "TODOS", id_TipoServicio: '0' });
+                  // $scope.id_tipoServicio = '0';
+                    $scope.listacomboServicios = result.data;
+                }
+                else {
+                    $scope.listacomboServicios = result.data;
+                }
+               
+
+
+            }, function (error) {
+
+            });
+        }
+
+
+    });
+
+    function tableToExcel(tableId, worksheetName) {
+
+        var uri = 'data:application/vnd.ms-excel;base64,',
+              template = '<html lang="es"  xmlns:o="urn:schemas-microsoft-com:office:office"' +
+                         'xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
+                         '<head>' +
+                         '<meta charset="utf-8">' +
+                         '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>CuadrodeProduccion</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->' +
+                         '<style>' +
+
+                        ' table, td, th {' +
+                              ' border: 1px solid black;' +
+                              ' }' +
+             ' th {' +
+                  'background-color: #4CAF50;' +
+                  'color: white;' +
+             ' }' +
+                       ' </style> </head>' +
+                         '<body>' +
+                         '<h1  style="text-align:center;">Cuadro de Producción</h1>' +
+                         '<table>{table}</table>' +
+                         '</body>' +
+                         '</html>',
+
+            base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))); },
+              format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+        var table = $(tableId),
+                     ctx = { worksheet: 'descar123', table: table.html() };
+
+        var link = document.createElement("a");
+        link.download = "CuadrodeProduccion.xls";
+        link.href = uri + base64(format(template, ctx));
+
+
+        link.click()
+
+    }
+
+
+
+
+
+    @*$(document).ready(function () {
+            CargarServicioxUsuario();
+        });
+
+
+        function CargarServicioxUsuario() {
+
+            var servicio = $("#idservicios");
+
+
+            //$.support.cors = true;
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                cache: false,
+                dataType: "json",
+                CrossDomain: true,
+                success: function (response) {
+                    console.log(response);
+                    // var resultado = response.ListarUsuariosxCargoCreditoResult;
+                    // console.log(response.length);
+                    servicio.html("");
+                    if (parseInt(response.length) == parseInt(response[0].cantidad)) {
+                        // alert("correcto");
+                        // console.log("cccccc");
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        servicio.append('<option value="0" >Todos</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    } else {
+                        servicio.append('<option value="0" >Seleccione</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    }getLocales
+
+
+                },
+
+                error: function (result) {
+                    alert('ERROR.... en ' + result.status + '... ' + result.statusText);
+                }
+            });
+
+
+        }*@
+
+
+
+
+</script>
+
+
+
+}
+<div ng-app="myapp" ng-controller="MyController" ng-init="getLocales();getServicios()">
+    <div>
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <h6><i class="fa fa-table fa-lg"></i> CUADRO DE PRODUCCIÓN</h6>
+            </div>
+            <div>
+                <br />
+
+                <div class="panel-body">
+                    <div class="row">
+
+
+                        <form class="form-inline">
+
+
+                            <div class="form-group" style="padding-left:35px;">
+                                <label for="_local" class="control-label">Local</label>
+
+                                <div class="form-group form-group">
+                                    <select class="form-control input-sm" id="local">
+
+                                        <option ng-repeat="local in listaLocales" value="{{local._a}}">{{local._c}}</option>
+                                    </select>
+
+                                </div>
+                            </div>
+                            <div class="form-group" style="padding-left:5px;">
+
+                                <label for="_supervisor" class="control-label">Servicios</label>
+
+                                <div class="form-group form-group">
+                                    <select class="form-control" id="idservicios" ng-model="id_tipoServicio" style="width: 200px">
+                                        <option value=-1>SELECCIONE </option>
+                                       
+
+                                        <option ng-repeat="serv in listacomboServicios | orderBy:'id_TipoServicio'" value="{{serv.id_TipoServicio}}">{{serv.nombre_tiposervicio}}</option>
+
+                                    </select>
+                                </div>
+
+                            </div>
+
+                            <div class="form-group" style="padding-left:5px;">
+                                <label for="_local" class="control-label">Fecha Inicial</label>
+
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input class="form-control" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="form-group" style="padding-left:5px;">
+                                <label for="_local" class="control-label">Fecha Final</label>
+
+                                <div class="form-group">
+
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="form-group" style="float:right;padding-right:15px;">
+
+                                <button class="btn btn-primary btn-sm btn-block" ng-click="GetFechas()">Consultar   <i class="fa fa-search"></i></button>
+
+                                @*<div class="col-xs-1  col-xs-offset-1">
+                                        <button class="btn btn-primary btn-sm btn-block" ng-click="prueba()">PRUEBA   <i class="fa fa-search"></i></button>
+                                    </div>*@
+
+                            </div>
+                            <div class="form-group" style="float:right;padding-right:15px;">
+                                <button class="btn btn-success btn-sm btn-block" onclick="tableToExcel('#tblLista');"><i class="fa fa-file-excel-o"></i> Exportar</button>
+                                @*<button class="btn btn-success btn-sm btn-block" onclick="descargarExcel();"><i class="fa fa-file-excel-o"></i> Exportar2</button>*@
+
+                            </div>
+
+
+
+                        </form>
+                    </div>
+
+                    <div class="form-group">
+
+                        <div class="col-xs-2">
+                            <label>Busqueda por Lecturista</label>
+                            <input type="text" class="form-control input-sm" ng-model="busquedageneral" />
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+
+
+
+            <div class="form-group-sm" style="height:600px; overflow:auto;">
+                <table class="table table-striped table-bordered" cellspacing="0" width="100%" id="tblLista">
+                    <thead style="background:#F0F3F5;">
+                        <tr>
+                            <th>LECTURISTAS</th>
+                            <th>DNI</th>
+                            <th>ING</th>
+                            <th>CARGO</th>
+                            <th>ABRE</th>
+                            <th>PRECIO</th>
+                            <th ng-repeat="cab in listaFechas">{{cab.fechaAsignacion_Lectura}}</th>
+                            <th>TotLect</th>
+                            <th>PreUnit.</th>
+                            <th>TotProd</th>
+                            <th>DiasTrab</th>
+                        </tr>
+                    </thead>
+
+                    <tbody style="background-color: white;">
+                        <tr ng-repeat="intem in listaOperarios | filter : busquedageneral" on-finish-render="ngRepeatFinished">
+                            <td nowrap>{{intem.nombre_Operario}}</td>
+                            <td>{{intem.usuario_Operario}}</td>
+                            <td>{{intem.ing_Operario}}</td>
+                            <td>{{intem.cargo_Operario}}</td>
+                            <td>{{intem.Abre_Operario}}</td>
+                            <td>{{intem.Precio}}</td>
+                            <td ng-repeat="cabe in listaFechas">{{mysearch(cabe.fechaAsignacion_Lectura , intem.id_Operario)}}</td>
+                            <td>{{sumaLecturas(intem.id_Operario)}}</td>
+                            <td>{{intem.PrecioUnit}}</td>
+                            <td>{{sumaLecturas(intem.id_Operario) * intem.PrecioUnit}}</td>
+                            <td>{{sumaDiasTrabajo(intem.id_Operario)}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+
+
+            @*<div >
+
+
+                    <table class="table table-striped table-bordered" cellspacing="0" width="100%" id="tblLista1">
+                        <thead style="background:#F0F3F5;">
+                            <tr>
+
+
+                                <th>LECTURISTAS</th>
+                                <th>DNI</th>
+                                <th>ING</th>
+                                <th>CARGO</th>
+                                <th>ABRE</th>
+                                <th>PRECIO</th>
+
+
+
+                                    <th ng-repeat="cab in listaFechas">{{cab.fechaAsignacion_Lectura}}</th>
+                                    <th>Total Lecturas</th>
+                                    <th>Precio Unit.</th>
+                                    <th>Total Producción</th>
+                                    <th>Dias de Trabajo</th>
+
+                            </tr>
+                        </thead>
+
+                        <tbody  >
+                            <tr ng-repeat="intem in listaOperarios">
+
+
+                                <td>{{intem.nombre_Operario}}</td>
+                                <td>{{intem.usuario_Operario}}</td>
+                                <td>{{intem.ing_Operario}}</td>
+                                <td>{{intem.cargo_Operario}}</td>
+                                <td>{{intem.Abre_Operario}}</td>
+                                <td>{{intem.Precio}}</td>
+
+
+                                <td ng-repeat="cabe in listaFechas">{{mysearch(cabe.fechaAsignacion_Lectura , intem.id_Operario)}}</td>
+                                <td>{{sumaLecturas(intem.id_Operario)}}</td>
+                                <td>{{intem.PrecioUnit}}</td>
+                                <td>{{sumaLecturas(intem.id_Operario) * intem.PrecioUnit}}</td>
+                                <td>{{sumaDiasTrabajo(intem.id_Operario)}}</td>
+
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>*@
+
+        </div>
+
+        <div class="modal fade" data-backdrop="static" data-keyboard="false" id="ModalConfirmacion">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h4 class="modal-title">Información</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" data-dismiss="modal">ok</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>

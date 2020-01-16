@@ -1,0 +1,547 @@
+﻿@{
+    ViewBag.Title = "index_SeguimientoOperario_II";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+ 
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+<style>
+    #map {
+        height: 460px;
+    }
+
+    .modal-dialog {
+        width: 600px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+    .select2-results {
+        font-size: 10px !important;
+    }
+</style>
+
+<style>
+    #legend {
+        font-family: Arial, sans-serif;
+        background: #fff;
+        padding: 10px;
+        margin: 10px;
+        border: 3px solid #000;
+    }
+
+        #legend h3 {
+            margin-top: 0;
+        }
+
+        #legend img {
+            vertical-align: middle;
+        }
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+
+    var app = angular.module('myApp', []);
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $scope.InicializandoVariables = function () {
+            InicializarMapa();
+            RemoveMarker(null);
+            RemoveLine(null);
+            setTimeout(function () {
+                $scope.ActualizarInformacion();
+            }, 200);
+        }
+
+        $scope.Obj_List_Lecturas = [];
+        $scope.ActualizarInformacion = function () {
+
+            var _fechaAsignacion = document.getElementById('_fechaAsignacion').value;
+            var _servicio = document.getElementById('_servicio').value;
+            var _operario = document.getElementById('_id_operario').value;
+
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../SeguimientoOperario/JsonSeguimiento_Operarios_Resumen',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    FechaAsiga: _fechaAsignacion,
+                    servicio: _servicio,
+                    operario: _operario
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (data.length > 0) {
+                        MostrarUbicacionesMap(data)
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información para disponible para mostrar.',
+                            type: 'success'
+                        });
+
+                        InicializarMapa();
+
+                        RemoveMarker(null);
+                        RemoveLine(null);
+                        $scope.markers = [];
+                        myCoordinates = [];
+                    }
+
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                });
+        }
+
+
+        //Inicializar el Mapa
+        $scope.markers = [];
+        var myCoordinates = [];
+        var id_marker = 0;
+        var Polyline;
+
+        var service;
+        var renderer;
+
+        function InicializarMapa() {
+
+            service = new google.maps.DirectionsService;
+            // renderer = new google.maps.DirectionsRenderer;
+
+            renderer = new google.maps.DirectionsRenderer({
+                polylineOptions: {
+                    strokeColor: "green",
+                    width: 10
+                }
+            });
+
+            $scope.map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: { lat: -12.046374, lng: -77.0427934 },
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                    position: google.maps.ControlPosition.TOP_CENTER
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_CENTER
+                },
+                scaleControl: true,
+                streetViewControl: true,
+                streetViewControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_TOP
+                }
+            });
+
+            renderer.setMap($scope.map);
+
+            var icons = {
+                Termino: {
+                    name: 'Operario Termino Recorrido',
+                    icon: '../Content/Imagen/supervisor_on.png',
+                },
+                Inicio: {
+                    name: 'Operario Inicio Recorrido',
+                    icon: '../Content/Imagen/operario.png'
+                },
+                Recorrido: {
+                    name: 'Operario Recorrido',
+                    icon: '../Content/Imagen/seg_operario.png',
+                }
+            };
+
+            var legend = document.getElementById('legend');
+            for (var key in icons) {
+                var type = icons[key];
+                var name = type.name;
+                var icon = type.icon;
+                var div = document.createElement('div');
+                div.innerHTML = '<img src="' + icon + '"> ' + name;
+                legend.appendChild(div);
+            }
+            $scope.map.controls[google.maps.ControlPosition.TOP_LEFT].push(legend);
+
+        };
+
+
+        var maxRecorrido = 0;
+        var maxRecorrido2 = 0;
+        var Index_Global = 0;
+
+        function funct_mover_mapa_especifico(lat, long) {
+            service = new google.maps.DirectionsService;
+            renderer = new google.maps.DirectionsRenderer({
+                polylineOptions: {
+                    strokeColor: "green"
+                }
+            });
+
+            $scope.map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: { lat: parseFloat(lat), lng: parseFloat(long) },
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                    position: google.maps.ControlPosition.TOP_CENTER
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_CENTER
+                },
+                scaleControl: true,
+                streetViewControl: true,
+                streetViewControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_TOP
+                }
+            });
+            renderer.setMap($scope.map);
+
+
+        }
+
+        function AgregarLeyendaMapa() {
+
+            var icons = {
+                Termino: {
+                    name: 'Operario Termino Recorrido',
+                    icon: '../Content/Imagen/supervisor_on.png',
+                },
+                Inicio: {
+                    name: 'Operario Inicio Recorrido',
+                    icon: '../Content/Imagen/operario.png'
+                },
+                Recorrido: {
+                    name: 'Operario Recorrido',
+                    icon: '../Content/Imagen/seg_operario.png',
+                }
+            };
+
+            document.getElementById("content_leyenda").innerHTML = "<div id='legend'></div>";
+
+            var legend = document.getElementById('legend');
+            for (var key in icons) {
+                var type = icons[key];
+                var name = type.name;
+                var icon = type.icon;
+                var div = document.createElement('div');
+                div.innerHTML = '<img src="' + icon + '"> ' + name;
+                legend.appendChild(div);
+            }
+            $scope.map.controls[google.maps.ControlPosition.TOP_LEFT].push(legend);
+        }
+
+        function MostrarUbicacionesMap(obj_Lista) {
+            //RemoveMarker(null);
+            //RemoveLine(null);
+            $scope.markers = [];
+            myCoordinates = [];
+
+            //contiene la Latitud y Longitud de los Operarios
+            var List_direcciones = [];
+            maxRecorrido = obj_Lista.length - 1;
+            ///--- Enfocando el recorrido
+            for (var i = 0; i < obj_Lista.length; i++) {
+                if (i == 0) {
+                    if (parseFloat(obj_Lista[i]._c) != 0 && parseFloat(obj_Lista[i]._d) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._c, obj_Lista[i]._d);
+                        break;
+                    }
+                } else {
+                    if (parseFloat(obj_Lista[i]._c) != 0 && parseFloat(obj_Lista[i]._d) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._c, obj_Lista[i]._d);
+                        break;
+                    }
+                }
+            }
+
+            if (maxRecorrido > 0) {
+                AgregarLeyendaMapa();
+            }
+
+            ///---fin de  Enfocando el recorrido
+
+            service = new google.maps.DirectionsService;
+
+
+            for (var i = 0; i < obj_Lista.length; i++) {
+                // creando los marcadores
+                createMarker(obj_Lista[i], i);
+                // Fin de creando los marcadores
+                List_direcciones.push({ lat: parseFloat(obj_Lista[i]._c), lng: parseFloat(obj_Lista[i]._d), name: 'Station ' + i })
+            }
+
+            // Divide route to several List_Particionada_direcc because max List_direcciones limit is 25 (23 waypoints + 1 origin + 1 destination)
+            for (var i = 0, List_Particionada_direcc = [], max = 25 - 1; i < List_direcciones.length; i = i + max) {
+                List_Particionada_direcc.push(List_direcciones.slice(i, i + max + 1));
+            }
+
+
+            maxRecorrido2 = List_Particionada_direcc.length;
+
+            // Service callback to process service results
+            var service_callback = function (response, status) {
+
+                console.log('status')
+                console.log(status)
+
+                if (status != 'OK') {
+                    console.log('Directions request failed due to ' + status);
+                    if (status == 'OVER_QUERY_LIMIT') {
+                        setTimeout(function () {
+                            // Google maps service la Misma Busqueda
+                            Ejecutando_Busqueda_Direccion_google(Index_Global)
+                        }, 3000);
+                    } else {
+                        // Google maps service siguiente Busqueda
+                        Ejecutando_Busqueda_Direccion_google(Index_Global + 1)
+                    }
+                } else {
+                    renderer = new google.maps.DirectionsRenderer({
+                        polylineOptions: {
+                            path: [],
+                            icons: [{
+                                icon: {
+                                    path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                                    strokeColor: '#FF0000',
+                                    fillColor: '#FF0000',
+                                    strokeWeight: 1,
+                                    fillOpacity: 1
+                                },
+                                repeat: '100px',
+                                path: []
+                            }],
+                            strokeWeight: 2,
+                            strokeColor: '#85abf2',
+                        }
+                    });
+                    //renderer = new google.maps.DirectionsRenderer;
+                    renderer.setMap($scope.map);
+                    renderer.setOptions({ suppressMarkers: true, preserveViewport: true });
+                    renderer.setDirections(response);
+
+                    // Google maps service siguiente Busqueda
+                    Ejecutando_Busqueda_Direccion_google(Index_Global + 1)
+                }
+            };
+
+            var Ejecutando_Busqueda_Direccion_google = function (index) {
+
+                Index_Global = index;
+                if (index == maxRecorrido2) {
+                    return;
+                }
+                // Waypoints does not include first station (origin) and last station (destination)
+                var waypoints = [];
+                for (var j = 1; j < List_Particionada_direcc[index].length - 1; j++) {
+                    waypoints.push({ location: List_Particionada_direcc[index][j], stopover: false });
+                }
+
+                // Service options
+                var service_options = {
+                    origin: List_Particionada_direcc[index][0],
+                    destination: List_Particionada_direcc[index][List_Particionada_direcc[index].length - 1],
+                    waypoints: waypoints,
+                    travelMode: 'WALKING'
+                };
+                // Send request
+                service.route(service_options, service_callback);
+            }
+            // Google maps service
+            Ejecutando_Busqueda_Direccion_google(0)
+        }
+
+        var infoWindow = new google.maps.InfoWindow();
+
+        var createMarker = function (info, posicion) {
+
+            var icono = '';
+            var titulo = ''
+            var ContenidoMarker = '';
+            ContenidoMarker += '<div id="_market" style="width:390px;height:60px;position:relative;">';
+            ContenidoMarker += '<table><tr><td><strong >Operario</strong></td><td>: ' + info._b + '</td></tr>';
+            ContenidoMarker += '<tr><td><strong>Fecha y hora</strong></td><td>: ' + info._e + '</td></tr>';
+            ContenidoMarker += '<tr><td><strong>Latitud</strong></td><td>: ' + info._c + '</td></tr>';
+            ContenidoMarker += '<tr><td><strong>Longitud</strong></td><td>: ' + info._d + '</td></tr>';
+            ContenidoMarker += '</table>';
+            ContenidoMarker += '</div>';
+
+            if (posicion == 0) { // inicio Recorrido
+
+                icono = '../Content/Imagen/operario.png',
+                    titulo = 'INICIO DEL RECORRIDO';
+            }
+            else if (posicion == maxRecorrido) { // fin de recorrido
+                icono = '../Content/Imagen/supervisor_on.png';
+                titulo = 'FIN DEL RECORRIDO';
+            } else {
+                icono = '../Content/Imagen/seg_operario.png';
+                titulo = 'RECORRIDO OPERARIO';
+            }
+            var marker = new google.maps.Marker({
+                map: $scope.map,
+                position: new google.maps.LatLng(info._c, info._d),
+                title: titulo,
+                icon: icono,
+                content: ContenidoMarker,
+                id: ++id_marker,
+            });
+
+            google.maps.event.addListener(marker, 'click', function () {
+                infoWindow.setContent('<center><h4><b>' + marker.title + '</b></h4></center>' +
+                    marker.content);
+                infoWindow.open($scope.map, marker);
+                $scope.toggleBounce(marker);
+            });
+
+            $scope.markers.push(marker);
+
+            //--Efecto de animacion--
+            if (posicion == 0) { // inicio Recorrido
+                $scope.markers[posicion].setAnimation(google.maps.Animation.BOUNCE);
+            } else if (posicion == maxRecorrido) { // fin de recorrido
+                $scope.markers[posicion].setAnimation(google.maps.Animation.BOUNCE);
+            }
+        }
+
+        $scope.toggleBounce = function (marker) {
+            $scope.markers[0].setAnimation(google.maps.Animation.BOUNCE);
+            $scope.markers[maxRecorrido].setAnimation(google.maps.Animation.BOUNCE);
+        }
+        $scope.openInfoWindow = function (e, selectedMarker) {
+            e.preventDefault();
+            google.maps.event.trigger(selectedMarker, 'click');
+        }
+
+        function RemoveMarker(map) {
+            for (var i = 0; i < $scope.markers.length; i++) {
+                $scope.markers[i].setMap(map);
+            }
+        }
+
+        function RemoveLine(map) {
+            if (Polyline != undefined) {
+                Polyline.setMap(map);
+            }
+        }
+
+
+    });
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> SEGUIMIENTO DE OPERARIOS</h6>
+        </div>
+        <div class="panel-body">
+            <br />
+            <div id="Contenedor">
+
+                <div id="ContenedorVariables" style="display:none">
+                    <input class="form-control" id="_fechaAsignacion" value="@ViewBag.FechaAsignacion_global">
+                    <input class="form-control" id="_servicio" value="@ViewBag.Servicio_global">
+                    <input class="form-control" id="_id_operario" value="@ViewBag.operario_global">
+                </div>
+
+                <hr style="margin-top: 5px !important; margin-bottom: 7px !important;" />
+
+                <div class="row">
+                    <div class="form-group" style="padding-left: 30px;">
+                        <section id="ubicacion">
+                            <div style="border:1px solid">
+                                <div id="map"></div>
+                            </div>
+                            <div id="legend"><h3></h3></div>
+                            <div id="content_leyenda"><h3></h3></div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+</body>
+</html>

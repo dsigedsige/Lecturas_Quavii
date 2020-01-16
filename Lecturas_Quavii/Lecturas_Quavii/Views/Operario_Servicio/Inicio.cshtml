@@ -1,0 +1,282 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = "Inicio";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+}
+
+@section styles{
+    <style type="text/css">
+        /*.fixed-table-toolbar {
+            padding-right: 10px;
+        }*/
+    </style>
+}
+
+@section scripts{
+    <script type="text/javascript">
+        $(window).resize(function () {
+            $('#table-operario').bootstrapTable('resetView');
+            $('#table-servicio').bootstrapTable('resetView');
+        });
+
+        $(function () {
+            var $tableOperario = $('#table-operario');
+
+            $tableOperario.on('all.bs.table', function (__e, __n, __a) {
+
+            }).on('check.bs.table', function (__e, __r) {
+                fnCuentaCheckEsconde('#table-operario');
+            }).on('uncheck.bs.table', function (__e, __r) {
+                fnCuentaCheckEsconde('#table-operario');
+            }).on('check-all.bs.table', function (__e, __r) {
+                fnCuentaCheckEsconde('#table-operario');
+            }).on('uncheck-all.bs.table', function (__e, __r) {
+                fnCuentaCheckEsconde('#table-operario');
+            });
+        });
+
+        function fnCuentaCheckEsconde(__n) {
+            var __o = '',
+                $contenedor = [],
+                $table = $(__n),
+                $contador = $(__n + ' input[name="btSelectItem"]:checked').length,
+                $data = $table.bootstrapTable('getData');
+
+            if ($contador > 1) {
+                $table.bootstrapTable('hideColumn', '_opcion');
+
+                $.each($data, function (__i, __v) {
+                    if (__v._m == true || __v._m == 1) {
+                        $contenedor.push(__v._a);
+                    }
+                });
+
+                __o = $contenedor.join(',');
+
+                fnServicio(__o, '');
+            } else {
+                $table.bootstrapTable('showColumn', '_opcion');
+                fnServicio(0, '');
+            }
+
+            return $contador;
+        }
+
+        function nombreOperarioFormat(__v, __r, __i) {
+            return '<i class="fa fa-user fa-lg"></i> ' + __r._g;
+        }
+
+        function opcionOperarioFormat(__v, __r, __i) {
+            var $html = [];
+
+            $html.push('<button role="button" class="btn btn-default" onclick="fnServicio(\'' + __r._a + '\',\'' + __r._g + '\')"><i class="fa fa-edit fa-lg"></i> Detalle Servicios</button>');
+
+            return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">' + $html.join('') + '</div>';
+        }
+
+        function opcionServicioFormat(__v, __r, __i) {
+            var $html = [];
+
+            if (__r._c == 1) {
+                $html.push('<button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio(\'' + __r._a + '\',\'2\')"><i style=\" color: #e73c3c; \" class="fa fa-times fa-lg"></i> Quitar</button>');
+            } else {
+                $html.push('<button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio(\'' + __r._a + '\',\'1\')"><i style=\" color: #4f8edc; \" class=\"fa fa-check fa-lg\"></i> Agregar</button>');
+            }
+
+            return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento servicio">' + $html.join('') + '</div>';
+        }
+
+        function checkOperarioFormat(__v, __r, __i) {
+            if (__r._m == 1 && __r._m == true) {
+                return {
+                    checked: true
+                };
+            }
+
+            return __v;
+        }
+
+        function filaEstilo(__r, __i) {
+            if (__r._c == 1) {
+                return {
+                    classes: 'success'
+                };
+            }
+
+            return { };
+        }
+
+        function fnServicio(__v, __n) {
+            $('#toolbar-servicio').empty();
+
+            if (__n.length != 0) {
+                $('#toolbar-servicio').append('<h5 style=" margin-top: 8px; "><input type="hidden" id="operario" value="' + __v + '" /><i class="fa fa-user fa-lg"></i> ' + __n + '</h5>');
+            } else {
+                $('#toolbar-servicio').append('<input type="hidden" id="operario" value="' + __v + '" />');
+            }
+
+            if (__v == 0) {
+                $('.class-masivo').hide();
+            } else {
+                $('.class-masivo').show();
+            }
+
+            $('#table-servicio').bootstrapTable('refresh', {
+                url: '../Servicio/JsonServicioOperario?__a=' + __v
+            });
+        }
+
+        function fnCargaOperario(_this) {
+            $('#table-operario').bootstrapTable('refresh', {
+                url: '../Operario/JsonOperarioLocal?__a=' + _this.val() + '&__b=0'
+            });
+
+            $('.class-masivo').hide();
+
+            $('#table-operario').bootstrapTable('showColumn', '_opcion');
+
+            fnServicio(0,'');
+        }
+
+        function fnAgregaQuitaServicio(__s, __e) {
+            var __o = '',
+                $contenedor = [],
+                $operario = $('#operario').val(),
+                $data_operario = $('#table-operario').bootstrapTable('getData');
+
+            if ($operario == 0) {
+                return;
+            } else if ($operario == -1) {
+                $.each($data_operario, function (__i, __v) {
+                    if (__v._m == true || __v._m == 1) {
+                        $contenedor.push(__v._a);
+                    }
+                });
+
+                __o = $contenedor.join(',');
+            } else {
+                __o = $operario;
+            }
+
+            $ajaxJson(
+                'AsignaServicio',
+                function () {
+                    return {
+                        __a: __o,
+                        __b: __s,
+                        __c: __e,
+                        __d: $('#_local').val()
+                    };
+                },
+                function (__s) {
+                    if (__s.__a > 0) {
+                        new PNotify({
+                            title: 'Exito',
+                            text: 'Se ' + (__e == 1 ? 'asigno' : 'quito') + ' correctamente los servicios.',
+                            type: 'success'
+                        });
+                    }
+
+                    $('#table-servicio').bootstrapTable('refresh');
+                }
+            );
+        }
+    </script>
+}
+
+<div class="panel panel-oscuro">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i> MAESTRO ASIGNAR OPERARIOS A LOS SERVICIOS</h6>
+    </div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-oscuro">
+                    <div class="panel-body" style=" border-top: 1px solid; ">
+                        <div id="toolbar">
+                            <select id="_local" class="form-control input-sm" style=" width: 250px; " onchange="fnCargaOperario($(this))">
+                                <option value="0" selected="selected">-- Local --</option>
+                                @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                {
+                                    <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                                }
+                            </select>
+                        </div>
+                        <table
+                            id="table-operario"
+                            data-toggle="table" 
+                            data-height="450" 
+                            data-search="true" 
+                            data-toolbar="#toolbar" 
+                            data-maintain-selected="true"
+                            data-url="../Operario/JsonOperarioLocal?__a=0">
+                            <thead>
+                                <tr>
+                                    <th data-field="_m" data-formatter="checkOperarioFormat" data-checkbox="true"></th>
+                                    <th data-field="_g" data-formatter="nombreOperarioFormat"><i class="fa fa-users fa-lg"></i> Operario</th>
+                                    <th data-field="_opcion" data-width="140" data-formatter="opcionOperarioFormat"></th>
+                                </tr>
+                            </thead>
+                        </table>
+                        @*<table
+                            id="table-operario"
+                            data-toggle="table" 
+                            data-height="450" 
+                            data-search="true" 
+                            data-toolbar="#toolbar" 
+                            data-url="../Operario/JsonOperarioLocal?__a=0">
+                            <thead>
+                                <tr>
+
+                                    <th data-field="_g" data-formatter="nombreOperarioFormat"><i class="fa fa-users fa-lg"></i> Operario</th>
+                                    <th data-width="140" data-formatter="opcionOperarioFormat">
+                                        <span class="class-masivo-operario btn-group btn-group-xs" role="group" aria-label="Mantenimiento" style=" display: none; ">
+                                            <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio(0,'0','2')"><i style=" color: #e73c3c; " class="fa fa-times fa-lg"></i></button>
+                                            <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio(0,'0','1')"><i style=" color: #4f8edc; " class="fa fa-check fa-lg"></i> Servicio</button>
+                                        </span>
+                                    </th>
+                                </tr>
+                            </thead>
+                        </table>*@
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="panel panel-oscuro">
+                    <div class="panel-body" style=" border-top: 1px solid; ">
+                        <div id="toolbar-servicio"></div>
+                        <table
+                            id="table-servicio"
+                            data-toggle="table" 
+                            data-height="450" 
+                            data-search="true" 
+                            data-row-style="filaEstilo" 
+                            data-toolbar="#toolbar-servicio" 
+                            data-url="../Servicio/JsonServicioOperario?__a=0">
+                            <thead>
+                                <tr>
+                                    <th data-field="_b">Servicio</th>
+                                    <th data-width="90" data-formatter="opcionServicioFormat">
+                                        <span class="class-masivo btn-group btn-group-xs" role="group" aria-label="Mantenimiento" style=" display: none; ">
+                                            <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio('0','2')"><i style=" color: #e73c3c; " class="fa fa-times fa-lg"></i></button>
+                                            <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio('0','1')"><i style=" color: #4f8edc; " class="fa fa-check fa-lg"></i></button>
+                                        </span>
+                                    </th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

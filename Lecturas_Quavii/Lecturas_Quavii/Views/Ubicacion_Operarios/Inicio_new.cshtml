@@ -1,0 +1,703 @@
+﻿ 
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Ubicación de Operarios ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+
+@section instances{
+
+    @Scripts.Render("~/Content/Mapa/gmaps.js")
+
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+
+
+    <script src="~/Content/Mapa/gmaps.js"></script>
+    <script src="~/Content/Mapa/jsUbicaOperarios.js"></script>
+    <script src="~/Content/jQueryRotate/jQueryRotate.js"></script>
+
+}
+
+@section styles{
+    <style type="text/css">
+        .form-control {
+            font-size: 9px;
+            /*width: 100%;*/
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 9px;
+        }
+
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .datepicker {
+            width: 200px;
+            top: 150px !important;
+        }
+
+        #btn_close_panel_reporte {
+            background: hsl(91, 53%, 57%);
+            border-radius: 0px 5px 5px 0px;
+        }
+
+ 
+
+        .select2-results {
+            font-family: Tahoma;
+            font-size: 9px;
+        }
+
+        .select2-container .select2-choice > .select2-chosen {
+            font-size: 10px;
+        }
+
+
+
+
+        [tooltip]:before {
+            /* needed - do not touch */
+            content: attr(tooltip);
+            position: absolute;
+            opacity: 0;
+            /* customizable */
+            transition: all 0.15s ease;
+            padding: 10px;
+            color: red;
+            border-radius: 10px;
+            box-shadow: 2px 2px 1px silver;
+            font-family: Tahoma
+        }
+
+        [tooltip]:hover:before {
+            /* needed - do not touch */
+            opacity: 1;
+            /* customizable */
+            background: beige;
+            margin-top: -50px;
+            margin-left: 20px;
+        }
+
+        [tooltip]:not([tooltip-persistent]):before {
+            pointer-events: none;
+        }
+
+
+        #s2id_cbo_local {
+            width: 95%;
+        }
+
+        #s2id_idservicios {
+            width: 95%;
+        }
+
+        #s2id_id_operador {
+            width: 95%;
+        }
+
+
+
+    </style>
+}
+
+@section scripts{
+    <script type="text/javascript">
+
+    $(document).ready(function () {
+
+        $("#btn_close_panel_reporte").click(function () {
+            $('#eventosPanel').show(3000);
+            $('.eventosPanel').show("slow");
+
+        });
+
+        $("#btn_close_panel_reporte").click(function () {
+            $('#eventosPanel').hide(3000);
+            $('.eventosPanel').hide("fast");
+        });
+
+
+        CargarServicioxUsuario();
+
+        setTimeout(function () {
+            // inicializando el ComboBuscador
+            $("select").select2();
+        }, 200);
+
+    });
+
+    $(document).on('click', '#btn_close_panel_reporte', function (e) {
+        _v_g_report_popup = null;
+        $("#modal-eventos").addClass("animated fadeOutRight").delay(500).queue(function () {
+            $(this).hide();
+            $(this).dequeue();
+        }).delay(500).queue(function () {
+            $(this).removeClass(("animated fadeOutRight"));
+            $(this).dequeue();
+        });
+    });
+
+
+    //inicializando fechas
+    $(function () {
+        $('#eventosPanel').hide();
+
+        $('#_fechaAsigna').datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true
+        });
+    })
+
+    //fin inicializando fechas
+
+    //cambiarlo por el de arriba
+        setTimeout(function () {
+             $(function () {
+
+                funct_map_resize();
+                map = new GMaps({
+                    div: '#map',
+                    // antiguo  zoom: 5, center: new google.maps.LatLng(-9.2435385, -75.0195145),
+                    zoom: 13, center: new google.maps.LatLng(-12.0553017, -77.0626949),
+                    mapTypeId: google.maps.MapTypeId.ROADMAP,
+                    mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.DROPDOWN_MENU },
+                    disableDefaultUI: false, navigationControl: false, disableDoubleClickZoom: false,
+                    scrollwheel: true, panControl: false, zoomControl: true,
+                    zoomControlOptions: { style: google.maps.ZoomControlStyle.SMALL, position: google.maps.ControlPosition.RIGHT_TOP },
+                    mapTypeControl: false, scaleControl: true, streetViewControl: true, overviewMapControl: false
+                });
+            });
+        }, 1500);
+
+    $(document).on('click', '#btnBuscar', function (e) {
+        map.removeMarkers();
+        map.removePolylines();
+        funct_mover_mapa();
+        funct_recorrido();
+    });
+
+    function funct_mover_mapa() {
+        google.maps.event.trigger(map, 'resize');
+        map.map.setCenter(new google.maps.LatLng(-12.0553017, -77.0626949));
+        map.map.setZoom(13);
+    }
+
+    function funct_recorrido() {
+        var list = [];
+        if ($("#idservicios").val() == -1) {
+            new PNotify({
+                title: 'Sistemas',
+                text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                type: 'error'
+            });
+            return ;
+        }
+
+        //if ($("#_operario").val() == 0 || $("#_operario").val() == '0' || $("#_operario").val() == undefined) {
+        //    new PNotify({
+        //        title: 'Sistemas',
+        //        text: 'Por favor seleccione un Operario. Muchas gracias.',
+        //        type: 'error'
+        //    });
+        //    return;
+        //}
+
+        if ($("#idservicios").val()==0)        {
+            $("#idservicios option").each(function () {
+              var x = parseInt($(this).attr('value'))
+                  if (x == 0 || x == -1) {
+
+                  }
+                  else {
+                      list.push($(this).attr('value'));
+                  }
+            });
+          }
+        else {
+            list.push($("#idservicios").val());
+        }
+
+
+ 
+ 
+
+
+        $.ajax({
+            async: true,
+            beforeSend: function (xhr) { $('.sige-load').show(); },
+            url: '@Url.Action("JsonUbicacion_OperariosGPS", "Ubicacion_Operarios")',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    id_local: parseInt($("#cbo_local").val()),
+                    fecha: $("#_fechaAsigna").val(),
+                    servicio: list.toString(),
+                    id_operario: parseInt($("#id_operador").val()),
+                }),
+                success: function (response) {
+                    var idOperario = $('#id_operador').val();
+                    var responseNew = [];
+                    if (idOperario == 0) {
+                        responseNew = response;
+                        funct_pintar_pdv(responseNew, $("#_fechaAsigna").val(), $("#idservicios").val() );
+                    } else {
+                        response.forEach(function (item,index) {
+                            if (item._a == idOperario) {
+                                responseNew.push(item);
+                            }
+                        })
+                        funct_pintar_pdv(responseNew, $("#_fechaAsigna").val(), $("#idservicios").val());
+                    }
+                    $('#modal-eventos').modal('show');
+                    $('#eventosPanel').show();
+                    $('#table-eventos').bootstrapTable('load', responseNew);
+                    $('#table-eventos').bootstrapTable('resetView');
+
+                },
+
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        }
+
+        function fnLimpiar() {
+            funct_mover_mapa();
+            $('#suministro').text('');
+            $('#medidor').text('');
+        };
+
+
+        function funct_map_resize() {
+            var _vancho = $(".static-content-wrapper").width();
+            var _valto = $(window).height() - $("#topnav").height();
+            $("#map").width(_vancho);
+            $("#map").height(_valto);
+        }
+
+        function estadoFormatter(__val) {
+            var $html;
+
+            if (__val == 0 || __val == '') {
+                $html = '<i style=\" color: #e73c3c; \" class=\"fa fa-times fa-lg .Inactivo\"></i>';
+            } else {
+                $html = '<i style=\" color: #4f8edc; \" class=\"fa fa-check fa-lg\ .Activo"></i>';
+            }
+
+            return $html;
+        }
+
+        function CargarServicioxUsuario() {
+            var servicio = $("#idservicios");    
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                cache: false,
+                dataType: "json",
+                CrossDomain: true,
+                success: function (response) {
+                    servicio.html("");
+                    if (parseInt(response.length) == parseInt(response[0].cantidad)) {
+
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        servicio.append('<option value="0" >Todos</option>');
+
+                        for (var i = 0; i < response.length; i++) {
+                            if (response[i].id_TipoServicio == 1 || response[i].id_TipoServicio == 2 || response[i].id_TipoServicio == 3 || response[i].id_TipoServicio == 4) {
+                                servicio.append('<option value="' + response[i].id_TipoServicio +
+                                    '">' + response[i].nombre_tiposervicio + '</option>');
+                            }
+                        };
+                    } else {
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            if (response[i].id_TipoServicio == 1 || response[i].id_TipoServicio == 2 || response[i].id_TipoServicio == 3 || response[i].id_TipoServicio == 4) {
+                                servicio.append('<option value="' + response[i].id_TipoServicio +
+                                    '">' + response[i].nombre_tiposervicio + '</option>');
+                            }
+
+                        };
+                    }                   
+                },
+                error: function (result) {
+                    alert('ERROR.... en ' + result.status + '... ' + result.statusText);
+                }
+            });
+        }
+
+        var app = angular.module('myApp', []);
+
+        app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+            $scope.id_operario = '0';
+            $scope.id_local = '0';
+
+            $scope.Obj_List_Operario = [];
+            $scope.Listado_Operarios = function () {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../Ubicacion_Lecturas/ListandoOperarios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        $scope.Obj_List_Operario = [];
+                        $scope.id_operario = '0';
+                        $scope.Obj_List_Operario = data;
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+            }
+            $scope.Listado_Operarios();
+
+
+            $scope.ListaLocales = [];
+            $scope.listando_Locales = function () {
+                var variables = {
+                    method: 'post',
+                    url: '../AsignaOrdenTrabajo/ListandoLocales',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.ListaLocales = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+            $scope.listando_Locales();
+
+            $scope.ListaSupervisor = [];
+            $scope.listando_Supervisor = function () {
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../asignar_supervisor/ListandoSupervisor_usuario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        $scope.ListaSupervisor = data;
+                        let cant = $scope.ListaSupervisor.length;
+
+                        setTimeout(function () {
+                            if (cant > 1) {
+                                $scope.id_supervisor = $scope.ListaSupervisor[1].id_Usuario;
+                                $('#cbo_supervisor').val($scope.id_supervisor).trigger('change');
+                            } else {
+                                $scope.id_supervisor = '0';
+                                $('#cbo_supervisor').val(0).trigger('change');
+                            }
+                        }, 200);
+
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+            $scope.listando_Supervisor();
+
+
+            $scope.ListaUsuario_Operarios = [];
+            $scope.Change_listando_Usuario_Operarios = function (obj_id_supervisor) {
+                if (obj_id_supervisor == 0 || obj_id_supervisor == '0') {
+                    $scope.ListaUsuario_Operarios = [];
+                    return;
+                }
+
+                var variables = {
+                    method: 'post',
+                    url: '../asignar_supervisor/ListandoUsuario_Operarios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        id_supervisor: obj_id_supervisor
+                    }
+                }
+
+                $('.sige-load').show();
+                $scope.ListaUsuario_Operarios = [];
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        $scope.ListaUsuario_Operarios = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+
+
+        })
+
+
+
+    </script>
+}
+
+<div class="panel panel-oscuro"  style="margin-top: -13px;" ng-app="myApp" ng-controller="MainCtrl">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i> UBICACIÓN DE OPERARIOS</h6>
+    </div>
+    <div class="panel-body">
+
+        <div class="well" style="background: #314b75; color: white;  margin-top: -7px;  margin-bottom: 1px;">
+             
+            <div class="row" style="    margin-top: -17px;  margin-bottom: -10px;">
+                <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                    <div class="col-xs-6 col-md-2">
+                        <label for="cbo_local" style="font-size:11px">Local:</label>
+                        <br />
+                        <select id="cbo_local" ng-model="id_local">
+                            <option value=0>--[ TODOS ]-- </option>
+                            <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                {{item.loc_nombre}}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="col-xs-6 col-md-2">
+                        <label for="_fechaAsigna" class="control-label">Fecha GPS</label>
+                        <input class="form-control" id="_fechaAsigna" style="width:120px;" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                    </div>
+
+                    <div class="col-xs-6 col-md-3">
+                        <label for="idservicios" class="control-label">Servicios</label>
+                        <div class="form-group form-group-sm">
+                            <select id="idservicios">
+                                <option value="-1"> [ -- SELECCIONE --]</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-xs-6 col-md-3">
+                        <label for="id_operador" style="font-size:11px"> Operario:</label>
+                        <br />
+                        <select id="id_operador" ng-model="id_operario">
+                            <option value=0> --[ TODOS ]-- </option>
+                            <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                {{item.id_Operario}} : {{item.desc_operario}}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-xs-12 col-md-2" style="text-align:center">
+                        <br />
+                        <button role="button" class="btn btn-primary btn-sm" id="btnBuscar"><i class="fa fa-refresh fa-lg"></i> Procesar</button>
+                    </div>
+                </div>
+
+                <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6" style="display:none">
+                    <div class="col-md-9">
+                        <div class="col-xs-12 col-sm-12 col-md-12  col-lg-12 " style="background-color:white;color:black; padding: 5px;" tooltip="Filtro sólo para el servicio de lecturas" tooltip-persistent>
+                            <div class="col-sm-6 col-md-6 col-lg-6">
+                                <label for="cbo_supervisor" class="control-label">Supervisor</label>
+                                <br />
+                                <select id="cbo_supervisor" ng-model="id_supervisor" ng-change="Change_listando_Usuario_Operarios(id_supervisor); ">
+                                    <option ng-repeat="item in ListaSupervisor" value="{{item.id_Usuario}}">
+                                        {{item.supervisor}}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="col-sm-6 col-md-6 col-lg-6">
+                                <label for="cbo_Operario_supervisor" class="control-label">Operarios</label>
+                                <br />
+                                <select id="cbo_Operario_supervisor">
+                                    <option value=0>--[ TODOS ]-- </option>
+                                    <option ng-repeat="item in ListaUsuario_Operarios" value="{{item.id_Operario}}">
+                                        {{item.desc_operario}}
+                                    </option>
+                                </select>
+                            </div>
+
+                        </div>
+                    </div> 
+                    <div class="col-md-3" style="text-align:center">
+                        <br />
+                        <button role="button" class="btn btn-primary btn-sm" id="btnBuscar"><i class="fa fa-refresh fa-lg"></i> Procesar</button>
+                    </div>
+                </div>
+            </div>
+
+
+
+ 
+        </div>
+        <br />
+        <div id="map" style="width:100%;height:400px !important;">
+        </div>
+        <div id="eventosPanel" class="panel panel-oscuro" style="height: 400px; position: absolute; z-index:0;margin:5px; padding:10px;top:10%;right:7%; background:rgb(255,255,255);">
+            <div class="panel-heading">
+                <div id="btn_close_panel_reporte" class="cls_close col-md-0" style="position:absolute; right:-9px; padding:5px;"><i class="fa fa-forward"></i></div>
+                @*<button type="button" class="close" data-dismiss="modal">&times;</button>*@
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>Eventos</h6>
+            </div>
+            <div class="panel-body">
+                <table id="table-eventos"
+                       data-toggle="table"
+                       data-height="350"
+                       data-row-style="rowStyle"
+                       data-pagination="true"
+                       data-page-size="200"
+                       data-url="JsonEventos"
+                       data-page-list="[100, 200, 300, 400, 500]"
+                       data-maintain-selected="true">
+                    <thead>
+                        <tr>
+                            <th data-field="_f">Operario</th>
+                            <th data-field="_z">Fecha de Evento</th>
+                            <th data-field="_dd">Hora de Evento</th>
+                            <th data-field="_x" data-formatter="estadoFormatter">GPS</th>
+                            <th data-field="_y">Bateria</th>
+                            <th data-field="_bb" data-formatter="estadoFormatter">Datos</th>
+                            <th data-field="_cc" data-formatter="estadoFormatter">M. Avión</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+
+
+
+    </div>
+</div>
+
+<div id="modal-pendientes" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+
+    <div class="modal-dialog" id="modalpendientes">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>Pendiente de Liquidar</h6>
+            </div>
+            <div class="panel-body">
+                <table id="table-pendientes"
+                       data-toggle="table"
+                       data-height="350"
+                       data-row-style="rowStyle"
+                       data-pagination="true"
+                       data-page-size="200"
+                       data-page-list="[100, 200, 300, 400, 500]"
+                       data-maintain-selected="true">
+                    <thead>
+                        <tr>
+                            <th data-field="_f">Operario</th>
+                            <th data-field="_h">Total</th>
+                            <th data-field="_i">Realizado</th>
+                            <th data-field="_j">Pendiente</th>
+                            <th data-field="_k">% Avance</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="panel-footer">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                            <button role="button" class="btn btn-success" onclick="fnDescargaOperariosSupervisor();"><i class="fa fa-download fa-lg"></i> Exportar</button>
+                            <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div id="fotos" class="modal fade bd-example-modal-lg " tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style=" width: 600px;">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                @*<a onclick="rotateImg();" class="pull-right rotate" style="    margin-top: -10px; font-size: 12px; padding: 3px 4px;  color: white;  margin-right: 20px;cursor:pointer"><i class="fa fa-repeat" style="Color:#337ab7; font-size: 30px" aria-hidden="true"></i>Girar</a>*@
+                <h6 class="modal-title" style=" font-size: 11px;"><i class="fa fa-cogs fa-lg"></i> FOTO SELFIE</h6>
+            </div>
+            <div class="panel-body">
+                <fieldset>
+                    <legend></legend>
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                                <!-- Indicators -->
+                                <!-- Wrapper for slides -->
+                                <div class="carousel-inner" id="corre">
+                                </div>
+
+                                <!-- Controls -->
+                                <a class="left carousel-control" href="#carousel-example-generic" onclick="previusPhoto()" role="button" data-slide="prev" style="background-color:black;width: 5px;">
+                                    <span class="glyphicon glyphicon-chevron-left"></span>
+                                </a>
+                                <a class="right carousel-control" href="#carousel-example-generic" onclick="nextPhoto()" role="button" data-slide="next" style="background-color:black; width: 5px;">
+                                    <span class="glyphicon glyphicon-chevron-right"></span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Atras</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

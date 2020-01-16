@@ -1,0 +1,641 @@
+﻿
+
+@{
+    ViewBag.Title = ".:: Ubicación de Lecturas ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+ 
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+
+
+<style>
+    #map {
+        height: 600px;
+    }
+
+    .modal-dialog {
+        width: 600px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+    table td:nth-child(1) {
+        width: 100px;
+    }
+
+    table td:nth-child(2) {
+        width: 100px;
+    }
+
+    table td:nth-child(3) {
+        width: 100px;
+    }
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+
+    .select2-container {
+        width: 95% !important;
+    }
+
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+
+    var app = angular.module('myApp', []);
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+  
+
+
+        $(function () {
+            $('#id_fecha_asignacion').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $(function () {
+            $('#_fechaMovil').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $scope.InicializandoVariables = function () {
+            $scope.id_tipoServicio = '0';
+            $scope.id_operario = '0';
+            $scope.id_local = '0';
+            $scope.Listado_Servicios()
+            $scope.Listado_Operarios();
+
+
+            setTimeout(function () {
+                $("select").select2();
+            }, 300);
+
+            InicializarMapa();
+            RemoveMarker(null);
+            RemoveLine(null);
+        }
+
+
+        $scope.ListaLocales = [];
+        $scope.listando_Locales = function () {
+            var variables = {
+                method: 'post',
+                url: '../AsignaOrdenTrabajo/ListandoLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.ListaLocales = data;
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        $scope.listando_Locales();
+
+
+
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../Ubicacion_Lecturas/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                $scope.Obj_List_Servicios = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.Obj_List_Operario = [];
+        $scope.Listado_Operarios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../Ubicacion_Lecturas/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Operario = [];
+                $scope.Obj_List_Operario = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        $scope.Obj_List_Lecturas = [];
+        $scope.ActualizarInformacion = function () {
+
+            var cbo_local = document.getElementById('cbo_local').value;
+            var _operario = document.getElementById('id_operador').value;
+            var _fecha = document.getElementById('id_fecha_asignacion').value;
+            var _servicio = document.getElementById('id_servicio').value;
+ 
+
+            if (_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (_servicio == '' || _servicio == 0 || _servicio =='0' ) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione un Servicio.',
+                    type: 'error'
+                });
+                return;
+            }
+
+
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../Ubicacion_Lecturas/ListandoUbicacionLecturas',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    Local: cbo_local,
+                    fechaAsigna: _fecha,
+                    servicio: _servicio,
+                    operario: _operario
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+
+                if (data.length > 0) {
+                    MostrarUbicacionesMap(data)
+                } else {
+
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'No hay información para disponible para mostrar.',
+                        type: 'success'
+                    });
+
+                    RemoveMarker(null);
+                    RemoveLine(null);
+                    $scope.markers = [];
+                    myCoordinates = [];
+                }
+
+
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        function FechaActualSistema() {
+            var today = new Date();
+            var dd = today.getDate();
+            var mm = today.getMonth() + 1;
+
+            var yyyy = today.getFullYear();
+            if (dd < 10) {
+                dd = '0' + dd
+            }
+            if (mm < 10) {
+                mm = '0' + mm
+            }
+            var today = dd + '/' + mm + '/' + yyyy;
+
+            return today;
+        }
+
+
+        //Inicializar el Mapa
+        $scope.markers = [];
+        var myCoordinates = [];
+        var id_marker = 0;
+        var Polyline;
+
+
+        function AgregarControls(controlDiv, map) {
+         // Agregando leyendas el mapa
+            var controlUI = document.createElement('i');
+            controlUI.style.fontSize = '15px';
+            controlUI.className = 'fa fa-map-marker';
+            controlUI.style.color = '#D9534F';
+            controlUI.style.backgroundColor = 'white';
+            controlUI.style.margin = '5px';
+            controlUI.style.padding = '10px';
+            controlUI.style.border = 'solid 1px #717B87';
+            controlUI.style.textAlign = 'center';
+            controlUI.textContent = ' Pendiente';
+            controlDiv.appendChild(controlUI);
+
+            var controlUI_2 = document.createElement('i');
+            controlUI_2.style.fontSize = '15px';
+            controlUI_2.className = 'fa fa-map-marker';
+            controlUI_2.style.color = '#337AB7';
+            controlUI_2.style.backgroundColor = 'white';
+            controlUI_2.style.margin = '5px';
+            controlUI_2.style.padding = '10px';
+            controlUI_2.style.border = 'solid 1px #717B87';
+            controlUI_2.style.textAlign = 'center';
+            controlUI_2.textContent = ' Lectura';
+            controlDiv.appendChild(controlUI_2);
+
+        }
+
+        function InicializarMapa() {
+            $scope.map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: { lat: -12.046374, lng: -77.0427934 },
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                    position: google.maps.ControlPosition.TOP_CENTER
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_CENTER
+                },
+                scaleControl: true,
+                streetViewControl: true,
+                streetViewControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_TOP
+                }
+            });
+
+            var centerControlDiv = document.createElement('i');
+            var centerControl = new AgregarControls(centerControlDiv, $scope.map);
+
+            centerControlDiv.index = 1;
+            $scope.map.controls[google.maps.ControlPosition.TOP_LEFT].push(centerControlDiv);
+
+
+        };
+
+
+        function RemoveMarker(map) {
+            for (var i = 0; i < $scope.markers.length; i++) {
+                $scope.markers[i].setMap(map);
+            }
+        }
+
+        function RemoveLine(map) {
+            if (Polyline != undefined) {
+                Polyline.setMap(map);
+            }
+        }
+
+
+        function MostrarUbicacionesMap(obj_Lista) {
+
+            RemoveMarker(null);
+            RemoveLine(null);
+            $scope.markers = [];
+            myCoordinates = [];
+
+            for (i = 0; i < obj_Lista.length; i++) {
+                createMarker(obj_Lista[i]);
+            }
+     
+        }
+
+
+        var infoWindow = new google.maps.InfoWindow();
+
+
+        var createMarker = function (info) {
+
+            var ContenidoMarker = '';
+            ContenidoMarker += '<div style="width:550px;height:200px;position:relative;">';
+                ContenidoMarker += '<table><tr><td id="idSuministro"><strong >Suministro</strong></td><td>: ' + info.suministro + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Medidor</strong></td><td>: ' + info.medidor + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Dirección</strong></td><td><div style="width:400px;"> ' + info.direcLectura + ' </div></td></tr>';
+                ContenidoMarker += '<tr><td><strong>Operador</strong></td><td>: ' + info.ope_nombre + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Cliente</strong></td><td>: ' + info.nom_cliente + ' </td></tr>';
+                ContenidoMarker += '<tr><td><strong>Lectura</strong></td><td>: ' + info.lectura + ' </td></tr>';
+                ContenidoMarker += '<tr><td><strong>Fecha envío movil</strong></td><td>: ' + info.fmovil + ' </td></tr>';
+                ContenidoMarker += '<tr><td><strong>Fecha de lectura</strong></td><td>: ' + info.fasig + ' </td></tr>';
+            if (info.foto_lectura == 'SI') {
+                ContenidoMarker += '<tr><td colspan="2" style="text-align:center;"><strong><a onclick="galeriaFotos(' + info.idLectura + ');" href="#">Ver Foto</a></strong></td></tr>';
+            }
+
+            if (info.lec_estado <= '5') {
+                var marker = new google.maps.Marker({
+                    map: $scope.map,
+                    position: new google.maps.LatLng(info.latitud, info.longitud),
+                    title: 'UBICACIÓN DE LECTURAS',
+                    icon: '../Content/Imagen/m_red.png',
+                    content: ContenidoMarker,
+                    id: ++id_marker,
+                });
+            } else {
+                var marker = new google.maps.Marker({
+                    map: $scope.map,
+                    position: new google.maps.LatLng(info.latitud, info.longitud),
+                    title: 'UBICACIÓN DE LECTURAS',
+                    icon: '../Content/Imagen/m_blue.png',
+                    content: ContenidoMarker,
+                    id: ++id_marker,
+                });
+            }
+
+            google.maps.event.addListener(marker, 'click', function () {
+                infoWindow.setContent('<center><h4><b>' + marker.title + '</b></h4></center>' +
+                                        marker.content);
+                infoWindow.open($scope.map, marker);
+            });
+
+            $scope.markers.push(marker);
+
+        }
+
+        var CreateLineas = function (obj_coordenadas) {
+                Polyline = new google.maps.Polyline(
+                {
+                    path: obj_coordenadas,
+                    strokeColor: '#ff0000',
+                    strokeOpacity: 0.7,
+                    strokeWeight: 1,
+                    icons: [{
+                        icon: {
+                            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
+                        },
+                        offset: '25px',
+                        repeat: '50px'
+                    }]
+                });
+
+            Polyline.setMap($scope.map);
+        }
+
+        $scope.openInfoWindow = function (e, selectedMarker) {
+            e.preventDefault();
+            google.maps.event.trigger(selectedMarker, 'click');
+        }
+
+
+    });
+
+
+    var listPhotos = [];
+    function previusPhoto() {
+        var photo1 = document.getElementById('foto1');
+        photo1.src = listPhotos[0].url;
+    }
+    function nextPhoto() {
+        var photo1 = document.getElementById('foto1');
+        if (listPhotos.length > 1) {
+            photo1.src = listPhotos[1].url;
+        }
+    }
+
+    function galeriaFotos(idLectura) {
+
+
+        $.ajax({
+            async: true,
+            beforeSend: function (xhr) { },
+            url: '../Envia_Trabajos_Cli/FotosLectura',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                __a: idLectura
+            },
+            success: function (response) {
+
+                $("div").remove("#x");
+                $("div").remove("#y");
+                var $DivCorre = $('#corre');
+                var $DivOl = $('#ol');
+                listPhotos = [];
+                $.each(response, function (i, v) {
+                    listPhotos.push({
+                        id: i,
+                        url: response[i]._r
+                    })
+                });
+                $DivCorre.append('<div id="x" class="item active"><img id="foto1" src="' + listPhotos[0].url + '" alt="..." style="width: 600px; height: auto; text-align: center;" /></div>');
+
+                //Abriendo el Modal
+                $('#fotos').modal();
+
+            },
+            error: function (xhr) {
+                alert('Algo salió mal, por favor intente de nuevo.');
+            }
+        });
+
+
+    }
+
+
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro" style="margin-top: -13px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> UBICACIÓN DE LECTURAS</h6>
+        </div>
+        <div class="panel-body">
+            <div id="Contenedor">
+
+                <div class="well" style="background: #314b75; color: white; margin-bottom: -9px;margin-top: -4px;">
+                    <form class="form-inline">
+                        <div class="row" style="    margin-top: -17px;  margin-bottom: -10px;">
+                            <div class="form-group" style="padding-left: 15px;">
+                                <label for="cbo_local" style="font-size:11px">Local:</label>
+                                <select id="cbo_local" ng-model="id_local">
+                                    <option value=0>--[ TODOS ]-- </option>
+                                    <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                        {{item.loc_nombre}}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="padding-left: 15px;">
+                                <label for="id_fecha_asignacion" style="font-size:11px">Fecha de Asignación:</label>
+                                <br />
+                                <input class="form-control" style="width: 150px;" id="id_fecha_asignacion" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+
+                            <div class="form-group" style="padding-left: 15px;">
+                                <label for="id_servicio" style="font-size:11px">Servicio:</label>
+                                <select id="id_servicio" ng-model="id_tipoServicio">
+                                    <option value=0>--[ SELECCIONE ]-- </option>
+                                    <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                        {{item.nombre_tiposervicio}}
+                                    </option>
+                                </select>
+                            </div>
+
+
+
+                            <div class="form-group" style="padding-left: 15px;">
+                                <label for="id_operador" style="font-size:11px"> Operario:</label>
+                                <select id="id_operador" ng-model="id_operario">
+                                    <option value=0>--[ TODOS ]-- </option>
+                                    <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                        {{item.desc_operario}}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="padding-left: 15px;">
+                                <button role="button" class="btn btn-primary btn-sm" id="btnBuscar" ng-click="ActualizarInformacion();"><i class="fa fa-refresh fa-lg"></i> Procesar</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <div class="row">
+                    <div class="form-group" style="padding-left: 30px;">
+
+                        <section id="ubicacion">
+                            <div style="border:1px solid">
+                                <div id="map"></div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+
+    <div id="fotos" class="modal fade bd-example-modal-lg " tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title" style=" font-size: 11px;"><i class="fa fa-cogs fa-lg"></i> DETALLE DE FOTOS</h6>
+                </div>
+                <div class="panel-body">
+                    <fieldset>
+                        <legend></legend>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                                    <!-- Indicators -->
+                                    <!-- Wrapper for slides -->
+                                    <div class="carousel-inner" id="corre">
+                                    </div>
+
+                                    <!-- Controls -->
+                                    <a class="left carousel-control" href="#carousel-example-generic" onclick="previusPhoto()" role="button" data-slide="prev" style="background-color:black;">
+                                        <span class="glyphicon glyphicon-chevron-left"></span>
+                                    </a>
+                                    <a class="right carousel-control" href="#carousel-example-generic" onclick="nextPhoto()" role="button" data-slide="next" style="background-color:black;">
+                                        <span class="glyphicon glyphicon-chevron-right"></span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Atras</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

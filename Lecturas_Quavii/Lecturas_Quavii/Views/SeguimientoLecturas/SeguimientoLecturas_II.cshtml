@@ -1,0 +1,662 @@
+﻿@using System.Configuration
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Seguimiento Lecturas::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB46M5tvv5gb8JlAy0XLQl4XWVwZQUtCa4"></script>
+<script src="~/Content/Mapa/gmaps.js"></script>
+@*<script src="~/Content/Mapa/jsSeguimientoOperador.js"></script>*@
+
+@section instances{
+
+    @Scripts.Render("~/Content/Mapa/gmaps.js")
+
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+}
+
+@section styles{
+
+    <style type="text/css">
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .datepicker {
+            width: 200px;
+            top: 150px !important;
+        }
+    </style>
+}
+
+@section scripts{
+    <script type="text/javascript">
+        var rutaJulio = '/Calidda'
+        //var rutaJulio = ''
+        var $ruta = '@ConfigurationManager.AppSettings["servidor-foto-lectura"]';
+
+        //inicializando fechas
+        $(function () {
+            $('#_fechaAsigna').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+
+        //fin inicializando fechas
+
+        function load() {
+            if (GBrowserIsCompatible()) {
+                var map = new GMap2(document.getElementById("map"));
+                // antiguo map.setCenter(new GLatLng(-19.435514, 48.603516), 5);
+                map.setCenter(new GLatLng(-12.0553017, -77.0626949), 5);
+            }
+        }
+
+
+        $(function () {
+            funct_map_resize();
+            map = new GMaps({
+                div: '#map',
+                // antiguo  zoom: 5, center: new google.maps.LatLng(-9.2435385, -75.0195145),
+                zoom: 13, center: new google.maps.LatLng(-12.0553017, -77.0626949),
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                mapTypeControlOptions: { style: google.maps.MapTypeControlStyle.DROPDOWN_MENU },
+                disableDefaultUI: false, navigationControl: false, disableDoubleClickZoom: false,
+                scrollwheel: true, panControl: false, zoomControl: true,
+                zoomControlOptions: { style: google.maps.ZoomControlStyle.SMALL, position: google.maps.ControlPosition.RIGHT_TOP },
+                mapTypeControl: false, scaleControl: true, streetViewControl: true, overviewMapControl: false
+            });
+
+            map.addControl({
+                position: 'left_top', content: '<i class="fa fa-map-marker" style="color:#939393;font-size:20px;" ></i> Inicio Lectura <p/> <i class="fa fa-map-marker" style="color:#337AB7;font-size:20px;" ></i> Suministro Recorrido <p/> <i class="fa fa-minus" style="color:#337AB7;font-size:20px;" ></i>  Ruta de Suministro <p/> <i class="fa fa-map-marker" style="color:#D9534F;font-size:20px;" ></i> Pendiente <p/> <i class="fa fa-map-marker" style="color:#FF00FF;font-size:20px;" ></i> Termino Recorrido',
+                style: { margin: '5px', padding: '10px', border: 'solid 1px #717B87', background: '#fff' },
+            });
+        });
+
+        $(document).on('click', '#btnBuscar', function (e) {
+
+            map.removeMarkers();
+            map.removePolylines();
+
+            if ($("#_operario").val() == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Operario. Muchas gracias.',
+                    type: 'error'
+                });
+                return false;
+            }
+
+            if ($("#idservicios").val() == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return false;
+            }
+            funct_mover_mapa();
+            funct_recorrido();
+        });
+
+        function funct_mover_mapa() {
+            google.maps.event.trigger(map, 'resize');
+            map.map.setCenter(new google.maps.LatLng(-12.0553017, -77.0626949));
+            map.map.setZoom(13);
+        }
+
+        function funct_recorrido() {
+
+            map.removePolylines();
+            map.removeMarkers();
+
+
+            var list = [];
+            if ($("#idservicios").val() == 0) {
+                $("#idservicios option").each(function () {
+                    var x = parseInt($(this).attr('value'))
+                    if (x == 0 || x == -1) {
+
+                    }
+                    else {
+                        list.push($(this).attr('value'));
+                    }
+                });
+            }
+            else {
+                list.push($("#idservicios").val());
+            }
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) { $('.sige-load').show(); },
+                url: 'JsonSeguimiento_OperariosGPS',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $("#_operario").val(),
+                    __b: $("#_fechaAsigna").val(),
+                    __c: $("#suministro").val(),
+                    __d: $("#medidor").val(),
+                    lista: list.toString()
+                }),
+                success: function (response) {
+                    funct_pintar_Seguimiento_Lecturas(response);
+                },
+
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        }
+
+
+
+        // segguimiento de lecturas pintado en el mapa
+
+        var listPhotos = [];
+        function previusPhoto() {
+            var photo1 = document.getElementById('foto1');
+            photo1.src = listPhotos[0].url;
+        }
+        function nextPhoto() {
+            var photo1 = document.getElementById('foto1');
+            if (listPhotos.length > 1) {
+                photo1.src = listPhotos[1].url;
+            }
+        }
+
+        function galeriaFotos(idLectura) {
+            $('#fotos').modal();
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) { },
+                url: '../Listado_Lecturas_Fotos/FotosLectura',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    __a: idLectura
+                },
+                success: function (response) {
+                    $("div").remove("#x");
+                    var $DivCorre = $('#corre');
+                    var $DivOl = $('#ol');
+                    listPhotos = [];
+                    $.each(response, function (i, v) {
+                        listPhotos.push({
+                            id: i,
+                            url: $ruta + '/' + response[i]._r
+                        })
+                    });
+                    $DivCorre.append('<div id="x" class="item active"><img id="foto1" src="' + listPhotos[0].url + '" alt="..." style="width: 320px; height: auto; text-align: center;" /></div>');
+
+                },
+                error: function (xhr) {
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        }
+
+
+        function funct_pintar_Seguimiento_Lecturas(_vdata) {
+
+            var Pyliline;
+            var Lista_marker = [];
+
+            map.removePolylines();
+            map.removeMarkers();
+            _datalinea = [];
+            v_final = 0;
+            v_medio = 0;
+            $.each(_vdata, function (key, value) {
+                v_final = key
+            });
+            $.each(_vdata, function (key, value) {
+
+
+                var _vvontentS = "";
+                var _vvontentO = "";
+
+                if (parseFloat(value._b) != 0 && parseFloat(value._c) != 0) {
+                    _vvontentO += '<div style="width:400px;height:200px;position:relative;">';
+                    _vvontentO += '<table><tr><td><strong >Suministro</strong></td><td>: ' + value._m + '</td></tr>';
+                    _vvontentO += '<tr><td><strong>Medidor</strong></td><td>: ' + value._n + '</td></tr>';
+                    _vvontentO += '<tr><td><strong>Dirección</strong></td><td>: ' + value._o + '</td></tr>';
+                    _vvontentO += '<tr><td><strong>Operador</strong></td><td>: ' + value._f + '</td></tr>';
+                    _vvontentO += '<tr><td><strong>Cliente</strong></td><td>: ' + value._p + ' </td></tr>';
+                    _vvontentO += '<tr><td><strong>Lectura</strong></td><td>: ' + value._q + ' </td></tr>';
+                    if (value._r == 'SI') {
+                        _vvontentO += '<tr><td colspan="2" style="text-align:center;"><strong><a onclick="galeriaFotos(' + value._l + ');" href="#">Ver Foto</a></strong></td></tr>';
+                    }
+
+                    //_vvontentO += '<tr><td colspan="2" style="text-align:center;"><strong><a onclick="fnModalHistorico(' + value._m + ');" href="#">Historico de Lecturas</a></strong></td></tr>';
+                    _vvontentO += '</table>';
+                    _vvontentO += '</div>';
+
+                    var myLatlng = new google.maps.LatLng(value._b, value._c);
+
+                    if (value._s != '7' && value._s != '8') {
+
+                        if (key == 0) {
+                            var marcador = map.addMarker({
+                                lat: parseFloat(value._b),
+                                lng: parseFloat(value._c),
+                                title: value._f,
+                                icon: rutaJulio + '/Content/Imagen/lectura_inicio.png',
+                                // icon: '/Content/Imagen/lectura_inicio.png',
+                                click: function (e) {
+                                    map.setCenter(value._b, value._c);
+                                    //map.setZoom(15);
+                                },
+                                infoWindow: {
+                                    content: _vvontentO
+                                }
+                            });
+                        } else {
+                            var marcador = map.addMarker({
+                                lat: parseFloat(value._b),
+                                lng: parseFloat(value._c),
+                                title: value._f,
+                                icon: rutaJulio + '/Content/Imagen/m_red.png',
+                                click: function (e) {
+                                    map.setCenter(value._b, value._c);
+                                    // map.setZoom(15);
+                                },
+                                infoWindow: {
+                                    content: _vvontentO
+                                }
+                            });
+
+                            Lista_marker.push(marcador);
+                            Lista_marker[value._a] = marcador;
+
+                            _datalinea.push(myLatlng);
+                        }
+
+                    } else {
+
+                        ///key == 0 primer registro
+
+                        if (key == 0) {
+
+                            var marcador = map.addMarker({
+                                lat: parseFloat(value._b),
+                                lng: parseFloat(value._c),
+                                title: value._f,
+                                icon: rutaJulio + '/Content/Imagen/lectura_inicio.png',
+                                // icon: '/Content/Imagen/lectura_inicio.png',
+                                click: function (e) {
+                                    map.setCenter(value._b, value._c);
+                                    // map.setZoom(15);
+                                },
+                                infoWindow: {
+                                    content: _vvontentO
+                                }
+                            });
+                        } else {
+
+                            var marcador = map.addMarker({
+                                lat: parseFloat(value._b),
+                                lng: parseFloat(value._c),
+                                title: value._f,
+                                //icon: rutaJulio + '/Content/Imagen/m_blue.png',
+                                icon: "/Content/Imagen/m_blue.png",
+
+                                click: function (e) {
+                                    map.setCenter(value._b, value._c);
+                                    // map.setZoom(15);
+                                },
+                                infoWindow: {
+                                    content: _vvontentO
+                                }
+                            });
+                            //map.setZoom(15);
+                            Lista_marker.push(marcador);
+                            Lista_marker[value._a] = marcador;
+                            _datalinea.push(myLatlng);
+                        }
+                    }
+
+
+                    if (key == v_final) {
+                        var marcador = map.addMarker({
+                            lat: parseFloat(value._b),
+                            lng: parseFloat(value._c),
+                            title: value._f,
+                            icon: rutaJulio + '/Content/Imagen/lectura_fin.png',
+                            click: function (e) {
+                                map.setCenter(value._b, value._c);
+                                // map.setZoom(15);
+                            },
+                            infoWindow: {
+                                content: _vvontentO
+                            }
+                        });
+                        //map.setZoom(15);
+                        Lista_marker.push(marcador);
+                        Lista_marker[value._a] = marcador;
+                        _datalinea.push(myLatlng);
+                    }
+
+
+                }  // fin msg
+            });  // fin bucle
+
+            Pyliline = map.drawPolyline({
+                path: _datalinea,
+                strokeColor: '#337AB7',
+                strokeOpacity: 0.6,
+                strokeWeight: 6
+            });
+
+        }
+
+
+        // seguimiento del Operario
+        function toggleBounce() {
+            if (marker.getAnimation() !== null) {
+                marker.setAnimation(null);
+            } else {
+                marker.setAnimation(google.maps.Animation.BOUNCE);
+            }
+        }
+
+
+        function fnLimpiar() {
+            funct_mover_mapa();
+            $('#suministro').text('');
+            $('#medidor').text('');
+            map.removePolylines();
+            map.removeMarkers();
+        };
+
+
+        function funct_map_resize() {
+            var _vancho = $(".static-content-wrapper").width();
+            var _valto = $(window).height() - $("#topnav").height();
+            $("#map").width(_vancho);
+            $("#map").height(_valto);
+        }
+
+        function fnDescargaHistorico() {
+            $ajaxJson(
+                //'/Asigna_Lectura/DescargaHistorico',
+                '../Asigna_Lectura/DescargaHistorico',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-historico').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    window.open(rutaJulio + '/Temp/' + __s.__a, '_blank');
+                    //window.open('/Temp/' + __s.__a, '_blank');
+
+                }
+            );
+        }
+        $(document).ready(function () {
+            CargarServicioxUsuario();
+        });
+
+
+        function CargarServicioxUsuario() {
+
+            var servicio = $("#idservicios");
+
+
+            //$.support.cors = true;
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                cache: false,
+                dataType: "json",
+                CrossDomain: true,
+                success: function (response) {
+                    console.log(response);
+                    // var resultado = response.ListarUsuariosxCargoCreditoResult;
+                    // console.log(response.length);
+                    servicio.html("");
+                    if (parseInt(response.length) == parseInt(response[0].cantidad)) {
+                        // alert("correcto");
+                        // console.log("cccccc");
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        servicio.append('<option value="0" >Todos</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    } else {
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    }
+
+
+                },
+
+                error: function (result) {
+                    alert('ERROR.... en ' + result.status + '... ' + result.statusText);
+                }
+            });
+
+
+        }
+
+
+
+
+
+    </script>
+}
+
+<div class="panel panel-oscuro">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i> SEGUIMIENTO DE LECTURAS</h6>
+    </div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="panel panel-info col-sm-12" style="background-color: #F8F8F8;">
+                            <div class="panel-body">
+
+
+
+                                <div class="form-inline">
+
+                                    <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                                        <label for="_fechaAsigna" class="control-label">Fecha Asignación</label>
+
+
+
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input style="width: 90px;" class="form-control" id="_fechaAsigna" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                        </div>
+
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 5px; padding-right: 5px; padding-top: 10px">
+                                        <label for="_supervisor" class="control-label">Servicios</label>
+
+                                        <div class="form-group form-group-sm">
+                                            <select class="form-control" id="idservicios" style="width:200px">
+
+                                                <option value="-1">Seleccione</option>
+
+                                            </select>
+                                        </div>
+                                    </div>
+
+
+                                    <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+
+                                        <label for="_operario" class="control-label">Operario</label>
+
+
+                                        <div class="form-group form-group-sm">
+                                            <select class="form-control" id="_operario">
+                                                @foreach (Operario oBj in new NOperario().NLista(new Request_Operario_Empresa_Local_Opcion() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id, loc_id = 0, opcion = 3 }))
+                                                {
+                                                    <option value="@oBj.ope_id">@oBj.ope_nombre</option>
+                                                }
+                                            </select>
+                                        </div>
+
+
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                            <input name="suministro" id="suministro" class="form-control" placeholder="Suministro">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                            <input name="medidor" id="medidor" class="form-control" placeholder="Medidor">
+                                        </div>
+                                    </div>
+
+
+
+                                    <div class="form-group" style="float:right; padding-right: 5px;padding-top: 10px">
+                                        <div>
+                                            <button role="button" class="btn btn-primary btn-sm" id="btnBuscar"><i class="fa fa-refresh fa-lg"></i> Procesar</button>
+                                            <button role="button" class="btn btn-primary btn-sm" onclick="fnLimpiar();"><i class="fa fa-eraser fa-lg"></i> Limpiar</button>
+                                        </div>
+                                    </div>
+
+
+
+                                </div>
+
+
+
+
+
+                            </div>
+                        </div>
+                        <div id="map" style="width:100%;height:350px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div id="modal-historico" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog" id="modalhistorico">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>Histórico de Lecturas</h6>
+            </div>
+            <div class="panel-body">
+                <table id="table-historico"
+                       data-toggle="table"
+                       data-height="350"
+                       data-row-style="rowStyle"
+                       data-pagination="true"
+                       data-page-size="200"
+                       data-page-list="[100, 200, 300, 400, 500]"
+                       data-maintain-selected="true">
+                    <thead>
+                        <tr>
+                            <th data-field="_d">Medidor</th>
+                            <th data-field="_o">Fecha de Lectura</th>
+                            <th data-field="_n">Lectura</th>
+                            <th data-field="_i">Operario</th>
+                            <th data-field="_p">Observación</th>
+                            <th data-field="_m">Estado</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="panel-footer">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                            <button role="button" class="btn btn-success" onclick="fnDescargaHistorico();"><i class="fa fa-download fa-lg"></i> Exportar</button>
+                            <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="fotos" class="modal fade">
+    <div class="modal-dialog" style="width: 320px; height:250px; text-align: center;">
+        <div class="modal-body" style="text-align: center; background-color: white;">
+
+            <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                <!-- Indicators -->
+                <!-- Wrapper for slides -->
+                <div class="carousel-inner" id="corre">
+                </div>
+
+                <!-- Controls -->
+                <a class="left carousel-control" href="#carousel-example-generic" onclick="previusPhoto()" role="button" data-slide="prev" style="background-color:black;">
+                    <span class="glyphicon glyphicon-chevron-left"></span>
+                </a>
+                <a class="right carousel-control" href="#carousel-example-generic" onclick="nextPhoto()" role="button" data-slide="next" style="background-color:black;">
+                    <span class="glyphicon glyphicon-chevron-right"></span>
+                </a>
+            </div>
+            <!-- Carousel -->
+        </div>
+    </div>
+</div>

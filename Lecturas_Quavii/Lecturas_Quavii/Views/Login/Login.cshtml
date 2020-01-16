@@ -1,0 +1,295 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@model Request_Sesion
+
+@{
+    ViewBag.Title = ".:: Inicio de Sesion ::.";
+    Layout = "~/Views/Shared/_LayoutLogin.cshtml";
+    @Styles.Render("~/Content/style.css")
+
+}
+
+@section styles{
+    <style type="text/css">
+        #cambiocontrasena {
+            width: 450px;
+        }
+
+        body {
+            font-size: 11px;
+        }
+
+        #Contenedor {
+            width: 400px;
+            margin: 50px auto;
+            background-color: #47b8e7;
+            border: white !important;
+            height: 460px;
+            border-radius: 8px;
+            padding: 0px 9px 0px 9px;
+        }
+
+
+
+        .Icon {
+            margin-top: 10px;
+            margin-bottom: 10px;
+            color: #FFF;
+            font-size: 50px;
+            text-align: center;
+        }
+
+        .opcioncontra {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        a {
+            color: white
+        }
+    </style>
+}
+
+@section scripts{
+    @if (IsPost && ViewBag.mensaje != null)
+    {
+        <script type="text/javascript">
+            $(function () {
+                new PNotify({
+                    title: 'Sesion fallida',
+                    text: '@ViewBag.mensaje',
+                    type: 'error'
+                });
+            });
+        </script>
+    }
+    <script type="text/javascript">
+        function fnModalRecuperaContrasena() {
+            $('#modal-cambiocontrasena').modal('show');
+        };
+
+
+        function obtieneContrasena() {
+
+            var correo = $('#_correo').val();
+
+            if (correo == "") {
+                new PNotify({
+                    title: 'Información',
+                    text: 'Debe ingresar un correo.',
+                    type: 'success'
+                });
+                return;
+            }
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    $('.sige-load').show();
+                },
+                url: '/Calidda/Operario/JsonRecuperaCorreo',
+                //url: '../Operario/JsonRecuperaCorreo',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $('#_correo').val()
+                }),
+                success: function (response) {
+
+                    //if (response._d == "" || response._d == 0 || response._d != correo) {
+
+                    if (response.usu_email == "" || response.usu_email == 0 || response.usu_email != correo) {
+
+                        new PNotify({
+                            title: 'Alerta',
+                            text: 'El correo ingresado no se encuentra registrado.',
+                            type: 'danger'
+                        });
+
+                    } else {
+                        //usu = response._c;
+                        //correo = response._d;
+                        //clave = response._e;
+                        usu = response.usu_nom;
+                        correo = response.usu_email;
+                        clave = response.usu_clave;
+
+                        recuperaContrasena(usu, correo, clave);
+                    }
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+
+        }
+
+
+        function recuperaContrasena(usu, correo, clave) {
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    $('.sige-load').show();
+                },
+                url: '/Calidda/Operario/enviarCorreoRecuparaContrasena',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: usu,
+                    __b: correo,
+                    __c: clave
+                }),
+                success: function (__a) {
+                    new PNotify({
+                        title: 'Información',
+                        text: 'Se envió su contraseña al correo ingresado. Favor de verificar.',
+                        type: 'info'
+                    });
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+
+        }
+
+    </script>
+}
+
+
+<html>
+<head>
+    <title>Fondo de prueba</title>
+</head>
+@*<body background="~/Content/Imagen/Logo_Inico.jpeg">*@
+<body  style="background-color: #0097D6;" >
+
+    <div class="container"> 
+            <div class="panel-heading">
+                <h3 style="color:white">QUAVII PERÚ</h3>
+            </div>
+    </div>
+    <hr style="margin-top: 0px;" />
+    <div class="container">
+
+        <div id="Contenedor">
+            <br />
+            <br />
+            <br />
+            <div class="Icon">
+                <img src="~/Content/Imagen/fondo4.jpeg" style=" margin-top: -20px; margin-bottom: 15px; width: 315px; height: 200px;border-radius: 10px;">
+            </div>
+            <div class="ContentForm">
+                @using (Html.BeginForm("Login", "Login", FormMethod.Post, new Dictionary<string, object> { { "role", "form" }, { "class", "form-horizontal" } }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.ValidationSummary(true)
+                    <div class="form-group form-group-sm">
+                        <div class="col-sm-1"></div>
+                        <div class="col-sm-10">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-user"></i></span>
+
+                                @Html.TextBoxFor(a => a.usuario, new Dictionary<string, object> { { "id", "usuario" }, { "class", "form-control" }, { "placeholder", "Usuario" }, { "autofocus", "" } })
+                                @Html.ValidationMessageFor(a => a.usuario)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group form-group-sm">
+                        <div class="col-sm-1"></div>
+                        <div class="col-sm-10">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-lock"></i></span>
+                                @Html.PasswordFor(a => a.contrasenia, new Dictionary<string, object> { { "id", "contraseña" }, { "class", "form-control" }, { "placeholder", "Contraseña" }, { "value", "" } })
+                                @Html.ValidationMessageFor(a => a.contrasenia)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center;">
+                        <label>
+                            <a onclick="fnModalRecuperaContrasena();">¿Has olvidado tu contraseña?.</a>
+                        </label>
+                    </div>
+                    <br />
+                    <div class="form-group form-group-sm">
+                        <div class="col-sm-1"></div>
+                        <div class="col-sm-10">
+                            <button type="submit" class="btn btn-danger btn-sm btn-block" style="font-size:larger;"><i class="fa fa-home"> Ingresar</i></button>
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+        </div>
+
+
+    </div>
+
+
+    <div id="modal-cambiocontrasena" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" id="cambiocontrasena">
+            <div class="panel">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-key fa-lg"></i>Recuperar Contraseña</h6>
+                </div>
+                <div class="panel-body">
+                    <form class="form-horizontal">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <fieldset class="fieldset-border" style="margin-bottom: -20px;">
+                                    <div class="col-md-6">
+                                        <div class="col-md-3">
+                                            <div class="form-group form-group-sm">
+                                                <label for="_correo" class="control-label">Correo </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="form-group form-group-sm">
+                                                <div class="input-group">
+                                                    <span class="input-group-addon"><i class="fa fa-envelope-o"></i></span>
+                                                    <input style="width:300px;" class="form-control" id="_correo" type="text" placeholder="Ingrese Correo" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12" style="text-align:right !important">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button role="button" class="btn btn-primary" onclick="obtieneContrasena();"><i class="fa fa-share-square-o fa-lg"></i> Enviar Correo</button>
+                                <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+</body>
+</html>

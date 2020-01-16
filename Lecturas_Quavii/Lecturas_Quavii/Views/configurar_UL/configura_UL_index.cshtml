@@ -1,0 +1,674 @@
+﻿
+
+
+@{
+    ViewBag.Title = "Configurar Unidad de Lectura";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+
+<style>
+    .modal-dialog {
+        width: 400px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+    div.dataTables_wrapper div.dataTables_filter input {
+        background: beige;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2
+    }
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+    var app = angular.module('myApp', [])
+
+    app.directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit(attr.onFinishRender);
+                    });
+                }
+            }
+        }
+    });
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+       function MostrandoFechaSistemaActual() {
+            var fecha = new Date();
+            var ano = fecha.getFullYear();
+            var mes = fecha.getMonth();
+            var mesFormato = '';
+
+            if (mes <= 9) {
+                mesFormato = '0' + (mes + 1);
+            } else {
+                mesFormato = (mes + 1);
+            }
+
+            $scope.id_anio = String(ano);
+            $scope.id_mes = String(mesFormato);
+
+            setTimeout(function () {
+                $('#cbo_anio').val(String(ano)).trigger('change');
+                $('#cbo_mes').val(String(mesFormato)).trigger('change');
+            }, 200);
+
+        }
+
+
+        $scope.InicializandoVariables = function () {
+      
+        }
+
+        $scope.ListaServicios_filtro = [];
+        $scope.ListaServicios = [];
+        $scope.listando_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../LecturaEnviarCliente/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.ListaServicios = data;
+                    $scope.ListaServicios_filtro = data;
+                    setTimeout(function () {
+                        $scope.id_tipoServicio_filtro = '0';
+                        $('#cbo_servicio_filtro').val(1).trigger('change');
+                    }, 200);
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        $scope.listando_Servicios();
+
+        $scope.ListaSupervisor_filtro = [];
+        $scope.ListaSupervisor = [];
+        $scope.listando_Supervisor = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoSupervisor',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.ListaSupervisor_filtro = data;
+                    $scope.ListaSupervisor = data;
+                setTimeout(function () {
+                    $scope.id_supervisor_filtro = '0';
+                    $('#cbo_supervisor_filtro').val(0).trigger('change');
+                }, 200);
+
+            })
+                .error(function () {
+                    $('.sige-load').hide();
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Supervisor();
+
+        $scope.Lista_anio = [];
+        $scope.Listado_anios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoAnio',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.Lista_anio = [];
+                    $scope.Lista_anio = data;
+                    $scope.Listado_meses();
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+        }
+
+        $scope.Listado_anios()
+
+        $scope.Lista_meses = [];
+        $scope.Listado_meses = function () {
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoMes',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.Lista_meses = [];
+                    $scope.Lista_meses = data;
+                    MostrandoFechaSistemaActual();
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+        }
+
+
+        $scope.Lista_unidadLectura = [];
+        $scope.Listado_unidad_Lectura = function () {
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoUnidadLectura',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.Lista_unidadLectura = [];
+                    $scope.Lista_unidadLectura = data;
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+        }
+        $scope.Listado_unidad_Lectura();
+
+ 
+        var oTableU = null;
+        $scope.$on('ngRepeatFinished_usuario', function (ngRepeatFinishedEvent) {
+            oTableU = $('#tblcabecera').DataTable(
+                {
+                    scrollY: "400px",
+                    paging: false,
+                });
+        });
+
+
+        $scope.change_unidadLectura = function (cod_unidad) {
+           let txt_distrito = document.getElementById('txt_distrito');
+            let name = '';
+
+            for (unidad of $scope.Lista_unidadLectura) {
+                if (unidad.Cod_UnidadLectura == cod_unidad) {
+                    name=unidad.Distrito_UnidadLectura;
+                    break;
+                }
+            }              
+
+            setTimeout(function () { 
+                txt_distrito.value = name;
+            }, 300);
+        }
+
+        $scope.AbrirModal_Unidad = function () {
+            let txt_diatrabajo = document.getElementById('txt_diatrabajo');
+            let rb_activo = document.getElementById('rb_activo');
+            id_Configuracion_UL_global = '0';
+            
+            setTimeout(function () {
+                txt_diatrabajo.value = '';                
+                $('#cbo_servicio').val(0).trigger('change');
+                $('#cbo_unidadLectura').val(0).trigger('change');
+                $('#cbo_supervisor').val(0).trigger('change');
+                rb_activo.checked = true;
+
+                $('#modal_mantenimiento').modal({ show: 'false' });
+            }, 200);
+        }
+
+        var id_Configuracion_UL_global = '0';
+        $scope.guardar_informacion = function () {
+
+            let cbo_servicio = document.getElementById('cbo_servicio').value;
+            let txt_diatrabajo = document.getElementById('txt_diatrabajo').value;
+            let cbo_unidadLectura = document.getElementById('cbo_unidadLectura').value;
+            let cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            let rb_activo = document.getElementById('rb_activo');
+            let estado = 0;
+            if (rb_activo.checked == true) {
+                estado = 1;
+            }
+
+            if (cbo_servicio == 0 || cbo_servicio == '0' || cbo_servicio == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un tipo de Servicio.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (txt_diatrabajo == undefined || txt_diatrabajo == '' || txt_diatrabajo == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese el Dia de Trabajo.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (txt_diatrabajo <= 0 || txt_diatrabajo >= 32 ) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese el dia Correctamente debe de estar en el rango [1-31].',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (cbo_unidadLectura == 0 || cbo_unidadLectura == '0' || cbo_unidadLectura == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione la Unidad de Lectura.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (cbo_supervisor == 0 || cbo_supervisor == '0' || cbo_supervisor == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione el Responsable.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/set_Insert_Update_Configuracion',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_Configuracion_UL: parseInt(id_Configuracion_UL_global),
+                    dia_configuracion_ul: parseInt(txt_diatrabajo),
+                    cod_unidadlectura: cbo_unidadLectura,
+                    id_usuario_responsable: parseInt(cbo_supervisor),
+                    id_tiposervicio: parseInt(cbo_servicio) ,
+                    estado: estado
+                }
+            }
+
+            $http(variables)
+                .success(function (data) {
+                    if (data == 'OK' || data == '"OK"') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Proceso realizado, Realizado Correctamente.',
+                            type: 'success'
+                        });
+                        $scope.Actualizando_informacion();
+
+                        $("#modal_mantenimiento").modal('hide');
+                    } else {
+                        alert(data)
+                    }
+  
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        }
+
+
+
+        $scope.Actualizando_informacion = function () {
+
+            let cbo_servicio_filtro = document.getElementById('cbo_servicio_filtro').value;
+            let cbo_supervisor_filtro = document.getElementById('cbo_supervisor_filtro').value;
+            let txt_diatrabajo_filtro = document.getElementById('txt_diatrabajo_filtro').value;
+            let cbo_anio = document.getElementById('cbo_anio').value;
+            let cbo_mes = document.getElementById('cbo_mes').value;
+            
+            if (cbo_servicio_filtro == 0 || cbo_servicio_filtro == '0' || cbo_servicio_filtro ==null) {
+                    new PNotify({
+                            title: 'Sistemas',
+                            text: 'Por favor seleccione un tipo de Servicio.',
+                            type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/Get_Configuracion_ul',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    dia_config: txt_diatrabajo_filtro,
+                    id_supervisor: parseInt(cbo_supervisor_filtro),
+                    id_servicio: cbo_servicio_filtro,
+                    anio: parseInt(cbo_anio),
+                    mes: parseInt(cbo_mes)
+                }
+            }
+            $scope.Lista_Configuracion_UL = [];
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (oTableU == null) {
+                        $scope.Lista_Configuracion_UL = data;
+                    } else {
+                        oTableU.clear();
+                        oTableU.destroy();
+                        oTableU = null;
+                        $scope.Lista_Configuracion_UL = data;
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        }
+                       
+
+
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }])
+    app.service('fileUpload', ['$http', function ($http) {
+        this.uploadFileToUrl = function (idlocal, file, uploadUrl) {
+
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('idlocal', idlocal);
+            $http.post(uploadUrl, fd, {
+                transformRequest: angular.identity,
+                headers: { 'Content-Type': undefined }
+            })
+            .success(function (data) {
+
+            })
+            .error(function () {
+
+            });
+        }
+    }]);
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> CONFIGURACIÓN DE UNIDAD DE LECTURAS </h6>
+        </div>
+        <div class="panel-body">
+            <div id="Contenedor">
+
+                <div class="row">
+                    <div class="col-sm-12 col-md-10 col-lg-10">
+                        <div class="col-sm-4 col-md-4 col-lg-4">
+                            <label class="control-label"> Servicios </label>
+                            <br />
+                            <select id="cbo_servicio_filtro" class="form-control" ng-model="id_tipoServicio_filtro">
+                                <option value=0>--[ Seleccione ]-- </option>
+                                <option ng-repeat="item in ListaServicios_filtro" value="{{item.id_TipoServicio}}">
+                                    {{item.nombre_tiposervicio}}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4 col-md-3 col-lg-3">
+                            <div class="form-group">
+                                <label class="control-label"> Día de trabajo </label>
+                                <br />
+                                <input type="number"  min="1" max="31" id="txt_diatrabajo_filtro" class="form-control" placeholder="Ingresar dia de trabajo">
+                            </div>
+                        </div>
+                        <div class="col-sm-4 col-md-4 col-lg-4">
+                            <label class="control-label"> Responsable </label>
+                            <br />
+                            <select id="cbo_supervisor_filtro" class="form-control" ng-model="id_supervisor_filtro">
+                                <option value=0>--[ TODOS ]-- </option>
+                                <option ng-repeat="item in ListaSupervisor_filtro" value="{{item.id_Usuario}}">
+                                    {{item.supervisor}}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-8 col-md-6 col-lg-6">
+                        <div class="panel panel-info">
+                            <div class="panel-heading" style="height: 30px;"> Filtro de cantidad lecturas por UL</div>
+                            <div class="panel-body">
+                                <form class="form-inline">
+                                    <div class="col-sm-6 col-md-6 col-lg-6">
+                                        <label for="cbo_anio"> Año:</label>
+                                        <select id="cbo_anio" class="form-control" ng-model="id_anio">
+                                            <option value=0>--[ Seleccione ]-- </option>
+                                            <option ng-repeat="item in Lista_anio" value="{{item.id_anio}}">
+                                                {{item.descripcion_anio}}
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6 col-md-6 col-lg-6">
+                                        <label for="cbo_mes"> Mes:</label>
+                                        <select id="cbo_mes" class="form-control" ng-model="id_mes">
+                                            <option value=0>--[ Seleccione ]-- </option>
+                                            <option ng-repeat="item in Lista_meses" value="{{item.id_mes}}">
+                                                {{item.descripcion_mes}}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 col-md-4 col-lg-4">
+                        <div class="form-group">
+                            <label class="control-label"></label>
+                            <br />
+                            <br />
+                            <button class="btn btn-success" ng-click="Actualizando_informacion();"><span class="glyphicon glyphicon-refresh"></span> Actualizar</button>
+                            <button class="btn btn-primary" ng-click="AbrirModal_Unidad();"><span class="glyphicon glyphicon-plus"></span> Nuevo</button>
+                        </div>
+                    </div>
+
+                </div>
+                <hr style=" margin-top: 1px; margin-bottom: 1px;" />
+                <div class="table-responsive">
+                    <table id="tblcabecera" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0">
+                        <thead style="font-size: 13px;font-family: tahoma !important;color: white; background-color: #2e6da4;">
+                            <tr>
+                                <th style="text-align:left;">  Dia de Trabajo</th>
+                                <th style="text-align:left;">  Distrito</th>
+                                <th style="text-align:left;">  Unidad de Lectura</th>
+                                <th style="text-align:left;">  Responsable</th>
+                                <th style="text-align:left;">  Cantidad Lectura</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 10px;font-family: tahoma !important;">
+                            <tr ng-repeat="item in Lista_Configuracion_UL" on-finish-render="ngRepeatFinished_usuario">
+                                <td style="text-align:center"> {{item.Dia_Configuracion_UL}}</td>
+                                <td> {{item.Distrito_UnidadLectura}}</td>
+                                <td> {{item.Cod_UnidadLectura}}</td>
+                                <td> {{item.responsable}}</td>
+                                <td style="text-align:right"> {{item.cantidad_lectura}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal_mantenimiento" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog  modal_dsige " style="width:30%;">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-calendar fa-lg"></i> Configuracion de Unidad de Lectura</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-sm-12 col-md-12 col-lg-12">
+                            <label class="control-label"> Servicios </label>
+                            <br />
+                            <select id="cbo_servicio" class="form-control" ng-model="id_tipoServicio">
+                                <option value=0>--[ Seleccione ]-- </option>
+                                <option ng-repeat="item in ListaServicios" value="{{item.id_TipoServicio}}">
+                                    {{item.nombre_tiposervicio}}
+                                </option>
+                            </select>
+                        </div>
+
+
+                        <div class="col-sm-6 col-md-6 col-lg-6">
+                            <div class="form-group">
+                                <label class="control-label"> Día de trabajo </label>
+                                <br />
+                                <input type="number" id="txt_diatrabajo" min="1" max="31" class="form-control" placeholder="Ingresar dia de trabajo">
+                            </div>
+                        </div>
+
+                        <div class="col-sm-12 col-md-12 col-lg-12">
+                            <label class="control-label"> Unidad de Lectura </label>
+                            <br />
+                            <select id="cbo_unidadLectura" class="form-control" ng-model="id_unidadLectura" ng-change="change_unidadLectura(id_unidadLectura);">
+                                <option value=0>--[ Seleccione ]-- </option>
+                                <option ng-repeat="item in Lista_unidadLectura" value="{{item.Cod_UnidadLectura}}">
+                                    {{item.nombre_UnidadLectura}}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-sm-12 col-md-12 col-lg-12">
+                            <label class="control-label"> Distrito </label>
+                            <br />
+                            <input type="text" style="background-color:beige" id="txt_distrito" disabled class="form-control">
+                        </div>
+
+                        <div class="col-sm-12 col-md-12 col-lg-12">
+                            <label class="control-label"> Responsable </label>
+                            <br />
+                            <select id="cbo_supervisor" class="form-control" ng-model="id_supervisor">
+                                <option value=0>--[ Seleccione ]-- </option>
+                                <option ng-repeat="item in ListaSupervisor" value="{{item.id_Usuario}}">
+                                    {{item.supervisor}}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-sm-12 col-md-12 col-lg-12" style="text-align:center">
+                            <br />
+                            <div class="form-group">
+                                <label class="radio-inline"><input id="rb_activo" type="radio" name="optradio" checked>Activo</label>
+                                <label class="radio-inline"><input id="rb_inactivo" type="radio" name="optradio">Inactivo</label>
+                            </div>
+                        </div>
+
+                    </div>
+                 </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button class="btn btn-success" ng-click="guardar_informacion();"><span class="glyphicon glyphicon-floppy-disk"></span> Guardar</button>
+                                <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

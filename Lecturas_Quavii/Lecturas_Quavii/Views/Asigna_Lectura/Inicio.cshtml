@@ -1,0 +1,894 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Asignación de Lectura y ReLectura ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+}
+
+@section styles{
+    <style type="text/css">
+
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalreasig {
+            width: 350px;
+        }
+
+        #modalhistorico {
+            width: 500px;
+        }
+        
+        .datepicker {
+            width: 200px;
+            top: 200px !important;
+        }
+
+        /*.table > tbody > tr > td {
+            color: black;
+        }*/
+
+        #table-consulta_lec td {
+            color: black;
+        }
+
+        #table-consulta_reclec td {
+            color: black;
+        }
+
+     </style>
+}
+
+@section scripts{
+    <script type="text/javascript">
+
+        //oculto los divs de consultas
+        $(function () {
+            //$('#lectura').hide();
+            $('#relectura').hide();
+        })
+
+        //inicializando fechas
+        $(function () {
+            $('#_fechaAsigna').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        $(function () {
+            $('#_fechaEnvioMovil').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        $(function () {
+            $('#_fechaReasignaOperador').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        //fin inicializando fechas
+
+        $(window).resize(function () {
+            $('#table-consulta_lec').bootstrapTable('resetView');
+            $('#table-consulta_reclec').bootstrapTable('resetView');
+        });
+
+        $(document).on('click', '#procesar', function (e) {
+            var $local = $('#_local').val();
+            if ($local === '0') {
+                alert('Seleccione un LOCAL.');
+                $('#table-consulta_lec td').remove();
+                $('#table-consulta_relec td').remove();
+                var msg = 'No se encontraron registros...';
+                $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+                $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+                return;
+            }
+            var $tecnico = $('#_tecnico').val();
+            if ($tecnico === '-1') {
+                alert('Seleccione un TECNICO.');
+                $('#table-consulta_lec td').remove();
+                $('#table-consulta_relec td').remove();
+                var msg = 'No se encontraron registros...';
+                $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+                $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+                return;
+            }
+            asignaTrabajosLecturaRelectura();
+        });
+
+        function tabla_lectura(msg) {
+            $('#table-consulta_lec').bootstrapTable({
+                data: []
+            });
+
+            $('#table-consulta_lec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+        function tabla_relectura(msg) {
+            $('#table-consulta_relec').bootstrapTable({
+                data: []
+            });
+
+            $('#table-consulta_relec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+
+        function asignaTrabajosLecturaRelectura() {
+            var $servicio = '';
+            var servi = $('#servicio').prop('checked');
+            if (servi === true) {
+                //LECTURA
+                $servicio = 1;
+            } else {
+                //RELECTURA
+                $servicio = 2;
+            }
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    $('.sige-load').show();
+                },
+                url: 'JsonListaAsigLecturaReLectura',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $servicio,
+                    __b: $('#_local').val(),
+                    __c: $('#suministro').val(),
+                    __d: $('#medidor').val(),
+                    __e: $('#_tecnico').val(),
+                    __f: $('#_estado').val(),
+                    __G: $("#_fechaAsigna").val()
+                }),
+                success: function (response) {
+                    if (response == null) {
+                        tabla('No se encontraron registros...');
+                    } else {
+                        var servi = $('#servicio').prop('checked');
+                        if (servi === true) {
+                            $('#lectura').show();
+                            $('#table-consulta_lec').bootstrapTable('load', response);
+                            $('#table-consulta_lec').bootstrapTable('resetView');
+                            $('#relectura').hide();
+                        } else {
+                            $('#lectura').hide();
+                            $('#relectura').show();
+                            $('#table-consulta_relec').bootstrapTable('load', response);
+                            $('#table-consulta_relec').bootstrapTable('resetView');
+                        }
+                    }
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+        }
+        function updEnviaAppMovil() {
+
+            var $fecha = $('#_fechaEnvioMovil').val();
+            if ($fecha.length != 10) {
+                alert('Ingrese fecha correcta.');
+                return;
+            }
+            var $contenedor = [];
+            var servi = $('#servicio').prop('checked');
+            if (servi === true) {
+                var $table = $('#table-consulta_lec');
+                var $data = $table.bootstrapTable('getData');
+            } else {
+                var $table = $('#table-consulta_relec');
+                var $data = $table.bootstrapTable('getData');
+            }
+
+            $.each($data, function (__i, __v) {
+                if (__v._v == true || __v._v == 1) {
+                    $contenedor.push(__v._b);
+                }
+            });
+
+            if ($contenedor.length == 0) {
+                alert('Seleccione alguno de los item\'s de la tabla.');
+                return;
+            }
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    //$('.sige-load').show();
+                },
+                url: 'ActualizaEnvioMovil',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $contenedor.join(','),
+                    __b: $('#_fechaEnvioMovil').val()
+                }),
+                success: function (__a) {
+                    alert("Se actualizaron " + __a.__a + " registro(s).");
+                    asignaTrabajosLecturaRelectura();
+                },
+                complete: function () {
+                    //$('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    //$('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+        }
+        function fnModalEnvioAppMovil() {
+            $('#modal-envioAppMovil').modal('show');
+        };
+        function fnModalReasignaOperador() {
+            $('#modal-reasignaoperador').modal('show');
+        };
+        function fnModalHistorico(cod) {
+            console.log(cod);
+            $('#modal-historico').modal('show');
+
+            //var $contenedor = [];
+            //var servi = $('#servicio').prop('checked');
+            //if (servi === true) {
+            //    var $table = $('#table-consulta_lec');
+            //    var $data = $table.bootstrapTable('getData');
+            //} else {
+            //    var $table = $('#table-consulta_relec');
+            //    var $data = $table.bootstrapTable('getData');
+            //}
+
+            //$.each($data, function (__i, __v) {
+            //    if (__v._v == true || __v._v == 1) {
+            //        $contenedor.push(__v._b);
+            //    }
+            //});
+
+            //if ($contenedor.length == 0) {
+            //    alert('Seleccione alguno de los item\'s de la tabla.');
+            //    return;
+            //}
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                },
+                url: 'JsonListaHistorico',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    //__a: $contenedor.join(',')
+                    __a: cod
+                }),
+                success: function (__a) {
+                    $('#table-historico').bootstrapTable('load', __a);
+                    $('#table-historico').bootstrapTable('resetView');
+                },
+                error: function (xhr) {
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+
+
+        };
+
+        function fnLimpiar() {
+            $('#suministro').text();
+            $('#medidor').text('');
+            $('#table-consulta').bootstrapTable('resetView');
+        };
+
+        function fnDescargaHistorico() {
+            $ajaxJson(
+                'DescargaHistorico',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-historico').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    window.open('/Lecturas/Temp/' + __s.__a, '_blank');
+                }
+            );
+        }
+        function updReasignaOperador() {
+            var $operador = $('#_operador').val();
+            console.log($operador);
+            if ($operador === '0') {
+                alert('Seleccione un OPERADOR.');
+                return;
+            }
+
+            var $fecha = $('#_fechaReasignaOperador').val();
+            if ($fecha.length != 10) {
+                alert('Ingrese fecha correcta.');
+                return;
+            }
+            var $contenedor = [];
+            var servi = $('#servicio').prop('checked');
+            if (servi === true) {
+                var $table = $('#table-consulta_lec');
+                var $data = $table.bootstrapTable('getData');
+            } else {
+                var $table = $('#table-consulta_relec');
+                var $data = $table.bootstrapTable('getData');
+            }
+
+            $.each($data, function (__i, __v) {
+                if (__v._v == true || __v._v == 1) {
+                    $contenedor.push(__v._b);
+                }
+            });
+
+            if ($contenedor.length == 0) {
+                alert('Seleccione alguno de los item\'s de la tabla.');
+                return;
+            }
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    //$('.sige-load').show();
+                },
+                url: 'ActualizaReasignaOperador',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $contenedor.join(','),
+                    __b: $('#_fechaReasignaOperador').val(),
+                    __c: $('#_operador').val(),
+                    __d: '0'
+                }),
+                success: function (__a) {
+                    alert("Se actualizaron " + __a.__a + " registro(s).");
+                    asignaTrabajosLecturaRelectura();
+                },
+                complete: function () {
+                    //$('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    //$('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+        }
+
+        function updReasignaOperadorAppMovil() {
+            var $operador = $('#_operador').val();
+            console.log($operador);
+            if ($operador === '0') {
+                alert('Seleccione un OPERADOR.');
+                return;
+            }
+
+            var $fecha = $('#_fechaReasignaOperador').val();
+            if ($fecha.length != 10) {
+                alert('Ingrese fecha correcta.');
+                return;
+            }
+            var $contenedor = [];
+            var servi = $('#servicio').prop('checked');
+            if (servi === true) {
+                var $table = $('#table-consulta_lec');
+                var $data = $table.bootstrapTable('getData');
+            } else {
+                var $table = $('#table-consulta_relec');
+                var $data = $table.bootstrapTable('getData');
+            }
+
+            $.each($data, function (__i, __v) {
+                if (__v._v == true || __v._v == 1) {
+                    $contenedor.push(__v._b);
+                }
+            });
+
+            if ($contenedor.length == 0) {
+                alert('Seleccione alguno de los item\'s de la tabla.');
+                return;
+            }
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    //$('.sige-load').show();
+                },
+                url: 'ActualizaReasignaOperador',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $contenedor.join(','),
+                    __b: $('#_fechaReasignaOperador').val(),
+                    __c: $('#_operador').val(),
+                    __d: '1'
+                }),
+                success: function (__a) {
+                    alert("Se actualizaron " + __a.__a + " registro(s).");
+                    asignaTrabajosLecturaRelectura();
+                },
+                complete: function () {
+                    //$('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    //$('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+        }
+
+        //toggle button - cambio lectura - relectura
+        $(function () {
+            $('#servicio').change(function () {
+                asignaTrabajosLecturaRelectura();
+            })
+        })
+
+        //trae la lista de los tecnicos por local
+        $(document).on('change', '#_local', function (e) {
+            $('#_tecnico').clearQueue()
+
+            var $servicio = '';
+            var servi = $('#servicio').prop('checked');
+            if (servi === true) {
+                $servicio = 1;
+            } else {
+                $servicio = 2;
+            }
+
+            $.ajax({
+                beforeSend: function (xhr) {
+                },
+                url: 'ListaTecnicos',
+                type: 'POST',
+                dataType: 'html',
+                data: {
+                    __a: $(this).val(),
+                    __b: $servicio
+                },
+                success: function (response) {
+                    $('#_tecnico').replaceWith(response);
+                    $('#_tecnico').trigger('change');
+                },
+                error: function (xhr) {
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        });
+
+        //trae la lista de los operarios por local
+        $(document).on('change', '#_local', function (e) {
+            $('#_operador').clearQueue();
+
+            var $servicio = '';
+            var servi = $('#servicio').prop('checked');
+            if (servi === true) {
+                $servicio = 1;
+            } else {
+                $servicio = 2;
+            }
+
+            $.ajax({
+                beforeSend: function (xhr) {
+                },
+                url: 'ListaOperarios',
+                type: 'POST',
+                dataType: 'html',
+                data: {
+                    __a: $(this).val(),
+                    __b: $servicio
+                },
+                success: function (response) {
+                    $('#_operador').replaceWith(response);
+                    $('#_operador').trigger('change');
+                },
+                error: function (xhr) {
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        });
+
+        function checkFormat(__v, __r, __i) {
+            if (__r._v == 1 && __r._v == true) {
+                return {
+                    checked: true
+                };
+            }
+            return __v;
+        }
+
+        //function rowStyle(__r, __i) {
+        //    if (__r._v == 1 && __r._v == true) {
+        //        return {
+        //            classes: 'success'
+        //        };
+        //    }
+        //    return {};
+        //}
+
+        function opcionFormatter(__val, __row, __index) {
+            var $html = [];
+            $html.push('<button role="button" class="btn btn-warning" onclick="fnModalHistorico(\'' + __row._c + '\')"><i class="fa fa-list-alt fa-lg"></i> Histórico</button>');
+
+            return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">' + $html.join('') + '</div>';
+        }
+
+    </script>
+}
+
+<div class="panel panel-oscuro">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i>ASIGNACION DE LECTURA Y RELECTURA</h6>
+    </div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="col-sm-2">
+                    <div class="form-group form-group-sm">
+                        <label for="_local" class="control-label">Local</label>
+                        <select class="form-control" id="_local">
+                            <option value="0" selected="selected">-- Seleccione --</option>
+                            @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                            {
+                                <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-sm-2">
+                    <div class="form-group form-group-sm">
+                        <label for="_tecnico" class="control-label">Técnico Asignado</label>
+                        <select class="form-control" id="_tecnico">
+                            <option value="-1" selected>Sin datos disponibles</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-sm-2">
+                    <div class="form-group form-group-sm">
+                        <label for="_estado" class="control-label">Estado</label>
+                        <select class="form-control" id="_estado">
+                            @*<option value="0" selected="selected">-- Todos --</option>*@
+                            @foreach (Estado oBj in new NAsignaLecturaReLectura().NListaEstados(0))
+                            {
+                                <option value="@oBj.idEstado">@oBj.descEstado.ToUpper()</option>
+                            }
+                        </select>
+
+                    </div>
+                </div>
+
+                <div style="text-align:right;" class="col-sm-6">
+                    <div class="form-group form-group-sm">
+                        <label for="1" class="control-label">&nbsp;</label>
+                        <input type="checkbox" id="servicio" checked data-toggle="toggle" data-on="LECTURA" data-off="RE-LECTURA" data-onstyle="success" data-offstyle="warning">
+                    </div>
+                </div>
+            </div>
+            <div class="panel-body">
+                
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="panel panel-info col-sm-12" style="background-color: #F8F8F8;">
+                            <div class="panel-body" style="height: 40px;">
+                                <div class="col-sm-12">
+
+                                    <div class="col-sm-2">
+                                        <div class="form-group form-group-sm">
+                                            <div class="input-group">
+                                                <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                                <input name="suministro" id="suministro" class="form-control" placeholder="Suministro">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-2">
+                                        <div class="form-group form-group-sm">
+                                            <div class="input-group">
+                                                <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                                <input name="medidor" id="medidor" class="form-control" placeholder="Medidor">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-1">
+                                        <div class="form-group form-group-sm">
+                                            <label for="_fechaAsigna" class="control-label">Fecha Asignación</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <div class="form-group form-group-sm">
+                                            <div class="input-group">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input style="width:90px;" class="form-control" id="_fechaAsigna" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToShortDateString()" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="text-align:right;" class="col-sm-5">
+                                        <div class="form-group form-group-sm">
+                                            <button role="button" class="btn btn-primary btn-sm" id="procesar"><i class="fa fa-refresh fa-lg"></i> Procesar</button>
+                                            <button role="button" class="btn btn-primary btn-sm" onclick="fnLimpiar();"><i class="fa fa-eraser fa-lg"></i> Limpiar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="lectura">
+                            <table id="table-consulta_lec"
+                                   data-toggle="table"
+                                   data-height="350"
+                                   style="width:2000px;"
+                                   data-row-style="rowStyle"
+                                   @*data-pagination="true"
+                                   data-page-size="200"
+                                   data-page-list="[100, 200, 300, 400, 500]"*@
+                                   data-maintain-selected="true">
+                                <thead>
+                                    <tr>
+                                        <th data-field="_v" data-formatter="checkFormat" data-checkbox="true"></th>
+                                        <th data-field="_a">Orden</th>
+                                        <th data-field="_c">Suministro</th>
+                                        <th data-field="_d">Medidor</th>
+                                        <th data-field="_e">Dirección</th>
+                                        <th data-field="_f">Lect. Ant.</th>
+                                        <th data-field="_g">Lect. Min.</th>
+                                        <th data-field="_h">Lect. Max.</th>
+                                        <th data-field="_i">Operador</th>
+                                        <th data-field="_j">Zona</th>
+                                        <th data-field="_k">Fecha Asignación</th>
+                                        <th data-field="_l">Cliente</th>
+                                        <th data-field="_m">Estado</th>
+                                        <th data-width="100" data-formatter="opcionFormatter"></th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <div id="relectura">
+                            <table id="table-consulta_relec"
+                                   data-toggle="table"
+                                   data-height="350"
+                                   style="width:2000px;"
+                                   data-row-style="rowStyle"
+                                   @*data-pagination="true"
+                                   data-page-size="200"
+                                   data-page-list="[100, 200, 300, 400, 500]"*@
+                                   data-maintain-selected="true">
+                                <thead>
+                                    <tr>
+                                        <th data-field="_v" data-formatter="checkFormat" data-checkbox="true"></th>
+                                        <th data-field="_a">Orden</th>
+                                        <th data-field="_c">Suministro</th>
+                                        <th data-field="_d">Medidor</th>
+                                        <th data-field="_q">Nro Instalación</th>
+                                        <th data-field="_e">Dirección</th>
+                                        <th data-field="_j">Zona</th>
+                                        <th data-field="_l">Cliente</th>
+                                        <th data-field="_i">Operador</th>
+                                        <th data-field="_m">Estado</th>
+                                        <th data-width="100" data-formatter="opcionFormatter"></th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <div class="panel panel-info col-sm-12" style="background-color: #F8F8F8;">
+                            <div class="panel-body" style="height: 40px;">
+                                <div class="col-sm-12">
+                                    <div class="col-sm-12" style="text-align:right;">
+                                        <div class="form-group form-group-sm">
+                                            <button role="button" class="btn btn-primary btn-sm" onclick="fnModalEnvioAppMovil()"><i class="fa fa-mobile-phone fa-lg"></i> Enviar al Movil</button>
+                                            <button role="button" class="btn btn-primary btn-sm" onclick="fnModalReasignaOperador()"><i class="fa fa-user fa-lg"></i> Reasignar Operador</button>
+                                            <button role="button" class="btn btn-primary btn-sm"><i class="fa fa-edit fa-lg"></i> Limpiar Lecturas</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+
+
+
+</div>
+
+<div id="modal-envioAppMovil" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>Enviar al Movil</h6>
+            </div>
+            <div class="panel-body">
+                <form class="form-horizontal">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <fieldset class="fieldset-border">
+                                <legend>Enviar Datos al Aplicativo Movil</legend>
+                                <div class="col-md-12">
+                                    <div class="col-md-5">
+                                        <div class="form-group form-group-sm">
+                                            <label for="_fechaEnvioMovil" class="col-sm-5 control-label">Fecha Asignación </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <div class="form-group form-group-sm">
+                                            <div class="input-group">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input style="width:90px;" class="form-control" id="_fechaEnvioMovil" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToShortDateString()" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="panel-footer">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                            <button role="button" class="btn btn-primary" onclick="updEnviaAppMovil();"><i class="fa fa-mobile-phone fa-lg"></i> Enviar al Movil</button>
+                            <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-reasignaoperador" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog" id="modalreasig">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>Reasignar Operador</h6>
+            </div>
+            <div class="panel-body">
+                <form class="form-horizontal">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <fieldset class="fieldset-border">
+                                <legend>Reasignar Lecturas</legend>
+                                <div class="form-group form-group-sm">
+                                    <label for="_operador" class="col-sm-4 control-label">Operador</label>
+                                    <div class="col-sm-8">
+                                        <div class="form-group form-group-sm">
+                                            <select class="form-control" id="_operador">
+                                                <option value="0" selected>Sin datos disponibles</option>
+                                                @*@<option value="0" selected="selected">-- Seleccione --</option>
+                                                @foreach (Operario oBj in new NTecnico().NLista(new Request_Operario_Empresa_Local_Opcion() { loc_id = 1, tip_serv = 1, emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                                {
+                                                    <option value="@oBj.ope_id">@oBj.ope_nombre</option>
+                                                }*@
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group form-group-sm">
+                                    <label for="_fechaReasignaOperador" class="col-sm-4 control-label">Fecha Toma</label>
+                                    <div class="col-md-1">
+                                        <div class="form-group form-group-sm">
+                                            <div class="input-group">
+                                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                <input style="width:90px;" class="form-control" id="_fechaReasignaOperador" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToShortDateString()" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="panel-footer">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                            <button role="button" class="btn btn-success" onclick="updReasignaOperador();"><i class="fa fa-save fa-lg"></i> Guardar</button>
+                            <button role="button" class="btn btn-primary" onclick="updReasignaOperadorAppMovil();"><i class="fa fa-mobile-phone fa-lg"></i> Enviar al Movil</button>
+                            <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-historico" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog" id="modalhistorico">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>Histórico de Lecturas</h6>
+            </div>
+            <div class="panel-body">
+                <table id="table-historico"
+                       data-toggle="table"
+                       data-height="350"
+                       data-row-style="rowStyle"
+                       data-pagination="true"
+                       data-page-size="200"
+                       data-page-list="[100, 200, 300, 400, 500]"
+                       data-maintain-selected="true">
+                    <thead>
+                        <tr>
+                            <th data-field="_d">Medidor</th>
+                            <th data-field="_o">Fecha de Lectura</th>
+                            <th data-field="_n">Lectura</th>
+                            <th data-field="_i">Operario</th>
+                            <th data-field="_p">Observación</th>
+                            <th data-field="_m">Estado</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="panel-footer">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                            <button role="button" class="btn btn-success" onclick="fnDescargaHistorico();"><i class="fa fa-download fa-lg"></i> Exportar</button>
+                            <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

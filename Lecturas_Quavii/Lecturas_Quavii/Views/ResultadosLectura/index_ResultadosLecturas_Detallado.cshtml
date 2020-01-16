@@ -1,0 +1,747 @@
+﻿@{
+    ViewBag.Title = "index_ResultadosLecturas_Detallado";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+<link href="~/Content/lightbox/css/lightbox.min.css" rel="stylesheet" />
+<script src="~/Content/lightbox/js/lightbox.min.js"></script>
+
+
+<style>
+    hr {
+        display: block;
+        height: 1px;
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 1em 0;
+        padding: 0;
+    }
+
+
+    .modal-dialog {
+        width: 300px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+    .tblDsige th {
+        color: #fff !important;
+        background-color: rgba(48, 115, 181, 0.83) !important;
+        text-align: center;
+    }
+
+    .tblDsige span {
+        color: #337ab7;
+        cursor: pointer;
+    }
+
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+    var app = angular.module('myApp', []).directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }]);
+
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $(function () {
+            lightbox.option({
+                'resizeDuration': 200,
+                'wrapAround': true
+            })
+        });
+
+        var oTable = null;
+        $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            oTable = $('#tblListaDetalle').DataTable(
+                {
+                    scrollY: "600px",
+                    paging: false
+                });
+        });
+
+
+        $scope.InicializandoVariables = function () {
+            $scope.MostrarInformacion();
+        }
+
+        $scope.ListaResumen = [];
+        $scope.ListaResumen_Observacion = [];
+
+        $scope.MostrarInformacion = function () {
+            var cbo_servicio = document.getElementById('_id_servicio').value;
+            var id_fecha = document.getElementById('_fecha').value;
+            var cbo_sector = document.getElementById('_id_sector').value;
+
+            $('.sige-load').show();
+
+            $scope.ListaResumen = [];
+
+
+            var ResumenLecturaDetallado = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../ResultadosLectura/ListandoResumenLecturas_Detallado',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fecha: id_fecha,
+                        servicio: cbo_servicio,
+                        sector: cbo_sector
+                    }
+                }
+
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $scope.ListaResumen_Observacion = [];
+   
+                    $('.sige-load').hide();
+                    if (oTable == null) {
+                        $scope.ListaResumen_Observacion = data;
+                    } else {
+                        oTable.clear();
+                        oTable.destroy();
+                        oTable = null;
+                        $scope.ListaResumen_Observacion = data;
+                    }
+         
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/ListandoResumenLecturas',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fecha: id_fecha,
+                    servicio: cbo_servicio,
+                    sector: cbo_sector
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.ListaResumen = data;
+                /////---mostrando la info ---
+                ResumenLecturaDetallado();
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+        $scope.SeguimientoOperario = function (obj_operario) {
+            
+            var _fecha = document.getElementById('_fecha').value;
+            var _servicio = document.getElementById('_id_servicio').value;
+            var _cbo_sector = document.getElementById('_id_sector').value;
+
+            var url = "../SeguimientoOperario/index_SeguimientoOperario_II?servicio=" + _servicio + "&fecha=" + _fecha + "&sector=" + _cbo_sector + "&nroDocOperario=" + obj_operario + " ";
+
+            var a = document.createElement("a");
+            a.target = "_blank";
+            a.href = url;
+            a.click();
+
+        }
+
+        $scope.SeguimientoLectura = function (obj_operario) {
+
+            var _fecha = document.getElementById('_fecha').value;
+            var _servicio = document.getElementById('_id_servicio').value;
+            var _cbo_sector = document.getElementById('_id_sector').value;
+
+            var url = "../SeguimientoLecturas/index_SeguimientoLecturas_II?servicio=" + _servicio + "&fecha=" + _fecha + "&sector=" + _cbo_sector + "&nroDocOperario=" + obj_operario + " ";
+
+            var a = document.createElement("a");
+            a.target = "_blank";
+            a.href = url;
+            a.click();
+
+        }
+        
+        var pictures = $scope.pictures = [];
+        $scope.OperarioConsulta = '';
+
+        $scope.MostrarFotoSelfie = function (objOperario, nombreOperario) {
+            $scope.OperarioConsulta = '';
+            $scope.OperarioConsulta = ' - ' +nombreOperario;
+
+            var cbo_servicio = document.getElementById('_id_servicio').value;
+            var id_fecha = document.getElementById('_fecha').value;
+            var cbo_sector = document.getElementById('_id_sector').value;
+ 
+                /// --abriendo el modal      
+            $('#modalSelfie').modal();
+
+            $('.sige-load').show();
+            pictures = $scope.pictures = [];
+
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/ListandoFotoSelfie',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fecha: id_fecha,
+                    servicio: cbo_servicio,
+                    sector: cbo_sector,
+                    operario: objOperario
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+
+                for (var i = 0; i < data.length; i++) {
+                    pictures.push({
+                        url: data[i].fotourl,
+                        id_Lectura: data[i].id_Lectura,
+                        suministro: data[i].suministro_lectura,
+                        medidor: data[i].medidor_lectura,
+                        fecha: data[i].fecha, 
+                        hora: data[i].hora,
+                        latitud: data[i].latitud,
+                        longitud: data[i].longitud
+                    });
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+        
+
+        $scope.ListaNotas = [];
+        var operario_Global = 0;
+
+        $scope.AbrirModalNotas = function (objOperario) {
+            var txt_comentario = document.getElementById('txt_comentario');
+
+            operario_Global = 0;
+            operario_Global = objOperario;
+            $('#modalNotas').modal();
+            txt_comentario.value = '';
+            $scope.MostrarDetallesNotas(objOperario);
+        }
+
+        $scope.MostrarDetallesNotas = function (objOperario) {
+            var id_fecha = document.getElementById('_fecha').value;
+
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/ListandoNotasOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fecha: id_fecha,
+                    operario: objOperario
+                }
+            }
+
+            $('.sige-load').show();
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.ListaNotas = [];
+                $scope.ListaNotas = data;
+
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+                
+        $scope.GuardarNotas = function () {
+            var txt_comentario = document.getElementById('txt_comentario');
+            var id_fecha = document.getElementById('_fecha').value;
+
+            if (txt_comentario.value == null || txt_comentario.value == '' || txt_comentario.value == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese una Observacioón si desea Guardar.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('#modalNotas').modal();
+
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/Guardando_NotasOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fecha: id_fecha,
+                    operario: operario_Global,
+                    observacion: txt_comentario.value
+                }
+            }
+            txt_comentario.value = '';
+
+            $('.sige-load').show();
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Se guardó correctamente la Observación.',
+                        type: 'success'
+                    });
+
+                    $scope.MostrarDetallesNotas(operario_Global);
+
+                } else {
+                    alert(data)
+                }
+
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+
+
+        }
+
+        $scope.AbrirModalObservaciones = function (objOperario, nombreOperario) {
+            operario_Global = 0;
+            operario_Global = objOperario;
+
+            $scope.OperarioConsulta = '';
+            $scope.OperarioConsulta =  nombreOperario;
+
+            $('#modalObservaciones').modal(); 
+            $scope.MostrarDetallesObservacion(objOperario);
+        }
+
+        $scope.ListaOperario_Observacion = [];
+        $scope.MostrarDetallesObservacion = function (objOperario) {
+
+            var _fecha = document.getElementById('_fecha').value;
+            var _id_servicio = document.getElementById('_id_servicio').value;
+            var _id_sector = document.getElementById('_id_sector').value;
+
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/Listando_Observaciones',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fecha: _fecha,
+                    servicio: _id_servicio,
+                    sector: _id_sector,
+                    operario: objOperario
+                }
+            }
+
+            $('.sige-load').show();
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.ListaOperario_Observacion = [];
+                $scope.ListaOperario_Observacion = data;
+
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+
+    });
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> RESULTADO DE LECTURAS </h6>
+        </div>
+        <div class="panel-body">
+            <br />
+            <div id="Contenedor" style="display:none">                          
+                <input class="form-control" id="_id_servicio" value="@ViewBag.servicio_global">
+                <input class="form-control" id="_fecha" value="@ViewBag.fecha_global">
+                <input class="form-control" id="_id_sector" value="@ViewBag.sector_global">                           
+            </div>
+
+            <div class="row">
+                <div class=" col-sm-4 col-lg-4">
+
+                </div>
+                <div class=" col-sm-4 col-lg-4">
+                    <div class="panel panel-warning ">
+                        <div class="panel-heading">
+                        </div>
+                        <div class="panel-body" style=" margin-bottom: -5px;">
+                            <div class="col-md-12" style=" text-align: left;" ng-repeat="obj in ListaResumen">
+                                <div class="progress" style="margin-bottom: 10px;">
+                                    <div class="progress-bar" ng-style="{'width': obj.porc_ejecutado + '%' }">
+                                        <span>{{obj.total_ejecutado}}</span>
+                                    </div>
+                                </div>
+                                <h5 style="margin-bottom: 10px;"> <strong> Total Lecturas :</strong>  <span class="label label-default" sstyle="font-size:14px;">        {{obj.total_lectura}}</span></h5>
+                                <h5 style="margin-bottom: 10px;"><strong> Total Ejecutados :</strong>  <span class="label label-default" style="background-color: yellow; color: black; font-size:14px;">{{obj.total_ejecutado}}</span> <strong>         {{obj.porc_ejecutado}} %</strong></h5>
+                                <h5 style="margin-bottom: 10px;"><strong> Total Pendientes :</strong>   <span class="label label-default" style="background-color: red; color: white; font-size:14px;">          {{obj.total_pendiente}}</span></h5>
+                                <h5 style="margin-bottom: 10px;"><strong> Total Fotos :</strong>  <span class="label label-default" style="background-color: aquamarine; color: white; font-size:14px;">{{obj.total_fotos}}</span> <strong>          {{obj.porc_fotos}} %</strong></h5>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class=" col-sm-4 col-lg-4">
+
+                </div>
+            </div>
+            <hr />
+            <div class="row">
+                <div class="col-lg-12">              
+                    <div class="form-group">
+                                <table id="tblListaDetalle" class="table table-condensed table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                    <thead style="background: #F0F3F5;">
+                                        <tr >
+                                            <th>#</th>
+                                            <th>Operario</th>
+                                            <th style="text-align:center">S. Ope.</th>
+                                            <th style="text-align:center">S. Lec.</th>
+                                            <th style="text-align:center">Selfie</th>
+                                            <th style="text-align:center">Notas</th>
+                                            <th style="text-align:right">Total</th>
+                                            <th style="text-align:right">Ejecutado</th>
+                                            <th style="text-align:right">Con Foto</th>
+                                            <th style="text-align:right">Pendiente</th>
+                                            <th>Barra Progreso</th>
+                                            <th>%</th>
+                                            <th style="text-align:center">Hora Inicial</th>
+                                            <th style="text-align:center">Hora Termino</th>
+                                            <th style="text-align:center">Horas Trabajadas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>            
+
+                                        <tr ng-repeat="lista in ListaResumen_Observacion" on-finish-render="ngRepeatFinished">
+                                            <td>{{$index + 1}}</td>
+                                            <td style="cursor:pointer " ng-click="AbrirModalObservaciones(lista.id_Operario,lista.apellidos_operario);">{{lista.apellidos_operario}}</td>
+                                            <td style="text-align:center">
+                                                <img src="../Content/Imagen/Hombre.png" style="cursor:pointer " ng-click="SeguimientoOperario(lista.id_Operario);" />
+                                            </td>                        
+                                            <td style="text-align:center">
+                                                <img src="~/Content/Imagen/Tierra.png" style="cursor:pointer " ng-click="SeguimientoLectura(lista.id_Operario);" />
+                                            </td>
+                                            <td style="text-align:center">
+                                                <img src="~/Content/Imagen/Selfie.png" style="cursor:pointer " ng-click="MostrarFotoSelfie(lista.id_Operario, lista.apellidos_operario);" />
+                                            </td>
+                                            <td style="text-align:center">
+                                                <img src="~/Content/Imagen/Notas.png" style="cursor:pointer " ng-click="AbrirModalNotas(lista.id_Operario);" />
+                                            </td>              
+                                            <td style="text-align:right">{{lista.Total}}</td>
+                                            <td style="text-align:right">{{lista.Ejecutada}}</td>
+                                            <td style="text-align:right">{{lista.Foto}}</td>
+                                            <td style="text-align:right">{{lista.Pendiente}}</td>
+                                    
+                                            <td>
+                                                <div class="progress" style="margin-bottom: 2px;">
+                                                    <div class="progress progress-bar" ng-style="{'width': lista.Porcentaje + '%' }">
+                                                        <span>%</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style="text-align:right">{{lista.Porcentaje}}</td>
+                                            <td ng-if="'SI' == lista.FueraHora" style="text-align:center;background-color:red !important;color: white !important;" >{{lista.Minimo}} </td>
+                                            <td ng-if="'' == lista.FueraHora" style="text-align:center">{{lista.Minimo}} </td>
+                                            <td style="text-align:center">{{lista.Maximo}}</td>
+                                            <td style="text-align:center">{{lista.totalHora}}</td>                 
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                </div>
+            </div>
+
+            
+            <div id="modalSelfie" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+                <div class="modal-dialog" style="width: 60% !important;">
+                    <div class="panel panel-oscuro">
+                        <div class="panel-heading">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> FOTO SELFIE  {{OperarioConsulta}}</h6>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+
+                                <div id="galeria" class="table table-responsive">
+                                    <div class="thumbnails">
+                                        <div class="col-md-4" style=" text-align: center;" ng-repeat="pic in pictures">
+                                            <span class="label label-default" style=" font-size: 11px;">Suministro : {{pic.suministro}}</span>
+                                            <span class="label label-default" style=" font-size: 11px;">Medidor : {{pic.medidor}}</span>
+                                            <a href="{{pic.url}}" data-lightbox="example-set" data-title="Suministro : {{pic.suministro}}  | Medidor : {{pic.medidor}} ">
+                                                <img class="img-thumbnail" ng-src="{{pic.url}}" style="width: 350px; height: 250px;">
+                                            </a>
+                                            <span class="label label-default" style=" font-size: 11px;">Fecha : {{pic.fecha}}</span>
+                                            <span class="label label-default" style=" font-size: 11px;">Hora : {{pic.hora}}</span>
+                                            <span class="label label-default" style=" font-size: 11px;">Latitud : {{pic.latitud}}</span>
+                                            <span class="label label-default" style=" font-size: 11px;">Longitud : {{pic.longitud}}</span>
+                                            <hr />
+                                        </div>
+                                    </div>
+                                </div>   
+                            </div>
+                        </div>
+                        <div class="panel-footer">
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                        <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="modalNotas" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+                <div class="modal-dialog" style="width: 45% !important;">
+                    <div class="panel panel-oscuro">
+                        <div class="panel-heading">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> COMENTARIOS  {{OperarioConsulta}}</h6>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">                   
+                                <div class="form-group">
+                                    <label for="comment">Comentario :</label>
+                                    <textarea class="form-control" maxlength="500" rows="2" id="txt_comentario"></textarea>
+                                </div>    
+                                <div class="form-group" style="text-align :center">
+                                    <button role="button" id="btnGuardar" class="btn btn-default" ng-click="GuardarNotas();"><i class="fa fa-save fa-lg"></i> Grabar</button>
+                                </div>           
+                            </div>
+                            <hr />
+
+                            <div class="detalleNotas">
+                                <table id="tbl_DetalleNotas" class="table table-condensed table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                    <thead style="background: #F0F3F5;">
+                                        <tr>
+                                            <th>#</th>
+                                            <th style="text-align:center">Nro. Doc</th>
+                                            <th style="text-align:center">Usuario</th>
+                                            <th style="text-align:center">Fecha</th>
+                                            <th style="text-align:center">Observacion</th> 
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+
+                                        <tr ng-repeat="lista in ListaNotas">
+                                            <td>{{$index + 1}}</td>
+                                            <td style="text-align:center">{{lista.id_Operario}}</td>
+                                            <td style="text-align:center">{{lista.desc_operario}}</td>
+                                            <td style="text-align:center">{{lista.fecha}}</td>
+                                            <td style="text-align:center">{{lista.observacion}}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                        <div class="panel-footer">
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                        <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modalObservaciones" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+                <div class="modal-dialog" style="width: 45% !important;">
+                    <div class="panel panel-oscuro">
+                        <div class="panel-heading">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> OBSERVACIONES - {{OperarioConsulta}}</h6>
+                        </div>
+                        <div class="panel-body">
+                            <div class="table table-responsive form-group" style="height:300px">
+                                <table id="tblLista_Operario" class="table table-condensed table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                    <thead style="background: #F0F3F5;">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Codigo</th>
+                                            <th>Observacion</th>
+                                            <th>Total</th>
+                                            <th>Con Foto</th>
+                                            <th>Sin Foto</th>
+                                            <th>Barra Progreso</th>
+                                            <th style="text-align:right">%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="lista in ListaOperario_Observacion" >
+                                            <td>{{$index + 1}}</td>
+                                            <td>{{lista.codigo}}</td>
+                                            <td>{{lista.observacion}}</td>
+                                            <td style="text-align:right">{{lista.total}}</td>
+                                            <td style="text-align:right">{{lista.conFoto}}</td>
+                                            <td style="text-align:right">{{lista.sinFoto}}</td>
+                                            <td>
+                                                <div class="progress" style="margin-bottom: 2px;">
+                                                    <div class="progress progress-bar" ng-style="{'width': lista.porcentaje + '%' }">
+                                                        <span>%</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style="text-align:right">{{lista.porcentaje}}</td>
+                                        </tr>
+
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                        <div class="panel-footer">
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                        <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+        </div>
+    </div>
+
+</body>
+</html>
+

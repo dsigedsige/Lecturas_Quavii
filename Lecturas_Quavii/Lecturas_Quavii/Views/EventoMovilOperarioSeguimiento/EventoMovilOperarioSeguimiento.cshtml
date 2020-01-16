@@ -1,0 +1,420 @@
+﻿@{
+    ViewBag.Title = "EventoMovilOperarioSeguimiento";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+
+}
+
+
+@section styles{
+    <style type="text/css">
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalreasig {
+            width: 350px;
+        }
+
+        .datepicker {
+            width: 200px;
+            top: 228px !important;
+        }
+        
+        #modal-mapa {
+            top: 5%;
+            right: 50%;
+            outline: none;
+        }
+    </style>
+}
+
+
+<script type="text/javascript">
+
+    $(function () {
+        $('#f_inicial').datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true,
+            todayBtn: true
+        });
+    })
+    $(function () {
+        $('#f_final').datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true
+        });
+    })
+
+
+    //fin inicializando fechas
+
+
+    @*codigo angular*@
+
+
+ 
+    var app = angular.module('appEventoMovilOperarioSeguimiento', []).directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }]);
+
+    //var app = angular.module('appEventoMovilOperario', []);
+
+    app.controller('EventoMovilOperarioSeguiminetoCtrl', function ($scope, $http) {
+        oTable = null;
+        
+        //Mostando mapa
+
+
+        $scope.Fn_MostrarMapa = function (rows) {
+
+            var listaservicio = [];
+            if (document.getElementById('idservicios').value == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (parseInt(document.getElementById('idservicios').value) == 0) {
+                var listcomb = $scope.listacomboServicios
+                angular.forEach(listcomb, function (value, key) {
+                    if (value.id_TipoServicio != 0) {
+                        listaservicio.push(value.id_TipoServicio);
+                    }
+
+                });
+            }
+            else {
+                listaservicio.push(document.getElementById('idservicios').value);
+            }
+ 
+            window.open('/Calidda/EventoMovilOperarioSeguimiento/EventoMovilOperarioSeguimiento_MAPA?id_operario=' + rows.id_Operario + '&fecha_proceso=' + rows.FECHA + '&Servicio_proceso=' + listaservicio.toString())
+        }
+
+        $scope.Fn_Ver_Ubicacion_Mapa = function (rows) {
+            var imagen_mapa = "";
+            imagen_mapa = document.getElementById('id_Imagen_mapa');
+            imagen_mapa.src = 'http://maps.googleapis.com/maps/api/staticmap?center=' + rows.latitud_lectura + ',' + rows.longitud_lectura + '&zoom=15&scale=false&size=600x380&maptype=roadmap&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:A%7C' + rows.latitud_lectura + ',' + rows.longitud_lectura + '';
+        }
+
+
+        // fin mostrando mapa
+
+
+
+        // Listando
+        $scope.ListandoLocales = function () {
+
+            var variables = {
+                method: 'POST',
+                url: '../EventoMovilOperario/ListandoLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $scope.ListadeLocales = data;
+            })
+
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        //inicilizando
+        $scope.ListandoLocales()
+
+
+        // Listando Operarios segun Local
+        $scope.ListandoOperarios = function () {
+            var id_local, local;
+            id_local = document.getElementById('id_local').value;
+
+            local = id_local;
+            if (id_local == '') {
+                local = 0;
+            }
+            var variables = {
+                method: 'POST',
+                url: '../EventoMovilOperario/ListandoOperarioLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: local
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $scope.ListadeOperario = data;
+            })
+
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+
+
+        // Listando Seguimiento Operario Datos Cabecera
+        $scope.ListandoDatosCabecera_Seguimiento = function () {
+            
+            var listaservicio = [];
+            if (document.getElementById('idservicios').value == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (parseInt(document.getElementById('idservicios').value) == 0) {
+                var listcomb = $scope.listacomboServicios
+                angular.forEach(listcomb, function (value, key) {
+                    if (value.id_TipoServicio != 0) {
+                        listaservicio.push(value.id_TipoServicio);
+                    }
+
+                });
+            }
+            else {
+                listaservicio.push(document.getElementById('idservicios').value);
+            }
+
+            var id_local, id_operario, fecha_ini, fecha_fin;
+
+            id_local = document.getElementById('id_local').value;
+            id_operario = document.getElementById('id_operario').value;
+            fecha_ini = document.getElementById('f_inicial').value;
+            fecha_fin = document.getElementById('f_final').value;
+
+            var variables = {
+                method: 'POST',
+                url: '../EventoMovilOperarioSeguimiento/ListandoDatosCabecera_Seguimiento',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: id_local,
+                    id_operario: id_operario,
+                    fecha_ini: fecha_ini,
+                    fecha_fin: fecha_fin,
+                    lista: listaservicio.toString()
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $scope.Lista_Resumen_Operario = data;
+            })
+
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        }
+
+        $scope.id_tipoServicio = '-1';
+        $scope.listacomboServicios = [];
+        $scope.getServicios = function () {
+            var req = {
+                method: 'POST',
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                headers: {
+                    'Content-Type': undefined
+                }
+            }
+            $http(req).then(function (result) {
+                for (value of result.data) {
+                    if (value.id_TipoServicio == 1 || value.id_TipoServicio == 2 || value.id_TipoServicio == 3 || value.id_TipoServicio == 4) {
+                        $scope.listacomboServicios.push(value);
+                    }
+                }
+            }, function (error) {
+
+            });
+        }              
+ 
+    });    
+
+</script>
+
+<div ng-app="appEventoMovilOperarioSeguimiento" ng-controller="EventoMovilOperarioSeguiminetoCtrl" ng-init="ListandoOperarios();getServicios();">
+    <div class=" panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> EVENTOS DEL MÓVIL DEL OPERARIO SEGUIMIENTO</h6>
+        </div>
+        <div class="panel-body">
+
+            <div class="panel panel-primary">
+                <div class="panel-body">
+
+                    <form class="form-inline">
+                        <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                            <label for="id_local" class="control-label">Local</label>
+                            <select class="form-control" id="id_local" ng-model="index" ng-change="ListandoOperarios()">
+                                <option value="" selected="selected">-- Todos --</option>
+                                <option ng-repeat="item in ListadeLocales" value={{item.id_Local}}>{{item.nombre_local}}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                            <label for="_supervisor" class="control-label">Servicios</label>
+                            <select class="form-control" id="idservicios" ng-model="id_tipoServicio" style="width: 200px">
+                                <option value=-1>SELECCIONE </option>
+                                <option ng-repeat="serv in listacomboServicios | orderBy:'id_TipoServicio'" value="{{serv.id_TipoServicio}}">{{serv.nombre_tiposervicio}}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                            <label for="id_operario" class="control-label">Operario</label>
+                            <select class="form-control" id="id_operario">
+                                <option value="0" selected="selected">-- Todos --</option>
+                                <option ng-repeat="item in ListadeOperario" value={{item.id_Operario}}>{{item.Nombre_Operario}}</option>
+                            </select>
+                        </div>
+ 
+                        <div class="form-group" style="padding-left:15px; padding-right: 5px;padding-top: 10px">
+                            <label for="f_inicial" class="control-label">Fecha Inicial</label>
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input style="width:100px;" class="form-control" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                            <label for="f_final" class="control-label">Fecha Final</label>
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input style="width:100px;" class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+                        </div>
+
+
+                        <div class="form-group">
+                            <div style="text-align:right;" class="col-sm-4">
+                                <div class="form-group form-group-sm">
+                                    <button role="button" class="btn btn-primary btn-sm" id="procesar" ng-click="ListandoDatosCabecera_Seguimiento()"><i class="fa fa-refresh fa-lg"></i> Actualizar</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+
+            @* detalle*@
+            <div class="panel panel-primary">
+                <div class="panel-body">
+
+                    <div class="form-group">
+                        <table id="tbl_datos" class="table table-condensed table-bordered table-responsive" cellspacing="0">
+                            <thead style="background:#F0F3F5;">
+                                <tr>
+                                    <th>Nº fila</th>
+                                    <th>FECHA</th>
+                                    <th>OPERARIO</th>
+                                    <th>FECH. INICIO RECORRIDO</th>
+                                    <th>FECH. FIN RECORRIDO</th>
+                                    <th>CANT. PARADAS</th>
+                                    @*<th>VER RECORRIDO</th>*@
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="lista in Lista_Resumen_Operario">
+                                    <td>{{$index + 1}}</td>
+                                    <td>{{lista.FECHA}}</td>
+                                    <td>{{lista.Nombre_Operario}}</td>
+                                    <td>{{lista.fecha_inicio_recorrido}}</td>
+                                    <td>{{lista.fecha_fin_recorrido}}</td>
+                                    <td>{{lista.cantidad_paradas}}</td>
+                                    @*<td align="center">
+                                        <button type="button" class="btn btn-default btn-xs" ng-click="Fn_MostrarMapa(lista)">
+                                            <span class="glyphicon glyphicon-list"></span> Ver
+                                        </button>
+                                    </td>*@
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+

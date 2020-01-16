@@ -1,0 +1,35 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+
+@model List<Operario>
+
+@{
+    Layout = null;
+}
+
+<select class="form-control" id="_operador" name="_operador">
+    @if (Model == null)
+    {
+        <option value="-1" selected="selected">Sin datos disponibles</option>
+    }
+    else if (Model.Count == 0)
+    {
+        <option value="-1" selected="selected">Sin datos disponibles</option>
+    }
+    else
+    {
+        <option value="0" selected="selected">-- Todos --</option>
+
+        foreach (Operario oBj in Model)
+        {
+            if (Model.First() == oBj)
+            {
+                <option value="@oBj.ope_id">@oBj.ope_nombre</option>
+            }
+            else
+            {
+                <option value="@oBj.ope_id">@oBj.ope_nombre</option>
+            }
+        }
+    }
+</select>

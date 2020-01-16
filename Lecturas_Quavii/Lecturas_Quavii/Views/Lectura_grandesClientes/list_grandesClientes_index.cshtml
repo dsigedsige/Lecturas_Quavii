@@ -1,0 +1,847 @@
+﻿
+
+@using System.Configuration;
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Lectura de medidores de Grandes Clientes ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+
+    <link href="~/Content/style.css" rel="stylesheet" />
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+
+    <script src="~/Content/jQueryRotate/jQueryRotate.js"></script>
+    <script src="~/Content/angularfire/firebase.js"></script>
+    <script src="~/Content/angularfire/angularfire.min.js"></script>
+    <script src="~/Content/TableHeadFixed/tableHeadFixer.js"></script>
+
+    <link href="~/Content/images/lightbox.css" rel="stylesheet" />
+    <script src="~/Content/images/lightbox.js"></script>
+
+
+}
+
+@section styles{
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalLecturass {
+            width: 530px;
+        }
+
+
+        .datepicker {
+            width: 200px;
+        }
+
+
+        #Principal {
+            /*width: 98%;*/
+            height: 400px;
+        }
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+            padding-top: 4px;
+            padding-bottom: 3px;
+        }
+
+        /*.table tbody tr:hover td, .table tbody tr:hover th, .table tbody tr:hover th a {
+            background-color: rgba(28, 96, 177, 0.72) !important;
+            background-color: #00ACAC !important;
+            color: white !important;
+        }*/
+
+        .Julio table, th {
+            background-color: #019199 !important;
+            color: white !important;
+        }
+
+        .Julio table, td {
+            cursor: pointer;
+            text-align: right
+        }
+
+        .JulioCesar table, td {
+            cursor: pointer;
+            text-align: right
+        }
+
+        .list-group-item {
+            padding: 4px 20px;
+        }
+
+        .badge {
+            background-color: orange;
+        }
+
+        p {
+            font-size: 13px !important;
+        }
+
+        .nav-pills > li.active > a, .nav-pills > li.active > a:focus, .nav-pills > li.active > a:hover {
+            color: #fff !important;
+            background-color: #777;
+        }
+     </style>
+}
+
+@section scripts{
+
+
+    <script type="text/javascript">
+
+        var app = angular.module('appLecturaEnviarCliente', ['firebase']);
+
+        app.directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit(attr.onFinishRender);
+                        });
+                    }
+                }
+            }
+        });
+
+        app.directive('fileModel', ['$parse', function ($parse) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attrs) {
+                    var model = $parse(attrs.fileModel);
+                    var modelSetter = model.assign;
+
+                    element.bind('change', function () {
+                        scope.$apply(function () {
+                            modelSetter(scope, element[0].files[0]);
+                        });
+                    });
+                }
+            };
+        }]);
+        app.controller('grandesClientesCtrl', function ($scope, $http, $timeout, $q, $firebaseArray) {
+            //inicializando fechas
+            $(function () {
+                $('#dtp_fechaAsigna_inicial , #dtp_fechaAsigna_final').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+            })
+
+            $scope.InicializandoVariables = function () {
+                $scope.listando_Estados();
+            }
+
+            $scope.ListaEstados = [];
+            $scope.listando_Estados = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../LecturaEnviarCliente/ListandoEstadosAll',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        //$scope.ListaEstados = data;
+                        $scope.ListaEstados = [];
+                        for (obj of data) {
+                            if (obj.id_Estado == 3 || obj.id_Estado == 5 || obj.id_Estado == 7) {
+                                $scope.ListaEstados.push(obj);
+                            }
+                        }
+                        setTimeout(function () {
+                            $('#cbo_estado').val('5').trigger('change');
+                        }, 200);
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+
+            $scope.list_grandesClientes = [];
+
+            $scope.listando_grandesClientes = function () {
+                var cbo_estado = document.getElementById('cbo_estado').value;
+                var fecha_inicial = document.getElementById('dtp_fechaAsigna_inicial').value;
+                var fecha_final = document.getElementById('dtp_fechaAsigna_final').value;
+                var txt_codigoEmr = document.getElementById('txt_codigoEmr').value;
+
+                if (cbo_estado == '' || cbo_estado == '0' || cbo_estado == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Estado de la Lectura',
+                        type: 'error'
+                    });
+                    return;
+                }
+                if (fecha_inicial == '' || fecha_inicial == '0' || fecha_inicial == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione la fecha inicial de asignacion',
+                        type: 'error'
+                    });
+                    return;
+                }
+                if (fecha_final == '' || fecha_final == '0' || fecha_final == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione la fecha final de asignacion',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Lectura_grandesClientes/get_grandesClientes',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        estado: cbo_estado,
+                        fecha_inicial: fecha_inicial,
+                        fecha_final: fecha_final,
+                        codigoEmr: txt_codigoEmr
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.list_grandesClientes = [];
+                        $scope.list_grandesClientes = data;
+                        $('.sige-load').hide();
+                        setTimeout(function () {
+                            $("#tbl_grandesClientes").tableHeadFixer();
+                            $("#tbl_grandesClientes").tableHeadFixer({ "head": true, "left": 3 });
+                        }, 500);
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $scope.list_grandesClientes = [];
+                        $('.sige-load').hide();
+                    });
+            }
+                                 
+
+            $scope.descargar_grandesClientes = function () {
+                var id_link = document.getElementById('id_link');
+                var cbo_estado = document.getElementById('cbo_estado').value;
+                var fecha_inicial = document.getElementById('dtp_fechaAsigna_inicial').value;
+                var fecha_final = document.getElementById('dtp_fechaAsigna_final').value;
+                var txt_codigoEmr = document.getElementById('txt_codigoEmr').value;
+
+                if (cbo_estado == '' || cbo_estado == '0' || cbo_estado == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Estado de la Lectura',
+                        type: 'error'
+                    });
+                    return;
+                }
+                if (fecha_inicial == '' || fecha_inicial == '0' || fecha_inicial == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione la fecha inicial de asignacion',
+                        type: 'error'
+                    });
+                    return;
+                }
+                if (fecha_final == '' || fecha_final == '0' || fecha_final == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione la fecha final de asignacion',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../Lectura_grandesClientes/download_grandesClientes',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        estado: cbo_estado,
+                        fecha_inicial: fecha_inicial,
+                        fecha_final: fecha_final,
+                        codigoEmr: txt_codigoEmr
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+ 
+                        $('.sige-load').hide();
+                        var res = data.split("|");
+                        if (res[0].replace(/["]/gi, '') == 0 || res[0].replace(/["]/gi, '') == "0") {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'No hay información para mostrar.',
+                                type: 'success'
+                            });
+                        } else if (res[0].replace(/["]/gi, '') == -1 || res[0].replace(/["]/gi, '') == "-1") {
+                            alert(res[1]);
+                        }
+                        else {
+                            let url = res[1].replace(/["]/gi, '');
+                            id_link.href = res[1].replace(/["]/gi, '');
+                            id_link.click();
+                        }
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $scope.list_grandesClientes = [];
+                        $('.sige-load').hide();
+                    });
+            }
+
+
+
+            function SavePhoto(item) {
+                var nameFoto = item.nombreFoto.split("_");
+                nameFoto = nameFoto[0];
+                //nameFoto = nameFoto + '_' + item.cuenta_contrato + '.jpg'
+                nameFoto = item.cuenta_contrato + '_' + item.fecha + '_' + nameFoto + '.jpg'
+
+                var link = document.createElement('a');
+                link.href = item.fotourl;
+                link.download = nameFoto;
+                document.body.appendChild(link);
+                link.click();
+            }
+            function FechaActualSistema() {
+                var today = new Date();
+                var dd = today.getDate();
+                var mm = today.getMonth() + 1;
+
+                var yyyy = today.getFullYear();
+                if (dd < 10) {
+                    dd = '0' + dd
+                }
+                if (mm < 10) {
+                    mm = '0' + mm
+                }
+                var today = dd + '/' + mm + '/' + yyyy;
+
+                return today;
+            }
+
+
+            var degrees = 0;
+            $scope.rotateImg = function () {
+                degrees += 90;
+                console.log($('#imgRotate'));
+                $("#imgRotate").rotate(degrees);
+            }
+
+            document.querySelector("#buscarDelegacion").onkeyup = function () {
+                $TableFilter("#tbl_grandesClientes", this.value);
+            }
+
+            $TableFilter = function (id, value) {
+                var rows = document.querySelectorAll(id + ' tbody tr');
+
+                for (var i = 0; i < rows.length; i++) {
+                    var showRow = false;
+
+                    var row = rows[i];
+                    row.style.display = 'none';
+
+                    for (var x = 0; x < row.childElementCount; x++) {
+                        if (row.children[x].textContent.toLowerCase().indexOf(value.toLowerCase().trim()) > -1) {
+                            showRow = true;
+                            break;
+                        }
+                    }
+
+                    if (showRow) {
+                        row.style.display = null;
+                    }
+                }
+            }
+
+
+
+            /// Configuracion Tabcontrl Enfoque
+            $scope.tab = 1;
+            $scope.setTab = function (newTab) {
+                $scope.tab = newTab;
+            };
+
+            $scope.isSet = function (tabNum) {
+                return $scope.tab === tabNum;
+            };
+            /// Fin Configuracion Tabcontrl
+
+            $scope.checked = true;
+
+            var Id_GrandeClienteGlobal = '';
+
+            $scope.Open_New_Modal = function (obj) {
+                Id_GrandeClienteGlobal = obj.Id_GrandeCliente;
+                $scope.setTab(1)
+                setTimeout(function () {
+                    $('#modalMantenimiento').modal('show');
+                    $scope.detalleGrandesClientes(obj);
+                    $scope.detalleGrandesClientes_Files(obj);
+                }, 100);
+            }
+
+            $scope.list_detalle = [];
+            $scope.detalleGrandesClientes = function (obj) {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../Lectura_grandesClientes/get_grandesClientes_detalle',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        Id_GrandeCliente: obj.Id_GrandeCliente
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        $scope.list_detalle = [];
+                        $scope.list_detalle = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $scope.list_grandesClientes = [];
+                        $('.sige-load').hide();
+                    });
+            }
+
+
+            $scope.list_detalleFiles = [];
+            $scope.detalleGrandesClientes_Files = function (obj) {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../Lectura_grandesClientes/get_grandesClientes_detalleFile',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        Id_GrandeCliente: obj.Id_GrandeCliente
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        $scope.list_detalleFiles = [];
+                        $scope.list_detalleFiles = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $scope.list_grandesClientes = [];
+                        $('.sige-load').hide();
+                    });
+            }
+
+            $scope.descargarFile = function (tipo) {
+                //tipo = 1 fotos 2 archivos
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../Lectura_grandesClientes/get_download_grandesClientes',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        Id_GrandeCliente: Id_GrandeClienteGlobal,
+                        tipo: tipo
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        console.log(data);
+                        var res = data.split("|");
+                        if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                            alert(res[1]);
+                        }
+                        else {
+                            var url = res[1].replace(/["]/gi, '');
+                            window.open(url);
+                        }
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $scope.list_grandesClientes = [];
+                        $('.sige-load').hide();
+                    });
+            }
+
+            $scope.descargarFile_item = function (tipo, item) {
+                Id_GrandeClienteGlobal = item.Id_GrandeCliente;
+                $scope.descargarFile(tipo);
+            }
+
+
+
+            $scope.listandoUltimoCodigoEmr = function () {
+
+                var txt_codigoEmr = document.getElementById('txt_codigoEmr');
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../Lectura_grandesClientes/get_ultimoCodigoEmr',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        if (data.length > 0) {
+                            setTimeout(function () {
+                                txt_codigoEmr.value = data[0].CodigoEMR
+                            }, 500);
+                        } else {
+                            setTimeout(function () {
+                                txt_codigoEmr.value = "";
+                            }, 500);
+                        }
+                    })
+                  .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        setTimeout(function () {
+                            txt_codigoEmr.value = "";
+                        }, 500);
+                        $('.sige-load').hide();
+                });
+            }
+         })
+
+    </script>
+}
+
+<div ng-app="appLecturaEnviarCliente" ng-controller="grandesClientesCtrl" ng-init="InicializandoVariables()">
+
+    <div class="panel panel-oscuro" style="margin-top: -13px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> Grandes Clientes </h6>
+        </div>
+        <div class="panel-body">
+            <div class="well" style="background: #314b75; color: white;    margin-bottom: 1px;">
+                <div class="row" style="    margin-top: -17px;  margin-bottom: -10px;">
+                    <div class="col-xs-12 col-sm-6 col-md-6 col-lg-6">
+                        <div class="col-sm-6 col-md-4">
+                            <label class="control-label"> Estados</label>
+                            <select id="cbo_estado" class="form-control">
+                                <option value=0>--[ SELECCIONE ]-- </option>
+                                <option ng-repeat="item in ListaEstados" value="{{item.id_Estado}}">
+                                    {{item.descripcion_estado}}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6 col-md-6">
+                            <label class="control-label"> Rango de Asignacion </label>
+                            <div class="input-group">
+                                <input class="form-control" id="dtp_fechaAsigna_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                <span class="input-group-addon">-</span>
+                                <input class="form-control" id="dtp_fechaAsigna_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+                            <a id="id_link" href="" download style="display:none">link</a>
+                        </div>
+                    </div>
+
+                    <div class="col-xs-12 col-sm-6 col-md-6 col-lg-6">
+                        <div class=" col-xs-4 col-sm-4 col-md-4">
+                            <label class="control-label"> Codigo E.M.R </label>
+                            <input id="txt_codigoEmr" type="text" style="width:150px;" class="form-control" maxlength="30" />
+                        </div>
+                        <div class="col-xs-8 col-sm-8 col-md-8" style="text-align:center">
+                            <br />
+                            <button class="btn btn-primary btn-sm" ng-click="listando_grandesClientes()"><span class="glyphicon glyphicon-refresh"></span> Actualiza</button>
+                            <button class="btn btn-danger btn-sm" ng-click="listandoUltimoCodigoEmr()" title="Obtener el Último Codigo EMR"><span class="glyphicon glyphicon-upload"></span> EMR</button>
+                            <button class="btn btn-success btn-sm" ng-click="descargar_grandesClientes()"><span class="glyphicon glyphicon-download-alt"></span> Descarga</button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="row" style="    padding: 5px;">
+                <div class="col-xs-12 col-sm-8 col-md-8  col-lg-8 ">
+                    <span class="label label-primary" style=" font-size: 12px;"> Double Click en cualquier registro para abrir el detalle </span>
+                </div>
+            </div>
+            <div id="Principal" class="table-responsive">
+                <table id="tbl_grandesClientes" class="table " border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                    <thead>
+                        <tr>
+                            <th>
+                                #
+                            </th>
+                            <th colspan="2">
+                                <input id="buscarDelegacion" style="background-color: beige;color:green;font-family: tahoma;" type="text" class="form-control" placeholder="Buscar codigo EMR, cliente" />
+                            </th>
+                            <th colspan="13"></th>
+                        </tr>
+                        <tr>
+                            <th colspan="7" class="text-center">
+                                PUNTO DE LECTURA
+                            </th>
+                            <th>
+                                MEDIDOR
+                            </th>
+                            <th colspan="5" class="text-center">
+                                CORRECTOR
+                            </th>
+                            <th colspan="3" class="text-center">
+ 
+                            </th>
+                        </tr>
+
+                        <tr>
+                            <th>
+                                Nro
+                            </th>
+                            <th class="Julio text-center">CODIGO ERM</th>
+                            <th class="Julio text-center">NOMBRE DEL CLIENTE</th>
+                            <th class="Julio">FECHA</th>
+                            <th class="Julio">HORA</th>
+
+                            <th class="Julio" style="text-align:center">NIVEL DE LEL(%) </th>
+                            <th class="Julio"> PRESIÓN ENTRADA(BAR)</th>
+                            <th class="Julio"> CONTADOR MECÁNICO(m3)</th>
+                            <th class="Julio"> VOL.ACC.SIN CORREGIR(m3)</th>
+
+                            <th class="Julio"> VOL.ACC.CORREGIDO(Std  m3)</th>
+                            <th class="Julio"> PRESIÓN(Bara)</th>
+                            <th class="Julio">TEMP.(ºC)</th>
+                            <th class="Julio">TIEMPO BATERÍA(Días/%)</th>
+                            <th class="Julio"> OBSERVACIONES</th>
+                            <th class="Julio" colspan="2" > DESCARGAR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="item in list_grandesClientes ">
+                            <td>
+                                {{$index +1}}
+                            </td>
+                            <td class="Julio" ng-click="Open_New_Modal(item)">{{item.codigo_erm}}</td>
+                            <td class="Julio text-left" ng-click="Open_New_Modal(item)"><div style="width:250px;">{{item.nombre_cliente}}</div> </td>
+                            <td class="Julio">{{item.fecha}}</td>
+
+                            <td class="JulioCesar"> {{item.hora}} </td>
+                            <td class="JulioCesar"> {{item.nivelel_porc}} </td>
+                            <td class="JulioCesar"> {{item.presion_entrada_bar}} </td>
+                            <td class="JulioCesar"> {{item.contador_mecanico_m3}} </td>
+                            <td class="JulioCesar"> {{item.vol_acc_sin_corregir_m3}} </td>
+                            <td style="cursor: pointer;text-align:center"> {{item.vol_acc_corregido_std_m3}} </td>
+                            <td style="cursor: pointer;text-align:center"> {{item.presion_bara}} </td>
+
+                            <td style="cursor: pointer;text-align:center"> {{item.temp}} </td>
+                            <td style="cursor: pointer;text-align:center"> {{item.tiempo_bateria_dias}} </td>
+                            <td style="cursor: pointer;text-align:center"> {{item.observaciones}} </td>
+                            <td>
+                                <span class="label label-warning" style="font-size: 11px;" ng-click="descargarFile_item(1, item);">Fotos</span>
+                            </td>
+                            <td >
+                                <span class="label label-danger" style="font-size: 11px;" ng-click="descargarFile_item(2, item);">Archivos</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+            <div id="modalMantenimiento" class="modal fade bd-example-modal-lg " tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg" style="width:600px">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                            <h4 class="modal-title" id="myLargeModalLabel">{{titleModal}}</h4>
+                        </div>
+
+                        <div class="modal-body">
+                            <div class="loaderModal" ng-if="loaderSave"></div>
+                            <section>
+                                <ul class="nav nav-pills JulioC">
+                                    <li ng-class="{ active: isSet(1) } ">
+                                        <a href="" ng-click="setTab(1)" font-size 11px; text-align center">DATOS GENERALES</a>
+                                    </li>
+                                    <li ng-class="{ active: isSet(2) }">
+                                        <a href="" ng-click="setTab(2)" font-size 11px; text-align center">ARCHIVOS CARGADOS</a>
+                                    </li>
+                                </ul>
+
+                                <div ng-show="isSet(1)" style=" margin-top: 5px;">
+                                    <div id="datosGenerales" style="padding: 15px; ">
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <ul class="list-group" ng-repeat="item in list_detalle " style="color:#7991a5">
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px; display: contents;">% Mezcla explosiva :  {{item.mezcla_explosiva_porc}} </p>
+                                                    </li>
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        Valor nanometrico de presion de entrada : {{item.valor_nanometrico_presion_entrada}}  
+                                                        <span ng-if=" '' === item.valor_nanometrico_presion_entrada_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.valor_nanometrico_presion_entrada_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.valor_nanometrico_presion_entrada_Foto}}" data-lightbox="example-1">ver</a>
+                                                        </span>
+
+                                                    </li>
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px; display: contents;"> Valor de volumen sin corregir de la unidad correctora : {{item.valor_volumen_corregir_unidad_correctora}}  </p>
+                                                        <span ng-if=" '' === item.valor_volumen_corregir_unidad_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.valor_volumen_corregir_unidad_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.valor_volumen_corregir_unidad_Foto}}" data-lightbox="example-1">ver</a>
+                                                        </span>
+                                                    </li>
+
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Valor de volumen sin corregir del medidor : {{item.valor_volumen_corregir_medidor}}  </p>
+                                                        <span ng-if=" '' === item.valor_volumen_corregir_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.valor_volumen_corregir_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.valor_volumen_corregir_Foto}}" data-lightbox="example-1"> ver</a>
+                                                        </span>
+                                                    </li>
+
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Valor de volumen  registrador de la unidad correctora : {{item.valor_volumen_registrador_unidad_correctora}} </p>
+                                                        <span ng-if=" '' === item.valor_volumen_registrador_unidad_correctora_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.valor_volumen_registrador_unidad_correctora_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.valor_volumen_registrador_unidad_correctora_Foto}}" data-lightbox="example-1"> ver</a>
+                                                        </span>
+                                                    </li>
+
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Valor de la presion de medicion de UC :  {{item.valor_presion_medicion_uc}} </p>
+                                                        <span ng-if=" '' === item.valor_presion_medicion_uc_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.valor_presion_medicion_uc_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.valor_presion_medicion_uc_Foto}}" data-lightbox="example-1"> ver</a>
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Valor de la temperatura de medicion  de la UC : {{item.valor_temperatura_medicion_uc}} </p>
+                                                        <span ng-if=" '' === item.valor_temperatura_medicion_uc_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.valor_temperatura_medicion_uc_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.valor_temperatura_medicion_uc_Foto}}" data-lightbox="example-1"> ver</a>
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Tiempo de vida de la bateria : {{item.tiempo_vida_bateria}}</p>
+                                                        <span ng-if=" '' === item.tiempo_vida_bateria_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.tiempo_vida_bateria_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.tiempo_vida_bateria_Foto}}" data-lightbox="example-1"> ver</a>
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Foto panoramica :</p>
+                                                        <span ng-if=" '' === item.foto_panoramica" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.foto_panoramica" class="badge">
+                                                            <a class="example-image-link" href="{{item.foto_panoramica}}" data-lightbox="example-1"> ver</a>
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Tiene gabinete tememetria : {{item.tiene_gabinete_tememetria}}</p>
+                                                        <span ng-if=" '' === item.tiene_gabinete_tememetria_Foto" class="badge"></span>
+                                                        <span ng-if=" '' !=  item.tiene_gabinete_tememetria_Foto" class="badge">
+                                                            <a class="example-image-link" href="{{item.tiene_gabinete_tememetria_Foto}}" data-lightbox="example-1"> ver</a>
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item list-group-item-warning">
+                                                        <p style="margin-bottom: 1px;display: contents;">Presente cliente : {{item.presente_cliente}}</p>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        <button role="button" class="btn btn-warning btn-sm" ng-click="descargarFile(1);" title="Descargar Todas Fotos"><i class="fa fa-camera fa-lg"></i> Fotos</button>
+                                    </div>
+                                </div>
+
+                                <div ng-show="isSet(2)" style=" margin-top: 5px;">  
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <h4 class="text-center" style="color:brown"> LISTA DE ARCHIVOS</h4>
+                                            <ul class="list-group">
+                                                <li class="list-group-item list-group-item-warning" ng-repeat="file in list_detalleFiles ">
+                                                    {{file.nombreFile}}
+                                                </li>
+                                            </ul>
+                                            <div class="text-center">
+                                                <button class="btn btn-warning btn-sm"  ng-click="descargarFile(2)" title="Descargar archivos"><span class="glyphicon glyphicon-download-alt"></span> Archivos</button>
+                                            </div>                                
+                                        </div>
+                                    </div>                              
+                                </div>
+                            </section>
+                        </div>
+
+                        <div class="modal-footer ">
+                            <a class="btn btn-default" data-dismiss="modal"><span class="glyphicon glyphicon-remove-sign"></span> Cerrar</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+
+</div>
+
+

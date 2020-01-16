@@ -1,0 +1,468 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Exportar Trabajos Lecturas ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    @Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+     <style>
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        .btn {
+            font-size: 12px;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 600px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 600px;
+        }
+
+        .datepicker {
+            width: 200px;
+        }
+
+        th {
+            text-align: left;
+        }
+        .Julio table, th {
+            background-color: #019199 !important;
+            color: white !important;
+        }
+
+        .select2-container {
+            width: 98%; 
+        }
+
+    </style>
+
+
+    <script type="text/javascript">
+        //var app = angular.module('myApp', []);
+
+        var app = angular.module('myApp', []).directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit('ngRepeatFinished');
+                        });
+                    }
+                }
+            }
+        }).directive('fileModel', ['$parse', function ($parse) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attrs) {
+                    var model = $parse(attrs.fileModel);
+                    var modelSetter = model.assign;
+
+                    element.bind('change', function () {
+                        scope.$apply(function () {
+                            modelSetter(scope, element[0].files[0]);
+                        });
+                    });
+                }
+            };
+        }]);
+
+
+        app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+            $(function () {
+                $('#id_fecha_asignacion').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+            });
+
+            $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {                
+                oTable = $('#tblLista').DataTable({
+                    "scrollX": true
+                });
+            });
+
+            // Listar
+
+            $scope.ListaLecturas = [];
+            var oTable = null;
+
+            $scope.Inicializando = function () {
+                $scope.id_tipoServicio = '0';
+                $scope.id_local = '0';
+                $scope.Listado_Servicios() 
+                setTimeout(function () {
+                    $("select").select2(); 
+                }, 300);
+
+            }
+
+            $scope.ListaLocales = [];
+            $scope.listando_Locales = function () {
+                var variables = {
+                    method: 'post',
+                    url: '../AsignaOrdenTrabajo/ListandoLocales',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.ListaLocales = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+            $scope.listando_Locales();
+
+
+            ///Creando la Funcion
+            $scope.Obj_List_Servicios = [];
+            $scope.Listado_Servicios = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../Importar_Excel/ListadoServicios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.Obj_List_Servicios = [];
+
+                        for (obj of data) {
+                            if (obj._a == '3' || obj._a == '4' ) {
+                                $scope.Obj_List_Servicios.push(obj);
+                            }
+                        }
+                    })
+
+                    .error(function () {
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+            }
+
+ 
+ 
+            
+
+            $scope.ActualizarInformacion = function () {
+
+                var fecha = document.getElementById('id_fecha_asignacion').value;
+                var cboServicio = document.getElementById('id_servicio').value;
+
+                if (fecha=='') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione o ingrese una fecha. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'post',
+                    url: '../ExportarTrabajosLecturas/MostrarInformacion',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fechaAsignacion: fecha,
+                        TipoServicio: cboServicio
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                        
+                    if (data.length == 0) {
+                        if (oTable == null) {
+                            console.log('Entro == null')
+                            $scope.ListaLecturas = [];
+                        } else {
+                            console.log('Entro != null')
+                            oTable.destroy();
+                            $scope.ListaLecturas = [];
+                            oTable = null;
+                        }
+                        $('.sige-load').hide();
+                        return;
+                    }
+                    if (oTable == null) {
+                        $scope.ListaLecturas = [];
+                        $scope.ListaLecturas = data;
+                    } else {
+                        oTable.destroy();
+                        $scope.ListaLecturas = [];
+                        $scope.ListaLecturas = data;
+                    }
+
+
+                    $('.sige-load').hide();
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+            };
+
+            $scope.DescargaExcel = function () {
+                var fecha = document.getElementById('id_fecha_asignacion').value;
+                var cboServicio = document.getElementById('id_servicio').value;
+                var cbo_local = document.getElementById('cbo_local').value;
+
+                if (fecha == undefined || fecha == '' || fecha == '0') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione o ingrese una fecha. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                if (cboServicio == undefined || cboServicio == '' || cboServicio == '0') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione o ingrese una fecha. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'post',
+                    url: '../ExportarTrabajosLecturas/DescargaExcel_New',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        Local: cbo_local,
+                        fechaAsignacion: fecha,
+                        TipoServicio: cboServicio
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    var res = data.split("|");
+                    if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                        console.log(res[1]);
+                    } else {
+                        var url = res[1].replace(/["]/gi, '');                 
+                        window.open(url);
+                    }
+                    $('.sige-load').hide();
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+            };
+
+            //exportar
+            $scope.tableToExcel = function (tableId) {
+                var uri = 'data:application/vnd.ms-excel;base64,',
+                      template = '<html lang="es" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Importar</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>',
+                      base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))); },
+                      format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+                var table = $(tableId),
+                             ctx = { worksheet: 'descar123', table: table.html() };
+
+                var link = document.createElement("a");
+                link.download = "ImportacionLecturas.xls";
+                link.href = uri + base64(format(template, ctx));
+                link.click()
+            }
+
+
+        });
+
+    </script>
+
+}
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="Inicializando();">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> EXPORTAR TRABAJOS DE LECTURAS</h6>
+        </div>
+        <div class="panel-body">
+ 
+            <div class="well" style="background: #314b75; color: white;">
+                <div class="row">
+                    <div class="col-md-4">
+                    </div>
+                    <div class="col-md-4">
+
+                        <div class="col-md-12">
+                            <label for="cbo_local" style="font-size:11px">Local:</label>
+                            <br />
+                            <select id="cbo_local" ng-model="id_local">
+                                <option value=0>--[ TODOS ]-- </option>
+                                <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                    {{item.loc_nombre}}
+                                </option>
+                            </select>
+                        </div>
+                        <br />
+                        <hr />
+                        <div class="col-md-12">
+                            <label for="email">Fecha Asignación:</label>
+                            <br />
+                            <input class="form-control julio" id="id_fecha_asignacion" style="width:200px" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                        </div>
+                        <br />
+                        <hr />
+                        <div class="col-md-12">
+                            <label for="id_servicio" style="font-size:11px">Servicio:</label>
+                            <br />
+                            <select id="id_servicio" ng-model="id_tipoServicio">
+                                <option value=0>--[ Seleccione ]-- </option>
+                                <option ng-repeat="item in Obj_List_Servicios" value="{{item._a}}"> {{item._b}} </option>
+                            </select>
+                        </div>
+                        <br />
+
+                        <div class="col-md-12" style="text-align:center">
+                            <br />
+                            <button id="btn_subir" type="button" class="btn btn-primary btn-sm" ng-click="DescargaExcel()"><span class="glyphicon glyphicon-download"></span> Exportar</button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                    </div>
+                </div>
+            </div>
+            <hr />
+            <br />
+            <br />
+ 
+
+            @*<div id="Principal" class="table-responsive">
+            <table id="tblLista" class="table table-striped table-bordered dt-responsive nowrap">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>INSTALACIÓN</th>
+                        <th>EQUIPO</th>
+                        <th>APARATO</th>
+                        <th>DIRECCIÓN</th>
+                        <th>DISTRITO</th>
+                        <th>CÓDIGO POSTAL</th>
+                        <th>POBLACIÓN</th>
+                        <th>EMPLAZAMIENTO</th>
+                        <th>SUPLEMENTO DE EMPLAZAMIENTO</th>
+                        <th>LECTURA ANTERIOR</th>
+                        <th>FECHA PLANIFICADA DE LECTURA ANTERIOR</th>
+                        <th>FECHA PLANIFICADA DE LECTURA ACTUAL</th>
+                        <th>FECHA PLANIFICADA DE LECTURA PRÓXIMA</th>
+                        <th>INTERLOCUTOR COMERCIAL</th>
+                        <th>CUENTA CONTRATO</th>
+                        <th>TIPO DE CLIENTE</th>
+                        <th>CATEGORÍA</th>
+                        <th>SECUENCIA DE LECTURA </th>
+                        <th>UNIDAD DE LECTURA</th>
+                        <th>NÚMERO DE LECTURAS ESTIMADAS CONSECUTIVAS</th>
+                        <th>MARCA DE PRIMERA LECTURA</th>
+                        <th>EMPRESA LECTORA</th>
+                        <th>NOTA 1 DE LA UBICACIÓN DEL APARATO</th>
+                        <th>NOTA 2 DE LA UBICACIÓN DEL APARATO</th>
+                        <th>TECNICO</th>
+                        <th>SECUENCIA</th>
+                        <th>GRUPO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="item in ListaLecturas" on-finish-render="ngRepeatFinished">
+                        <td>{{$index + 1}}</td>
+                        <td>{{item.Instalacion}}</td>
+                        <td>{{item.Equipo}}</td>
+                        <td>{{item.Aparato}}</td>
+                        <td>{{item.direccion_lectura}}</td>
+                        <td>{{item.Distrito}}</td>
+                        <td>{{item.Codigo_postal}}</td>
+                        <td>{{item.Poblacio}}</td>
+                        <td>{{item.Emplazamiento}}</td>
+                        <td>{{item.Suplemento_emplazamiento}}</td>
+                        <td>{{item.Lectura_anterior}}</td>
+                        <td>{{item.Fecha_planificada_lectura_anterior}}</td>
+                        <td>{{item.Fecha_planificada_lectura_actual}}</td>
+                        <td>{{item.Fecha_planificada_lectura_proxima}}</td>
+                        <td>{{item.Interlocutor_comercial}}</td>
+                        <td>{{item.Cuenta_contrato}}</td>
+                        <td>{{item.Tipo_Cliente}}</td>
+                        <td>{{item.Categoria}}</td>
+                        <td>{{item.Secuencia_lectura}}</td>
+                        <td>{{item.Unidad_lectura}}</td>
+                        <td>{{item.Numero_lecturas_estimadas_consecutivas}}</td>
+                        <td>{{item.Marca_primera_lectura}}</td>
+                        <td>{{item.Empresa_Lectora}}</td>
+                        <td>{{item.Nota_1_ubicacion_aparato}}</td>
+                        <td>{{item.Nota_2_ubicacion_aparato}}</td>
+                        <td>{{item.Tecnico}}</td>
+                        <td>{{item.Secuencia}}</td>
+                        <td>{{item.Grupo}}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+
+        </div>*@
+
+
+
+        </div>
+    </div>
+
+
+</body>
+</html>
+
+

@@ -1,0 +1,568 @@
+﻿ @{
+     ViewBag.Title = "EventoMovilOperario";
+     Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+}
+
+
+@section styles{
+    <style type="text/css">
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalreasig {
+            width: 350px;
+        }
+
+        .datepicker {
+            width: 200px;
+            top: 228px !important;
+        }
+
+
+        #modal-mapa {
+            top: 5%;
+            right: 50%;
+            outline: none;
+        }
+        th {
+        text-align: center;  
+        }
+    </style>
+}
+
+
+<script type="text/javascript">
+
+    $(function () {
+        $('#f_inicial').datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true
+        });
+    })
+
+    $(function () {
+        $('#f_final').datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true
+        });
+    })
+
+    //fin inicializando fechas
+
+
+
+
+
+
+    @*codigo angular*@
+
+    var app = angular.module('appEventoMovilOperario', []).directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }]);
+
+    //var app = angular.module('appEventoMovilOperario', []);
+
+    app.controller('EventoMovilOperarioCtrl', function ($scope, $http) {
+        oTable = null;
+
+
+         $scope.Fn_Ver_Ubicacion_Mapa = function (rows) {
+            var imagen_mapa = "";
+            imagen_mapa = document.getElementById('id_Imagen_mapa');
+            imagen_mapa.src = 'http://maps.googleapis.com/maps/api/staticmap?center=' + rows.latitud_lectura + ',' + rows.longitud_lectura + '&zoom=15&scale=false&size=600x380&maptype=roadmap&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:A%7C' + rows.latitud_lectura + ',' + rows.longitud_lectura + '';
+        }
+        // Listando
+        $scope.ListandoLocales = function () {
+
+            var variables = {
+                method: 'POST',
+                url: '../EventoMovilOperario/ListandoLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $scope.ListadeLocales = data;
+            })
+
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        //inicilizando
+        $scope.ListandoLocales()
+        // Listando Operarios segun Local
+        $scope.ListandoOperarios = function () {
+            var id_local, local;
+            id_local = document.getElementById('id_local').value;
+
+            local = id_local;
+            if (id_local == '') {
+                local = 0;
+            }
+            var variables = {
+                method: 'POST',
+                url: '../EventoMovilOperario/ListandoOperarioLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: 1
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $scope.ListadeOperario = data;
+            })
+
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.ListandoOperarios();
+
+        // Listando Seguimiento Operario Datos Cabecera
+        $scope.ListandoDatosCabecera = function () {
+            var listaservicio = [];
+
+            if (parseInt(document.getElementById('idservicios').value) == 0) {
+                var listcomb = $scope.listacomboServicios
+
+                angular.forEach(listcomb, function (value, key) {
+                    if (value.id_TipoServicio != 0) {
+                        listaservicio.push(value.id_TipoServicio);
+                    }
+                });
+            }
+            else {
+                listaservicio.push(document.getElementById('idservicios').value);
+            }
+
+
+            var id_local, id_operario, fecha_ini, fecha_fin;
+
+            id_local = document.getElementById('id_local').value;
+            id_operario = document.getElementById('id_operario').value;
+            fecha_ini = document.getElementById('f_inicial').value;
+            fecha_fin = document.getElementById('f_final').value;
+
+
+            if (id_operario == '' || id_operario == '0' || id_operario == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Operario',
+                    type: 'error'
+                });
+                return;
+            }
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../EventoMovilOperario/ListandoDatosCabecera',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: id_local,
+                    id_operario: id_operario,
+                    fecha_ini: fecha_ini,
+                    fecha_fin: fecha_fin,
+                    lista: listaservicio.toString()
+                }
+            }
+
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                $scope.Lista_Resumen_Operario = data;
+            })
+                .error(function () {
+                    $('.sige-load').hide();
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        }
+
+        $scope.id_tipoServicio = '-1';
+        $scope.listacomboServicios = [];
+
+        $scope.getServicios = function () {
+            var req = {
+                method: 'POST',
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                headers: {
+                    'Content-Type': undefined
+                }
+            }
+            $http(req).then(function (result) {
+                //$scope.listacomboServicios = result.data;
+                //console.log(result.data)
+
+                //if (result.data.length == $scope.listacomboServicios[0].cantidad) {
+
+                //    $scope.listacomboServicios.push({ nombre_tiposervicio: "TODOS", id_TipoServicio: '0' });
+                //    // $scope.id_tipoServicio = '0';
+                //    $scope.listacomboServicios = result.data;
+                //}
+                //else {
+                //    $scope.listacomboServicios = result.data;
+                //}
+                for (value of result.data) {
+                    if (value.id_TipoServicio == 1 || value.id_TipoServicio == 2 || value.id_TipoServicio == 3 || value.id_TipoServicio == 4) {
+                        $scope.listacomboServicios.push(value);
+                    }
+                }
+
+            }, function (error) {
+
+            });
+        }
+                                  /// Listando detallado de Seguimiento Operario Detallado
+        $scope.ListandoDatosOperarioDetallado = function (obj_item) {
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../EventoMovilOperario/ListandoDatosOperarioDetallado',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_operario: obj_item.id_Operario,
+                    fecha: obj_item.FECHA
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                console.log(data)
+                if (oTable == null) {
+                    $scope.ListaOperariosDetallados = data;
+
+                } else {
+                    oTable.destroy();
+                    $scope.ListaOperariosDetallados = data;
+                }
+
+                $('.sige-load').hide();
+
+            })
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+
+        $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            oTable = $('#tblListaDetalle').DataTable();
+        });
+
+    });
+
+
+
+
+
+
+
+
+</script>
+
+<div ng-app="appEventoMovilOperario" ng-init="ListandoOperarios();getServicios();" ng-controller="EventoMovilOperarioCtrl">
+
+    <div>
+        <div class=" panel panel-oscuro"  style="margin-top: -13px;">
+            <div class="panel-heading">
+                <h6><i class="fa fa-table fa-lg"></i> EVENTOS DEL MÓVIL DEL OPERARIO</h6>
+            </div>
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="panel panel-info col-sm-12" style="background-color: #ddd !important;">
+                        <div class="panel-body col-sm-12">
+                            <div class="form-inline ">
+
+                                <div class="form-group" style="display:none">
+                                    <label for="id_local" class="col-lg-2 control-label">Local</label>
+                                </div>
+                                <div class="form-group"  style="display:none">
+                                    <select class="form-control" id="id_local" ng-model="index" ng-change="ListandoOperarios()">
+                                        <option value="" selected="selected">-- Todos --</option>
+                                        <option ng-repeat="item in ListadeLocales" value={{item.id_Local}}>{{item.nombre_local}}</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="padding-left:5px;">
+                                    <label for="_supervisor" class="control-label">Servicios</label>
+                                </div>
+                                <div class="form-group form-group">
+                                    <select class="form-control" id="idservicios" ng-model="id_tipoServicio">
+                                        <option value=-1>SELECCIONE </option>
+                                        <option ng-repeat="serv in listacomboServicios " value="{{serv.id_TipoServicio}}">{{serv.nombre_tiposervicio}}</option>
+
+                                    </select>
+                                </div>
+
+
+
+
+
+                                <div class="form-group">
+                                    <label for="id_operario" class="col-lg-2 control-label">Operario</label>
+                                </div>
+                                <div class="form-group" style="padding-left: 5px; padding-right: 5px;">
+
+                                    <select class="form-control" id="id_operario" style="width: 200px">
+                                        <option value="" selected="selected">-- SELECCIONE --</option>
+
+                                        <option ng-repeat="item in ListadeOperario" value={{item.id_Operario}}>{{item.Nombre_Operario}}</option>
+                                    </select>
+
+                                </div>
+
+
+
+
+                                <div class="form-group form-group-sm" style="padding:5px;padding-left:5px">
+                                    <label for="_fechaAsigna" class="control-label">Fecha Inicial</label>
+                                </div>
+
+                                <div class="form-group">
+
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input style="width:100px;" class="form-control" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+
+                                </div>
+                                <div class="form-group form-group-sm" style="padding:5px;padding-left:5px">
+                                    <label for="_fechaAsigna" class="control-label">Fecha Final</label>
+                                </div>
+                                <div class="form-group">
+
+
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input style="width:100px;" class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+
+
+                                </div>
+
+
+                                <div class="form-group" style="float:right;">
+                                    <div style="text-align:right;" class="col-sm-4">
+                                        <div class="form-group form-group-sm">
+
+                                            <button role="button" class="btn btn-primary btn-sm" id="procesar" ng-click="ListandoDatosCabecera()"><i class="fa fa-refresh fa-lg"></i> Actualizar</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @* detalle*@
+            <div class="panel panel-primary">
+                <div class="panel-body">
+
+                    <div class="form-group">
+                        <table id="tbl_datos" class="table table-condensed table-bordered table-responsive" cellspacing="0">
+                            <thead style="background:#F0F3F5;">
+                                <tr>
+                                    <th>Nº fila</th>
+                                    <th>FECHA</th>
+                                    <th>HORA</th>
+                                    <th>OPERARIO</th>
+                                    <th>GPS</th>
+                                    <th align="center">% BATERIA</th>
+                                    <th>DATOS</th>
+                                    <th>MODO AVIÓN</th>
+                                    <th>VER DETALLE</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="lista in Lista_Resumen_Operario">
+                                    <td>{{$index + 1}}</td>
+                                    <td>{{lista.FECHA}}</td>
+                                    <td>{{lista.HORA}}</td>
+                                    <td>{{lista.Nombre_Operario}}</td>
+                                    <td style="width:100px;" align="center" ng-if="lista.GPS=='SI'"><i style="color: #4f8edc;" class="fa fa-check fa-lg .activo"></i></td>
+                                    <td style="width:100px;" align="center" ng-if="lista.GPS=='NO'"><i style="color: #e73c3c;" class="fa fa-times fa-lg .inactivo"></i></td>
+
+                                    <td align="center">{{lista.BATERIA}}</td>
+                                    <td style="width:100px;" align="center" ng-if="lista.DATOS=='SI'"><i style="color: #4f8edc;" class="fa fa-check fa-lg .activo"></i></td>
+                                    <td style="width:100px;" align="center" ng-if="lista.DATOS=='NO'"><i style="color: #e73c3c;" class="fa fa-times fa-lg .inactivo"></i></td>
+
+                                    <td style="width:100px;" align="center" ng-if="lista.MODO_AVION=='SI'"><i style="color: #4f8edc;" class="fa fa-check fa-lg .activo"></i></td>
+                                    <td style="width:100px;" align="center" ng-if="lista.MODO_AVION=='NO'"><i style="color: #e73c3c;" class="fa fa-times fa-lg .inactivo"></i></td>
+                                    <td align="center">
+                                        <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modal-detallado" ng-click="ListandoDatosOperarioDetallado(lista)">
+                                            <span class="glyphicon glyphicon-list"></span> Ver detalle
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @*modal del detallado*@
+    <div id="modal-detallado" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" style=" width: 50% !important;">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> EVENTO MÓVIL OPERARIO DETALLADO</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <table id="tblListaDetalle" class="table table-condensed table-bordered table-responsive" cellspacing="0">
+                            <thead style="background:#F0F3F5;">
+                                <tr>
+                                    <th>Nº fila</th>
+                                    <th>FECHA</th>
+                                    <th>OPERARIO</th>
+                                    <th>GPS</th>
+                                    <th>% BATERIA</th>
+                                    <th>DATOS</th>
+                                    <th>MODO AVIÓN</th>
+                                    @*<th>UBICACIÓN</th>*@
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="lista in ListaOperariosDetallados" on-finish-render="ngRepeatFinished">
+                                    <td>{{$index + 1}}</td>
+                                    <td>{{lista.FECHA}}</td>
+                                    <td>{{lista.Nombre_Operario}}</td>
+                                    <td>{{lista.GPS}}</td>
+                                    <td>{{lista.BATERIA}}</td>
+                                    <td>{{lista.DATOS}}</td>
+                                    <td>{{lista.MODO_AVION}}</td>
+                                    @*<td align="center"><a ng-click="Fn_Ver_Ubicacion_Mapa(lista)" href="#" data-toggle="modal" data-target="#modal-mapa">Ver en el Mapa</a></td>*@
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i>Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="modal-mapa" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="panel panel-oscuro" style="width:600px;">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> UBICACIÓN EN GOOGLE MAPS.</h6>
+                </div>
+                <!-- Modal content-->
+                <div class="modal-content" style="width:600px;">
+                    <div class="modal-body">
+                        <img id="id_Imagen_mapa" class="img-responsive img-rounded" alt="Cinque Terre" style="width:100%;height:auto;">
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+
+

@@ -1,0 +1,1657 @@
+﻿
+@{
+    ViewBag.Title = "Enviar_trabajos";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+
+<style>
+    .modal-dialog {
+        width: 400px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+    table td:nth-child(1) {
+        width: 100px;
+    }
+
+    table td:nth-child(2) {
+        width: 200px;
+    }
+
+    table td:nth-child(3) {
+        width: 100px;
+    }
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+    tfoot {
+        color: red;
+    }
+
+    /*div.dataTables_wrapper div.dataTables_filter {
+        text-align: right;
+        margin-top: -30px !important;
+    }*/
+
+    div.dataTables_wrapper div.dataTables_filter input {
+        background: beige;
+    }
+
+
+    [tooltip]:before {
+        /* needed - do not touch */
+        content: attr(tooltip);
+        position: absolute;
+        opacity: 0;
+        /* customizable */
+        transition: all 0.15s ease;
+        padding: 10px;
+        color: red;
+        border-radius: 10px;
+        box-shadow: 2px 2px 1px silver;
+        font-family:Tahoma
+    }
+
+    [tooltip]:hover:before {
+        /* needed - do not touch */
+        opacity: 1;
+        /* customizable */
+        background: beige;
+        margin-top: -50px;
+        margin-left: 20px;
+    }
+
+    [tooltip]:not([tooltip-persistent]):before {
+        pointer-events: none;
+    }
+ 
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+    var app = angular.module('myApp', []).directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    });;
+
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+
+        $(function () {
+            $('#dtp_fechaAsigna').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $scope.InicializandoVariables = function () { 
+            setTimeout(function () {
+                var txt_suministro = document.getElementById('txt_suministro');
+                var txt_medidor = document.getElementById('txt_medidor');
+                var cbo_tecnico = document.getElementById('cbo_tecnico');
+                var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');     
+
+                txt_suministro.value = '';
+                txt_medidor.value = '';
+                cbo_tecnico.value = '0';
+            }, 500);
+        }
+
+        $scope.listando_Locales = function () {
+            var variables = {
+                method: 'post',
+                url: '../AsignaOrdenTrabajo/ListandoLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.ListaLocales = data;
+                setTimeout(function () {
+                    $scope.id_local = '1';
+                    $('#cbo_local').val(1).trigger('change');
+                }, 200);
+            })
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Locales();
+
+        $scope.listando_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../LecturaEnviarCliente/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.ListaServicios = data;
+
+                setTimeout(function () {
+                    $scope.id_tipoServicio = '0';
+                    $('#cbo_servicio').val(0).trigger('change');
+                }, 200);
+
+            })
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Servicios();
+        
+
+        $scope.listando_Estados = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../LecturaEnviarCliente/ListandoEstadosLectura',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.ListaEstados = data;
+                setTimeout(function () {
+                    $('#cbo_estado').val(0).trigger('change');
+                    $scope.InicializandoVariables();
+                }, 200); 
+            })
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Estados();
+
+        $scope.listando_Tecnico = function (local, servicio) {
+            var variables = {
+                method: 'POST',
+                url: '../AsignaOrdenTrabajo/ListandoTecnicos',
+
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: local,
+                    id_tipo_servicio: servicio
+                }
+            }
+            $('.sige-load').show();
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.ListaTecnico = [];
+                $scope.ListaTecnicoReasignar = [];
+                $scope.ListaTecnico = data;
+                $scope.ListaTecnicoReasignar = data;
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+
+        $scope.Tecnico_Change = function (id) {
+
+            var cbo_local = document.getElementById('cbo_local').value;
+            var cbo_servicio = document.getElementById('cbo_servicio').value;
+            //if (cbo_local == 0 || cbo_local == "0") {
+            //    return;
+            //}
+            if (cbo_servicio == 0 || cbo_servicio == "0" || cbo_servicio == '? undefined:undefined ?') {
+                return;
+            }
+
+            setTimeout(function () {
+                //mostrando info de los tecnicos
+                $scope.listando_Tecnico(1, cbo_servicio);
+            }, 100);
+
+        }
+
+        $scope.Servicios_Change = function (id) {
+            var cbo_servicio = document.getElementById('cbo_servicio').value;
+            if (cbo_servicio == 0 || cbo_servicio == "0" || cbo_servicio == '? undefined:undefined ?') {
+                console.log('no hay servicio')
+                return;
+            }
+
+            $scope.ListaLecturasRelectura = [];
+            $scope.ListaCortes = [];
+            $scope.ListaReparto = [];
+
+            $scope.Flag_Show_LecturaRelectura = false;
+            $scope.Flag_Show_CorteReconexion = false;
+            $scope.Flag_Show_Reparto = false;
+
+            if (cbo_servicio == 1 || cbo_servicio == 2) {
+                $scope.Flag_Show_LecturaRelectura = true;
+                $scope.camposHistorico = false;
+            }
+            if (cbo_servicio == 3 || cbo_servicio == 4) {
+                $scope.Flag_Show_CorteReconexion = true;
+            }
+            if (cbo_servicio == 6 || cbo_servicio == '6') {
+                $scope.Flag_Show_Reparto = true;
+            }
+        }
+
+
+        $scope.List_TipoCliente = [];
+        $scope.TipoClientes = function () {
+            $scope.List_TipoCliente.push(
+                {
+                    id: '1',
+                    desc: 'TODOS'
+                },
+                {
+                    id: '2',
+                    desc: 'NORMALES'
+                },
+                {
+                    id: '3',
+                    desc: 'COMERCIALES'
+                }
+            )
+        }
+        $scope.TipoClientes();
+                
+        $scope.ListaSupervisor = [];
+        $scope.listando_Supervisor = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoSupervisor_usuario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.ListaSupervisor = data;
+                    let cant = $scope.ListaSupervisor.length;
+
+                    setTimeout(function () {
+                        if (cant > 1) {
+                            $scope.id_supervisor = $scope.ListaSupervisor[1].id_Usuario;
+                            $('#cbo_supervisor').val($scope.id_supervisor).trigger('change');
+                        } else {
+                            $scope.id_supervisor = '0';
+                            $('#cbo_supervisor').val(0).trigger('change');
+                        }
+                    }, 200);
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        $scope.listando_Supervisor();
+
+        $scope.ListaUsuario_Operarios = [];
+        $scope.Change_listando_Usuario_Operarios = function (obj_id_supervisor) {
+            if (obj_id_supervisor == 0 || obj_id_supervisor == '0') {
+                $scope.ListaUsuario_Operarios = [];
+                return;
+            }
+
+            var variables = {
+                method: 'post',
+                url: '../asignar_supervisor/ListandoUsuario_Operarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_supervisor: obj_id_supervisor
+                }
+            }
+
+            $('.sige-load').show();
+            $scope.ListaUsuario_Operarios = [];
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.ListaUsuario_Operarios = data;
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+
+
+        var oTable = null;
+        $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            oTable = $('#tblLista').DataTable(
+                 {
+                     scrollY: "400px",
+                     paging: false
+                 });
+        });
+
+
+        $scope.CANT_ASIGNADA = 0;
+        $scope.CANT_REALIZADA = 0;
+        $scope.CANT_PENDIENTE = 0;
+
+        $scope.calculos_totales = function (flag_pendientes) {
+            var asignada = 0;
+            var realizada = 0;
+            var pendiente = 0;
+
+            if (flag_pendientes == true) {
+                for (var i = 0; i < $scope.ListaLecturas.length; i++) {
+                    if (parseFloat($scope.ListaLecturas[i].CANT_PENDIENTE) > 0) {
+                        asignada += parseFloat($scope.ListaLecturas[i].CANT_ASIGNADO);
+                        realizada += parseFloat($scope.ListaLecturas[i].CANT_REALIZADO);
+                        pendiente += parseFloat($scope.ListaLecturas[i].CANT_PENDIENTE);
+                    }
+                }
+            } else {
+                for (var i = 0; i < $scope.ListaLecturas.length; i++) {
+                    asignada += parseFloat($scope.ListaLecturas[i].CANT_ASIGNADO);
+                    realizada += parseFloat($scope.ListaLecturas[i].CANT_REALIZADO);
+                    pendiente += parseFloat($scope.ListaLecturas[i].CANT_PENDIENTE);
+                }
+            }
+            //-----mostrando resultados---
+            $scope.CANT_ASIGNADA = asignada;
+            $scope.CANT_REALIZADA = realizada;
+            $scope.CANT_PENDIENTE = pendiente;
+        }
+
+
+
+        $scope.checkedallR = false;
+        $scope.addIdChecked_All = function (checked) {
+
+            $('.sige-load').show();
+            table = $('#tblLista').DataTable();
+
+            if (checked == true) {
+                $.fn.dataTable.ext.search.push(
+                    function (settings, data, dataIndex) {
+                        return parseFloat(data[4]) > 0
+                            ? true
+                            : false
+                    }
+                );
+                table.draw();
+                $.fn.dataTable.ext.search.pop();
+                $('.sige-load').hide();
+            }
+            else {
+                $.fn.dataTable.ext.search.push(
+                    function (settings, data, dataIndex) {
+                        return true
+                    }
+                );
+                table.draw();
+                $.fn.dataTable.ext.search.pop();
+                $('.sige-load').hide();
+            }
+            $scope.calculos_totales(checked);
+        }
+        
+        $scope.ListaLecturas = [];
+
+        $scope.ActualizarInformacion = function () { 
+                var cbo_local = document.getElementById('cbo_local');
+                var cbo_servicio = document.getElementById('cbo_servicio');
+                var cbo_estado = document.getElementById('cbo_estado');
+                var txt_suministro = document.getElementById('txt_suministro');
+                var txt_medidor = document.getElementById('txt_medidor');
+                var cbo_tecnico = document.getElementById('cbo_tecnico');
+                var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+                var cbo_TipoCliente = document.getElementById('cbo_TipoCliente');
+                var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+                var cbo_Operario_supervisor = document.getElementById('cbo_Operario_supervisor').value;
+
+
+                //if (cbo_local.value == '0' || cbo_local.value == "0") {
+                //    new PNotify({
+                //        title: 'Sistemas',
+                //        text: 'Por favor seleccione un Local. Muchas gracias.',
+                //        type: 'error'
+                //    });
+                //    return;
+                //}
+                if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                //if (cbo_servicio.value == 1 || cbo_servicio.value == '1') {
+                //    if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                //        new PNotify({
+                //            title: 'Sistemas',
+                //            text: 'Por favor seleccione un supervisor',
+                //            type: 'error'
+                //        });
+                //        return;
+                //    }
+                //}
+
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../LecturaEnviarCliente/ListandoLectura_EnviarCliente',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        id_local: 1,
+                        id_tipo_servicio: cbo_servicio.value,
+                        estado: cbo_estado.value,
+                        suministro: txt_suministro.value,
+                        medidor: txt_medidor.value,
+                        tecnico: cbo_tecnico.value,
+                        fechaAsignacion: dtp_fechaAsigna.value,
+                        tipoCliente: cbo_TipoCliente.value,
+                        id_supervisor: cbo_supervisor,
+                        id_operario_supervisor: cbo_Operario_supervisor
+                    }
+                } 
+
+                $scope.ListaLecturas = [];
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();    
+ 
+                    if (oTable == null) {
+                        $scope.ListaLecturas = data;
+                    } else {
+                        oTable.clear();
+                        oTable.destroy();
+                        oTable = null;
+                        $scope.ListaLecturas = data;
+                    }
+                    //-----calculando valores generales
+                    $scope.calculos_totales(false);
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    $('.sige-load').hide();
+                });
+            }
+
+        $scope.RecepcionLecturas = function () {
+
+            var cbo_servicio = document.getElementById('cbo_servicio').value;
+            var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna').value;
+
+            if (cbo_servicio == '' || cbo_servicio == 0 || cbo_servicio == null || cbo_servicio == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione el Servicio, Muchas gracias',
+                    type: 'error'
+                });
+                return;
+            }
+            if (dtp_fechaAsigna == '' || dtp_fechaAsigna == 0 || dtp_fechaAsigna == null || dtp_fechaAsigna == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione la Fecha de Asignacion.',
+                    type: 'error'
+                });
+                return;
+            }
+
+ 
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../LecturaEnviarCliente/Proceso_Recepcion_lecturas',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    servicio: cbo_servicio,
+                    fechaAsigna: dtp_fechaAsigna,
+
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+
+                if (data == '"Ok"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Se actualizó la información. Muchas gracias',
+                        type: 'success'
+                    });
+                } else {
+                    alert(data);
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+        }
+        
+        $scope.AbrirModal_Importacion = function () {
+            var local = document.getElementById('cbo_local').value;
+            var servicios = document.getElementById('cbo_servicio').value;
+            var fechaAsignacion = document.getElementById('dtp_fechaAsigna').value;
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'La fecha de Asignacion es la correcta, si no es la correcta no podra Actualizar..?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                //if (local == "0") {
+                //    new PNotify({
+                //        title: ' ',
+                //        text: 'Por favor seleccione un Local. Muchas gracias.',
+                //        type: 'error'
+                //    });
+                //    return;
+                //}
+                if (servicios == "0") {
+                    new PNotify({
+                        title: ' ',
+                        text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (fechaAsignacion == '') {
+                    new PNotify({
+                        title: ' ',
+                        text: 'Por favor seleccione o ingrese una Fecha de Asignación. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return;
+                }
+                $('#modal_importacion').modal({ show: 'false' });
+
+            }).on('pnotify.cancel', function () {
+
+            });
+
+        }
+
+        $scope.uploadFile = function () {
+
+            var idlocal = document.getElementById('cbo_local').value;
+            var idfechaAsignacion = document.getElementById('dtp_fechaAsigna').value;
+            var idServicio = document.getElementById('cbo_servicio').value;
+
+            if ($scope.myFile == null) {
+                new PNotify({
+                    title: ' ',
+                    text: 'Ningun Archivo Seleccionado..',
+                    type: 'error'
+                });
+            }
+
+            else {
+                $('.sige-load').show();
+                var file = $scope.myFile;
+                var uploadUrl = '../DistribuirLecturas/Inserta_Excel_Lecturas';
+                var fd = new FormData();
+                fd.append('file', file);
+                fd.append('idlocal', idlocal);
+                fd.append('idfechaAsignacion', idfechaAsignacion);
+                fd.append('idServicio', idServicio);
+                $http.post(uploadUrl, fd,
+                {
+                    transformRequest: angular.identity,
+                    headers: { 'Content-Type': undefined }
+                }).success(function (data) {
+                    $('.sige-load').hide();
+                    var res = data.split("|");
+                    if (res[0] == '-1' || res[0] == '"-1"' || res[0] == '"-1') {
+                        alert(data);
+                    }
+                    else if (res[0] == '0' || res[0] == '"0"' || res[0] == '"0') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: "Existen Cod. Observacion incorrectos, verifique : " + res[1],
+                            type: 'error'
+                        });
+                    }
+                    else if (res[0] == '1' || res[0] == '"1"' || res[0] == '"1') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: res[1],
+                            type: 'info'
+                        });
+                    }
+                    else if (res[0] == '2' || res[0] == '"2"' || res[0] == '"2') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Guardado realizado Correctamente.',
+                            type: 'success'
+                        });
+                        $('#modal_importacion').modal('toggle');
+                    }
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                    $('.sige-load').hide();
+                });
+            }
+        };
+ 
+        $scope.DescargarArchivos = function () {
+
+            var TipoServicio = document.getElementById('cbo_servicio').value;
+            var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna').value;
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            var cbo_Operario_supervisor = document.getElementById('cbo_Operario_supervisor').value;
+
+
+            if (TipoServicio == 0 || TipoServicio == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (dtp_fechaAsigna == '' || dtp_fechaAsigna == "") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Estado. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (TipoServicio == 1 || TipoServicio == '1') {
+                if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un supervisor',
+                        type: 'error'
+                    });
+                    return;
+                }
+            }
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../LecturaEnviarCliente/ListandoFotosDescargar_new',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    local : 1, 
+                    servicio: TipoServicio,
+                    fecha_asignacion: dtp_fechaAsigna,
+                    id_supervisor: cbo_supervisor,
+                    id_operario_supervisor: cbo_Operario_supervisor
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                var res = data.split("|");
+                if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                    alert(res[1]);
+                } else {
+                    var url = res[1].replace(/["]/gi, '');
+                    window.open(url);
+                }
+            }).error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        }
+
+        $scope.DescargarArchivos_sinObservacion = function () {
+
+            var TipoServicio = document.getElementById('cbo_servicio').value;
+            var cbo_local = document.getElementById('cbo_local').value;
+            var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna').value;
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            var cbo_Operario_supervisor = document.getElementById('cbo_Operario_supervisor').value;
+
+
+            //if (cbo_local == 0 || cbo_local == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+            if (TipoServicio == 0 || TipoServicio == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (dtp_fechaAsigna == '' || dtp_fechaAsigna == "") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Estado. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (TipoServicio == 1 || TipoServicio == '1') {
+                if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un supervisor',
+                        type: 'error'
+                    });
+                    return;
+                }
+            }
+
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta por descargar las fotos sin Observación, esta seguro ?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../LecturaEnviarCliente/ListandoFotosDescargar_new_SinObservacion',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        local: 1,
+                        servicio: TipoServicio,
+                        fecha_asignacion: dtp_fechaAsigna,
+                        id_supervisor: cbo_supervisor,
+                        id_operario_supervisor: cbo_Operario_supervisor
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        var res = data.split("|");
+                        if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                            alert(res[1]);
+                        } else {
+                            var url = res[1].replace(/["]/gi, '');
+                            window.open(url);
+                        }
+                    }).error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+
+
+            }).on('pnotify.cancel', function () {
+                $('.sige-load').hide();
+            });
+
+        }
+
+
+
+        // PRE-ENVIO
+        $scope.DescargaExcel_PreEnvio = function () {
+
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio');
+            var cbo_estado = document.getElementById('cbo_estado');
+            var txt_suministro = document.getElementById('txt_suministro');
+            var txt_medidor = document.getElementById('txt_medidor');
+            var cbo_tecnico = document.getElementById('cbo_tecnico');
+            var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            var cbo_Operario_supervisor = document.getElementById('cbo_Operario_supervisor').value;
+            
+            //if (cbo_local.value == '0' || cbo_local.value == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+            if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (cbo_servicio.value == 1 || cbo_servicio.value == '1') {
+                if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un supervisor',
+                        type: 'error'
+                    });
+                    return;
+                }
+            }
+
+            if (cbo_estado.value == '0' || cbo_estado.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Estado. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            
+            $('.sige-load').show();
+            var variables = {
+                method: 'post',
+                url: '../LecturaEnviarCliente/DescargaExcel_PreEnvio',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: 1,
+                    id_tipo_servicio: cbo_servicio.value,
+                    estado: cbo_estado.value,
+                    suministro: txt_suministro.value,
+                    medidor: txt_medidor.value,
+                    tecnico: cbo_tecnico.value,
+                    fechaAsignacion: dtp_fechaAsigna.value,
+                    id_supervisor: cbo_supervisor,
+                    id_operario_supervisor: cbo_Operario_supervisor
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                var res = data.split("|");
+                if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                    alert(res[1]);
+                } else {
+                    var url = res[1].replace(/["]/gi, '');
+                    window.open(url);
+                }
+                $('.sige-load').hide();
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        // FIN DE PRE-ENVIO
+
+        $scope.DescargaExcel_EnvioCliente = function () {
+
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio');
+            var cbo_estado = document.getElementById('cbo_estado');
+            var txt_suministro = document.getElementById('txt_suministro');
+            var txt_medidor = document.getElementById('txt_medidor');
+            var cbo_tecnico = document.getElementById('cbo_tecnico');
+            var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+            var id_link = document.getElementById('id_link');
+
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            var cbo_Operario_supervisor = document.getElementById('cbo_Operario_supervisor').value;
+
+
+            //if (cbo_local.value == '0' || cbo_local.value == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+            if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+
+            if (cbo_servicio.value == 1 || cbo_servicio.value == '1') {
+                if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un supervisor',
+                        type: 'error'
+                    });
+                    return;
+                }
+            }
+
+
+            if (cbo_estado.value == '0' || cbo_estado.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Estado. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            
+            var urlPage = '';
+            if (cbo_servicio.value == 1 || cbo_servicio.value == 2 || cbo_servicio.value == 9) {
+                urlPage = '../LecturaEnviarCliente/DescargarArchivoTexto_EnvioCliente';
+            }
+            else if (cbo_servicio.value == 3 || cbo_servicio.value == 4) {
+                urlPage = '../LecturaEnviarCliente/DescargarArchivoTexto_CorteReconexiones';
+            }
+            else {
+                urlPage = '../LecturaEnviarCliente/DescargaExcel_EnviarCliente';
+            }
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'post',
+                url: urlPage,
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: 1,
+                    id_tipo_servicio: cbo_servicio.value,
+                    estado: cbo_estado.value,
+                    suministro: txt_suministro.value,
+                    medidor: txt_medidor.value,
+                    tecnico: cbo_tecnico.value,
+                    fechaAsignacion: dtp_fechaAsigna.value,
+                    id_supervisor: cbo_supervisor,
+                    id_operario_supervisor: cbo_Operario_supervisor
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                var res = data.split("|");
+                if (cbo_servicio.value == 1 || cbo_servicio.value == 2 || cbo_servicio.value == 3 || cbo_servicio.value == 4 || cbo_servicio.value == 9) {
+                    if (res[0].replace(/["]/gi, '') == 0 || res[0].replace(/["]/gi, '') == "0") {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información para mostrar.',
+                            type: 'success'
+                        });
+                    } else if (res[0].replace(/["]/gi, '') == -1 || res[0].replace(/["]/gi, '') == "-1") {
+                        alert(res[1]);
+                    }
+                    else {
+                        let url = res[1].replace(/["]/gi, '');
+                        id_link.href = res[1].replace(/["]/gi, '');
+                        id_link.click();
+                    }
+                } else {
+                    if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información para mostrar.',
+                            type: 'success'
+                        });
+                    }
+                    else if (res[0].replace(/["]/gi, '') == "-1" || res[0].replace(/["]/gi, '') == -1) {
+                        alert(res[1]);
+                    } else {
+                        var url = res[1].replace(/["]/gi, '');
+                        window.open(url);
+                    }
+                }
+
+                $('.sige-load').hide();
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+
+        function ValidacionesGenerales() {
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio');
+            var cbo_estado = document.getElementById('cbo_estado');
+
+            //if (cbo_local.value == '0' || cbo_local.value == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return false;
+            //}
+            if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return false;
+            }
+
+            if (cbo_estado.value == '0' || cbo_estado.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Estado. Muchas gracias.',
+                    type: 'error'
+                });
+                return false;
+            }
+            return true;
+        }
+
+
+        $scope.Generate_Relectura = function () {
+            var local = document.getElementById('cbo_local').value;
+            var servicios = document.getElementById('cbo_servicio').value;
+            var fechaAsignacion = document.getElementById('dtp_fechaAsigna').value;
+
+            if (servicios == "0") {
+                new PNotify({
+                    title: ' ',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (servicios > 1) {
+                return;
+            }
+
+            if (local == "0") {
+                new PNotify({
+                    title: ' ',
+                    text: 'Por favor seleccione un Local. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (fechaAsignacion == '') {
+                new PNotify({
+                    title: ' ',
+                    text: 'Por favor seleccione o ingrese una Fecha de Asignación. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            $('.sige-load').show();
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Verifique la fecha de Asignación, la Fecha ( ' + fechaAsignacion + ' ) es la correcta, porque se procedera a Cerrar las Lecturas..',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+
+                var variables = {
+                    method: 'post',
+                    url: '../LecturaEnviarCliente/set_generando_relectura',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        id_servicio: servicios,
+                        fecha_Asignacion: fechaAsignacion
+                    }
+                }
+
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        console.log(data);
+                        if (data == "OK" || data == '"OK"') {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso realizado, correctamente.',
+                                type: 'success'
+                            });
+                        } else {
+                            alert(data);
+                        }
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+
+            }).on('pnotify.cancel', function () {
+                $('.sige-load').hide();
+            });
+
+
+        }
+
+        $scope.Descargar_EnvioCliente_Relectura = function () {
+            if (ValidacionesGenerales() == false) {
+                return;
+            }
+            var id_link = document.getElementById('id_link');
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio');
+            var cbo_estado = document.getElementById('cbo_estado');
+            var txt_suministro = document.getElementById('txt_suministro');
+            var txt_medidor = document.getElementById('txt_medidor');
+            var cbo_tecnico = document.getElementById('cbo_tecnico');
+            var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            var cbo_Operario_supervisor = document.getElementById('cbo_Operario_supervisor').value;
+
+            if (cbo_servicio.value == 1 || cbo_servicio.value == '1') {
+                if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un supervisor',
+                        type: 'error'
+                    });
+                    return;
+                }
+            }
+
+            var urlPage = '';
+            urlPage = '../LecturaEnviarCliente/DescargarArchivoTexto_EnvioCliente_relectura';
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'post',
+                url: urlPage,
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: 1,
+                    id_tipo_servicio: cbo_servicio.value,
+                    estado: cbo_estado.value,
+                    suministro: txt_suministro.value,
+                    medidor: txt_medidor.value,
+                    tecnico: cbo_tecnico.value,
+                    fechaAsignacion: dtp_fechaAsigna.value,
+                    id_supervisor: cbo_supervisor,
+                    id_operario_supervisor: cbo_Operario_supervisor
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    var res = data.split("|");
+                    if (res[0].replace(/["]/gi, '') == 0 || res[0].replace(/["]/gi, '') == "0") {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información para mostrar.',
+                            type: 'success'
+                        });
+                    } else if (res[0].replace(/["]/gi, '') == -1 || res[0].replace(/["]/gi, '') == "-1") {
+                        alert(res[1]);
+                    }
+                    else {
+                        let url = res[1].replace(/["]/gi, '');
+                        id_link.href = res[1].replace(/["]/gi, '');
+                        id_link.click();
+
+                    }
+                    $('.sige-load').hide();
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+
+
+
+
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }])
+    app.service('fileUpload', ['$http', function ($http) {
+        this.uploadFileToUrl = function (idlocal, file, uploadUrl) {
+
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('idlocal', idlocal);
+            $http.post(uploadUrl, fd, {
+                transformRequest: angular.identity,
+                headers: { 'Content-Type': undefined }
+            })
+            .success(function (data) {
+
+            })
+            .error(function () {
+
+            });
+        }
+    }]);
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl"  >
+    <div class="panel panel-oscuro" style="margin-top: -14px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> ENVIAR TRABAJOS AL CLIENTE</h6>
+        </div>
+        <div class="panel-body">
+            <div id="Contenedor">
+
+                <div class="well" style="background: #314b75; color: white;    margin-top: -6px;    margin-bottom: 1px;">
+                    <div class="row" style="    margin-top: -15px">
+                        <div class="col-xs-12 col-sm-12 col-md-7  col-lg-7 ">
+
+                            <div class="col-xs-6 col-sm-4 col-md-3  col-lg-3 " style="display:none">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                        Local
+                                    </label>
+                                    <br />
+                                    <select id="cbo_local" class="form-control" ng-model="id_local" ng-change="Tecnico_Change(id_tipoServicio);">
+                                        <option value=0>--[ Seleccione ]-- </option>
+                                        <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                            {{item.loc_nombre}}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-6 col-sm-4 col-md-4 col-lg-4 ">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                        Servicios
+                                    </label>
+                                    <br />
+                                    <select id="cbo_servicio" class="form-control" ng-model="id_tipoServicio" ng-change="Tecnico_Change(id_tipoServicio); Servicios_Change(id_tipoServicio); ChangeObservaciones(id_tipoServicio); ">
+                                        <option value=0>--[ Seleccione ]-- </option>
+                                        <option ng-repeat="item in ListaServicios" value="{{item.id_TipoServicio}}">
+                                            {{item.nombre_tiposervicio}}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-12 col-sm-4 col-md-4  col-lg-4 ">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                        Estados
+                                    </label>
+                                    <br />
+                                    <select id="cbo_estado" class="form-control">
+                                        <option value=0>--[ Seleccione ]-- </option>
+                                        <option ng-repeat="item in ListaEstados" value="{{item.id_Estado}}">
+                                            {{item.descripcion_estado}}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+
+                            <div class="col-xs-12 col-sm-4 col-md-4  col-lg-4 ">
+                                <div class="form-group form-group-sm">
+                                    <label class="control-label">
+                                        Fecha Asignación
+                                    </label>
+                                    <br />
+                                    <div class="input-group">
+                                        <input style=" width: 150px;" class="form-control" id="dtp_fechaAsigna" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="col-xs-12 col-sm-12 col-md-5  col-lg-5 " style="background-color:white;background-color: white; color: black ;padding: 2px;"   title="Filtro sólo para el servicio de lecturas" tooltip-persistent>
+                            <div class="col-sm-6 col-md-6 col-lg-6">
+                                <label for="_supervisor" class="control-label">Supervisor</label>
+                                <select id="cbo_supervisor" class="form-control" ng-model="id_supervisor" ng-change="Change_listando_Usuario_Operarios(id_supervisor); ">
+
+                                    <option ng-repeat="item in ListaSupervisor" value="{{item.id_Usuario}}">
+                                        {{item.supervisor}}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="col-sm-6 col-md-6 col-lg-6">
+                                <label for="_supervisor" class="control-label">Operarios</label>
+                                <select id="cbo_Operario_supervisor" class="form-control">
+                                    <option value=0>--[ TODOS ]-- </option>
+                                    <option ng-repeat="item in ListaUsuario_Operarios" value="{{item.id_Operario}}">
+                                        {{item.desc_operario}}
+                                    </option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <a id="id_link" href="" download style="display:none">link</a>
+
+                    </div>
+
+                    <div class="row" style="    margin-bottom: -20px;">
+                        <div class="col-md-7">
+                            <div class="col-xs-6 col-sm-6 col-md-3  col-lg-3 ">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                        Suministro
+                                    </label>
+                                    <br />
+                                    <input id="txt_suministro" class="form-control" type="text" placeholder="Ingresar Suministro" maxlength="30">
+                                </div>
+                            </div>
+                            <div class="col-xs-6 col-sm-6 col-md-3  col-lg-3 ">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                        Medidor
+                                    </label>
+                                    <br />
+                                    <input id="txt_medidor" class="form-control" type="text" placeholder="Ingresar medidor" maxlength="30">
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-md-3  col-lg-3 ">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                        Técnico Asignado
+                                    </label>
+                                    <br />
+                                    <select id="cbo_tecnico" class="form-control">
+                                        <option value=0>--[ TODOS ]-- </option>
+                                        <option ng-repeat="item in ListaTecnico" value="{{item.ope_id}}">
+                                            {{item.ope_nombre}}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-xs-12 col-sm-6 col-md-3  col-lg-3 ">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                        Tipo Cliente
+                                    </label>
+                                    <br />
+                                    <select id="cbo_TipoCliente" class="form-control">
+                                        <option ng-repeat="item in List_TipoCliente" value="{{item.id}}">
+                                            {{item.desc}}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-5">
+                            @*<div class="col-xs-12 col-sm-3 col-md-4  col-lg-4 ">
+                                <div class="form-group form-group-sm">
+                                    <label class="control-label">
+                                        Fecha Asignación
+                                    </label>
+                                    <br />
+                                    <div class="input-group">
+                                        <input style=" width: 150px;" class="form-control" id="dtp_fechaAsigna" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+                            </div>*@
+                            <div class="col-xs-12 col-sm-9 col-md-8 col-lg-8 ">
+                                <div class="form-group">
+                                    <label class="control-label">
+                                    </label>
+                                    <br />
+                                    <button class="btn btn-sm btn-danger" ng-click="RecepcionLecturas();"><span class="glyphicon glyphicon-ok"></span> Recepción Lecturas </button>
+                                    <button class="btn btn-sm btn-primary" ng-click="ActualizarInformacion()"><span class="glyphicon glyphicon-refresh"></span> Actualizar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+
+
+                <hr style=" margin-top: 1px; margin-bottom: 1px;" />
+
+                <div class="table-responsive">
+                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                        <thead>
+                            <tr>
+                                <td style="text-align:center;"></td>
+                                <td>
+                                    <input type="checkbox" id="checkboxAll" style="margin-top: 2px;    margin-left: 2px;" value="1" ng-model="checkedallR" ng-click="addIdChecked_All(checkedallR)">
+                                    <label for="checkboxAll" style="color:red;"> Ver-Pendientes </label>
+                                </td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                                <td style="text-align:center;"></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">COD. LECTOR</td>
+                                <td>NOMBRE DEL LECTURISTA</td>
+                                <td style="text-align:center;">TOTAL</td>
+                                <td style="text-align:center;">EJECUTADO</td>
+                                <td style="text-align:center;">PENDIENTE</td>
+                            </tr>
+                        </thead>
+                        <tfoot>
+                            <tr>
+                                <th></th>
+                                <th style="text-align:center;">TOTAL GENERAL</th>
+                                <th style="text-align:right;font-size: 12px;">{{CANT_ASIGNADA}}</th>
+                                <th style="text-align:right;font-size: 12px;">{{CANT_REALIZADA}}</th>
+                                <th style="text-align:right;font-size: 12px;">{{CANT_PENDIENTE}}</th>
+                            </tr>
+                        </tfoot>
+                        <tbody>
+                            <tr ng-repeat="item in ListaLecturas" on-finish-render="ngRepeatFinished">
+                                <td style="text-align:center;"> <div style="width:150px"> {{item.CL}} </div> </td>
+                                <td> <div style="width:350px"> {{item.OPERARIO}} </div> </td>
+                                <td style="text-align:right;">{{item.CANT_ASIGNADO}}</td>
+                                <td style="text-align:right;">{{item.CANT_REALIZADO}}</td>
+                                <td style="text-align:right;">{{item.CANT_PENDIENTE}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+                <hr />
+
+
+                <div class="row">
+                    <div class="panel-body" style="height: 40px;">
+                        <div class="col-sm-12" style="text-align:center;">
+                            <div class="form-group form-group-sm">
+                                <button role="button" class="btn btn-warning btn-sm" ng-click="DescargarArchivos();"><i class="fa fa-camera fa-lg"></i> Descargar Fotos</button>
+                                <button role="button" class="btn btn-primary btn-sm" ng-click="DescargarArchivos_sinObservacion();" title="Descargar Fotos sin Observacion (Solo para Lecturas)"><span class="glyphicon glyphicon-save"></span> Fotos SinObservación</button>
+                                <button role="button" class="btn btn-success btn-sm" ng-click="DescargaExcel_PreEnvio();"><i class="fa fa-windows fa-lg"></i> Visualizar Pre-Envío al Cliente</button>
+                                <button role="button" class="btn btn-info btn-sm" ng-click="DescargaExcel_EnvioCliente();"><i class="fa fa-download fa-lg"></i> Enviar al Cliente</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @*<div class="row">
+                    <div class="col-sm-12">
+                        <div class="form-group form-group-sm" style="text-align:right;background-color: cornsilk;padding: 10px;">
+                            <button class="btn btn-primary btn-danger btn-sm" ng-click="Generate_Relectura();"><span class="glyphicon glyphicon-retweet"></span> Generar Re-lectura</button>
+                            <button class="btn btn-info btn-sm" ng-click="Descargar_EnvioCliente_Relectura();"><i class="fa fa-download fa-lg"></i> Enviar al Cliente Re-lectura</button>
+                        </div>
+                    </div>
+                </div>*@
+            </div>
+        </div>
+    </div>
+
+    <div id="modal_importacion" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog  modal_dsige " style="width:60%;">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-calendar fa-lg"></i> Importacion Trabajos Manuales</h6>
+                </div>
+                <div class="panel-body">
+                    <hr style="margin-top: -1px;margin-bottom: 7px;" />
+                    <div class="row">
+                        <div class="col-sm-8 col-md-8">
+                            <input id="id_seleccionFile" type="file" class="filestyle" file-model="myFile" data-placeholder="Ningun Archivo Seleccionado" data-buttonname="btn-primary" data-size="sm" data-buttonbefore="true" data-buttontext="  Seleccionar Archivo..">
+
+                        </div>
+                        <div class="col-sm-4 col-md-4">
+                            <button id="btn_ver" type="button" class="btn btn-primary btn-sm" ng-click="uploadFile()"><i class="fa fa-upload"></i> Guardar Información</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+</html>

@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C65A06F4-6D2F-4CD9-B66F-ADF2DD0AC41A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DSIGE.Dato</RootNamespace>
+    <AssemblyName>DSIGE.Dato</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="EPPlus, Version=4.0.4.0, Culture=neutral, PublicKeyToken=ea159fdaa78159a1, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\EPPlus.4.0.4\lib\net20\EPPlus.dll</HintPath>
+    </Reference>
+    <Reference Include="Ionic.Zip, Version=1.9.1.8, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unofficial.Ionic.Zip.1.9.1.8\lib\Ionic.Zip.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Practices.EnterpriseLibrary.Common, Version=4.1.0.0, Culture=neutral, PublicKeyToken=e44a2bc38ed2c13c, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\EnterpriseLibrary.Common.6.0.1304.0\lib\NET45\Microsoft.Practices.EnterpriseLibrary.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.EnterpriseLibrary.Data">
+      <HintPath>..\packages\EnterpriseLibrary.Data.6.0.1304.0\lib\NET45\Microsoft.Practices.EnterpriseLibrary.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="Select.HtmlToPdf, Version=17.3.0.0, Culture=neutral, PublicKeyToken=e0ae9f6e27a97018, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Lecturas_BureauVeritas\Lecturas_BureauVeritas\Lecturas_BureauVeritas\Plugin\Pdf\Select.HtmlToPdf.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Cls_Dato_CambioEstado.cs" />
+    <Compile Include="Cls_Dato_dias_trabajo.cs" />
+    <Compile Include="Cls_Dato_Evento_Movil_Operario.cs" />
+    <Compile Include="Cls_Dato_Export_trabajos_lectura.cs" />
+    <Compile Include="Cls_Dato_Importacion_Lecturas.cs" />
+    <Compile Include="Cls_Dato_AsignaOrdenTrabajo.cs" />
+    <Compile Include="Cls_Dato_Parametro_Consumo.cs" />
+    <Compile Include="Cls_Dato_DistrilbuirLecturas.cs" />
+    <Compile Include="Cls_Dato_RecepcionLect.cs" />
+    <Compile Include="Cls_Dato_ResultadoLecturas.cs" />
+    <Compile Include="Cls_Dato_Usuario_Cambio_Pass.cs" />
+    <Compile Include="Cls_Dato_VerificacionFotos.cs" />
+    <Compile Include="Conexion.cs" />
+    <Compile Include="DAsignaLecturaReLectura.cs" />
+    <Compile Include="DCorte.cs" />
+    <Compile Include="DEnvioTrabajoCliLecReLec.cs" />
+    <Compile Include="DGrupo_Detalle.cs" />
+    <Compile Include="DImportarDiasTrabajo.cs" />
+    <Compile Include="DLectura.cs" />
+    <Compile Include="DCuadro_Produccion.cs" />
+    <Compile Include="DLecturaMes.cs" />
+    <Compile Include="DLocal.cs" />
+    <Compile Include="DObservacion.cs" />
+    <Compile Include="DObservacion_Servicio.cs" />
+    <Compile Include="DOperario.cs" />
+    <Compile Include="DOperario_Servicio.cs" />
+    <Compile Include="Dpermisos.cs" />
+    <Compile Include="DPrecios.cs" />
+    <Compile Include="DSeguimiento_Operario.cs" />
+    <Compile Include="DServicio.cs" />
+    <Compile Include="DSesion.cs" />
+    <Compile Include="DTecnico.cs" />
+    <Compile Include="DUbicacion_Lecturas.cs" />
+    <Compile Include="DUbicacion_Operarios.cs" />
+    <Compile Include="DUsuario.cs" />
+    <Compile Include="GeneracionActas_DAO.cs" />
+    <Compile Include="ImportarArchivoPlano_DAO.cs" />
+    <Compile Include="Programacion_DAO.cs" />
+    <Compile Include="VisorArchivo_DAO.cs" />
+    <Compile Include="ImportarArchivos_DAO.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="VisorNovedades_DAO.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DSIGE.Modelo\DSIGE.Modelo.csproj">
+      <Project>{36bd441f-354a-4b1a-841f-5f7d2bb5af69}</Project>
+      <Name>DSIGE.Modelo</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Ionic.Zip.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,0 +1,1431 @@
+﻿@{
+    ViewBag.Title = "Generacion Actas";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    <script src="~/Content/pdf/html2canvas.js"></script>
+
+    @Scripts.Render("~/Content/pdf/jspdf.js")
+    @Scripts.Render("~/Content/pdf/pdfFromHTML.js")
+    @Scripts.Render("~/Content/pdf/jspdf.plugin.autotable.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+}
+
+<style>
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+ 
+</style>
+
+<script type="text/javascript">
+    var app = angular.module('appActas', []);
+
+    app.directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit(attr.onFinishRender);
+                    });
+                }
+            }
+        }
+    });
+
+    app.controller('ctrlActas', function ($scope, $http, $window, $timeout, $q) {
+        $(function () {
+            $('#id_fecha').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../GeneracionActas/Servicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                $scope.Obj_List_Servicios = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+
+        $scope.listando_Locales = function () {
+            var variables = {
+                method: 'post',
+                url: '../AsignaOrdenTrabajo/ListandoLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.ListaLocales = data;
+                    setTimeout(function () {
+                        $('#cbo_local').val(0).trigger('change');
+                    }, 300);
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        $scope.listando_Locales();
+
+        $scope.Obj_List_Operario = [];
+        $scope.Listado_Operarios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Operario = [];
+                $scope.Obj_List_Operario = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+        ;
+
+        var oTable_cabecera = null;
+        $scope.$on('ngRepeatFinished_cabecera', function (ngRepeatFinishedEvent) {
+            oTable_cabecera = $('#tblLista').DataTable(
+                 {
+                     scrollY: "400px",
+                     paging: false,
+                 });
+        });
+
+
+        $scope.inicializando_variables = function () {
+            $scope.id_local = '0';
+            $scope.id_tipoServicio = '0';
+            $scope.id_operario = '0';
+            $scope.Listado_Servicios();
+            $scope.Listado_Operarios()
+        }
+
+
+        $scope.Obj_List_Cabecera = [];
+        $scope.Listado_Cabecera_Lecturas = function () {
+
+            var cbo_local = document.getElementById('cbo_local').value;
+            var cbo_servicio = document.getElementById('cbo_servicio').value;
+            var cbo_operario = document.getElementById('cbo_operario').value;
+            var id_fecha = document.getElementById('id_fecha').value;
+
+
+            if (cbo_local == '' || cbo_local == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Local.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (cbo_servicio == '' || cbo_servicio == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (id_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha Inicial.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../GeneracionActas/Mostrando_informacion_general',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    local: cbo_local,
+                    servicio: cbo_servicio,
+                    operario: cbo_operario,
+                    fecha: id_fecha,
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Cabecera = []; 
+                if (oTable_cabecera == null) {
+                    $scope.Obj_List_Cabecera = data;
+                } else {
+                    oTable_cabecera.clear();
+                    oTable_cabecera.destroy();
+                    oTable_cabecera = null;
+                    $scope.Obj_List_Cabecera = data;
+                } 
+                $timeout(function () {
+                    $('.sige-load').hide();
+                }, 1000);
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.progress = 0;
+        function descargarFoto(item) {
+            var q = $q.defer();
+            $timeout(function () {
+                $scope.getPdf(item).then(function () {
+                    $scope.progress += (100 / (parseFloat($scope.Obj_List_Cabecera.length)));
+                    q.resolve('k');
+                });
+            }, 1000)
+            return q.promise;
+        }
+
+        $scope.descargarMasivo = function () {
+            var q = $q.defer();
+            $scope.progress = 0;
+            $scope.Obj_List_Cabecera.reduce(function (p, val) {
+                return p.then(function () {
+                    return descargarFoto(val);
+                });
+            }, $q.when(true)).then(function (finalResult) {
+                q.resolve('success');
+            }, function (err) {
+                q.reject(err);
+            });
+
+            return q.promise;
+
+        }
+
+        var getCodUniq = function () {
+            // CAPTURANDO FECHA ACTUAL
+            var hoy = new Date();
+            var dd = hoy.getDate();
+            var mm = hoy.getMonth() + 1;
+            var yyyy = hoy.getFullYear();
+            var hour = hoy.getHours();
+            var minuts = hoy.getMinutes();
+            var second = hoy.getSeconds();
+            if (dd < 10) {
+                dd = '0' + dd
+            }
+
+            if (mm < 10) {
+                mm = '0' + mm
+            }
+            hoy = yyyy + '' + mm + '' + dd + '' + hour + '' + minuts + '' + second;
+            // GENERANDO CODIGO ALEATORIO
+            var codigoAle = Math.floor(Math.random() * 1000000);
+
+            return codigoAle + '_' + hoy;
+        }
+
+        $scope.getPdf = function (obj_data) {
+           var q = $q.defer();
+
+           if (obj_data.id_TipoServicio == 3 || obj_data.id_TipoServicio == '3') // SERVICIO DE CORTES
+           {
+
+                var doc = new jsPDF();
+                var altura = 30;
+                var imgLogo = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/4RDuRXhpZgAATU0AKgAAAAgABAE7AAIAAAAMAAAISodpAAQAAAABAAAIVpydAAEAAAAYAAAQzuocAAcAAAgMAAAAPgAAAAAc6gAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAERlc2Fycm9sbG8yAAAFkAMAAgAAABQAABCkkAQAAgAAABQAABC4kpEAAgAAAAM1MAAAkpIAAgAAAAM1MAAA6hwABwAACAwAAAiYAAAAABzqAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAyMDowMTowNyAwOTowNjoyOQAyMDIwOjAxOjA3IDA5OjA2OjI5AAAARABlAHMAYQByAHIAbwBsAGwAbwAyAAAA/+ELHmh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8APD94cGFja2V0IGJlZ2luPSfvu78nIGlkPSdXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQnPz4NCjx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iPjxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+PHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9InV1aWQ6ZmFmNWJkZDUtYmEzZC0xMWRhLWFkMzEtZDMzZDc1MTgyZjFiIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iLz48cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0idXVpZDpmYWY1YmRkNS1iYTNkLTExZGEtYWQzMS1kMzNkNzUxODJmMWIiIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyI+PHhtcDpDcmVhdGVEYXRlPjIwMjAtMDEtMDdUMDk6MDY6MjkuNDk4PC94bXA6Q3JlYXRlRGF0ZT48L3JkZjpEZXNjcmlwdGlvbj48cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0idXVpZDpmYWY1YmRkNS1iYTNkLTExZGEtYWQzMS1kMzNkNzUxODJmMWIiIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyI+PGRjOmNyZWF0b3I+PHJkZjpTZXEgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj48cmRmOmxpPkRlc2Fycm9sbG8yPC9yZGY6bGk+PC9yZGY6U2VxPg0KCQkJPC9kYzpjcmVhdG9yPjwvcmRmOkRlc2NyaXB0aW9uPjwvcmRmOlJERj48L3g6eG1wbWV0YT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgPD94cGFja2V0IGVuZD0n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';
+                doc.addImage(imgLogo, 'JPEG', 3, 4, 60, 25)
+                doc.setFontType("bold");
+                doc.setFont("courier");
+
+                doc.text(65, altura, 'ORDEN DE SUSPENSION DEL SERVICIO');
+                altura = altura + 10;
+                doc.setFontSize(7);
+                doc.setFontType("normal");
+                doc.text(10, altura, 'FECHA : ' + String(obj_data.fecha));
+                doc.text(70, altura, 'HORA : ' + String(obj_data.hora));
+
+                doc.setFontSize(8);
+                doc.text(122.5, altura, 'UBICACION DE MEDIDOR :  1. EXTERNO  ');
+                doc.setFontSize(15);
+                doc.text(184, altura + 1, String(obj_data.ubicacion_medidor_externo));
+                doc.rect(181, altura - 3.5, 10, 5)                                         
+                altura = altura + 5;
+                doc.setFontSize(8);
+                doc.text(163, altura, '2. INTERNO'); 
+                doc.setFontSize(15);
+                doc.text(184, altura + 1, String(obj_data.ubicacion_medidor_interno));    
+                doc.rect(181, altura - 3, 10, 5);
+                altura = altura -1 ;
+                doc.setFontSize(8);
+                doc.text(10, altura, 'COD. CONTRATO : ' + String(obj_data.cliente_suministro));
+                doc.text(70, altura, 'MEDIDOR N° : ' + String(obj_data.medidor));
+
+                altura = altura + 6;
+
+                doc.text(15, altura + 1, '1. DATOS DEL CLIENTE');
+                doc.rect(8, altura - 2, 190, 5) //---dibujando un rectangulo
+                altura = altura + 8;
+                doc.text(10, altura, 'Nombre del Cliente : ' + String(obj_data.nombre_cliente));
+                altura = altura + 4;
+                doc.text(10, altura, 'Direccion del Suministro : ' + String(obj_data.direccion_suministro));
+                altura = altura + 4;
+                doc.text(10, altura, 'Distrito  : ' + String(obj_data.distrito));
+                altura = altura + 6;
+                doc.text(15, altura + 1, '2. DATOS DEL PERSONAL DE QUAVII O CONTRATISTA ENCARGADO');
+               doc.rect(8, altura - 2, 190, 5) //---dibujando un rectangulo
+                altura = altura + 8;
+                doc.text(10, altura, 'Nombre del Tecnico: ' + String(obj_data.nombre_personal));
+                doc.text(140, altura, 'DNI : ' + String(obj_data.dni_personal));
+                altura = altura + 6;
+                doc.text(15, altura + 1, '3. INFORMACIÓN ADICIONAL');
+               doc.rect(8, altura - 2, 190, 5) //---dibujando un rectangulo
+                altura = altura + 10;
+                doc.setFontType("bold");
+                doc.text(10, altura, 'INFORMACIÓN ');
+  
+                altura = altura + 6;
+                doc.setFontType("normal");
+                doc.text(10, altura, 'Lectura de Corte de Servicio :    ' + String(obj_data.lectura_cierre) + '         m3 ( OBLIGATORIO )');
+                                            
+                doc.text(120, 118, 'Corte Efectivo');
+                doc.text(171, 118, String(obj_data.resultado_cierre_ejecutado ));
+                doc.rect(167, 118 - 3, 10, 5)
+
+                doc.text(120, 124, 'Cliente Ausente');
+                doc.text(171, 124, String(obj_data.resultado_cierre_ausente  ));
+                doc.rect(167, 124 - 3, 10, 5)
+               
+                doc.text(120, 130, 'Sin acceso al Medidor');
+                doc.text(171, 130, String(obj_data.resultado_cierre_acceso));
+                doc.rect(167, 130 - 3, 10, 5)
+
+                doc.text(120, 136, 'Cliente Impide Corte');
+                doc.text(171, 136, String(obj_data.resultado_cierre_resistencia));
+                doc.rect(167, 136 - 3, 10, 5)
+
+                altura = altura + 10;
+                doc.setFontType("bold");
+                doc.text(10, altura, 'MOTIVO DEL CIERRE DEL SERVICIO ');
+                doc.text(120, altura, 'RESULTADO DEL CIERRE DE SERVICIO ');
+                doc.setFontType("normal");
+
+                altura = altura + 6;
+             
+                doc.text(10, altura, 'Por Falta de Pago');
+                doc.text(57, altura, String(obj_data.motivo_cierre_deuda));
+                doc.rect(53, altura - 3, 10, 5)
+
+                altura = altura + 6;
+
+                doc.text(10, altura, 'A Solicitud del cliente');
+                doc.text(57, altura, String(obj_data.motivo_cierre_pedido_cliente));
+                doc.rect(53, altura - 3, 10, 5)
+               
+                altura = altura + 6;
+                doc.text(10, altura, 'Corte Tecnico');
+                doc.text(57, altura, String(obj_data.motivo_cierre_fuga_gas));
+                doc.rect(53, altura - 3, 10, 5)
+
+                altura = altura + 6;
+                doc.text(10, altura, 'Por Emergencia');
+                doc.text(57, altura, String(obj_data.motivo_cierre_seguridad));
+                doc.rect(53, altura - 3, 10, 5)
+
+                altura = altura + 10;
+                doc.text(15, altura + 1, '4. OBSERVACIONES');
+               doc.rect(8, altura - 2, 190, 5) //---dibujando un rectangulo
+                altura = altura + 10;
+
+                var splitTitle = doc.splitTextToSize(String(obj_data.observaciones), 180);
+    
+                doc.text(10, altura, splitTitle);
+                altura = altura + 30;
+        
+                doc.setFontType("normal");
+                doc.text(10, altura, 'PARA PODER HACER EFECTIVA LA RECONEXION DEL SERVICIO ES NECESARIO HACER EFECTIVO EL PAGO DE TODAS LAS DEUDAS');
+                doc.text(10, altura + 3, 'PENDIENTES.');
+                altura = altura + 6;
+                doc.text(10, altura, 'PARA MAYOR INFORMACIÓN PUEDE CONTÁCTARNOS A TRAVÉS DE LA LINEA DEL SERVICIO AL CLIENTE 0801-00001');
+
+                altura = altura + 6;
+                doc.setFontType("bold");
+                doc.text(10, altura, 'IMPORTANTE SABER:  PUEDE SOLICITAR EL FINANCIAMIENTO DE SU DEUDA ACERCANDOSE AL CENTRO DE ATENCION AL CLIENTE');
+                doc.text(10, altura + 3, 'PARA ACCEDER AL PLAN, SE REQUIERE EL PAGO DE UNA CUOTA INICIAL, EL SALDO PENDIENTE SERA FINANCIADO A UN PLAZO ');
+                doc.text(10, altura + 6, 'MÁXIMO DE 36 MESES Y A UNA TASA DE INTERES DEL 28% ANUAL');
+
+                altura = altura + 12;
+                doc.setFontType("normal");
+                doc.setFontSize(7);
+                doc.text(10, altura, 'Esta prohibido el uso de este formato  por personal no Autorizado, solo puede ser empleado por el Personal de Quavii ');
+                doc.text(10, altura + 3, 'y sus contratistas para los fines indicados.');
+                altura = altura + 20;
+                doc.setFontType("normal");
+
+                doc.rect(75, altura - 8, 50, 6) //---dibujando un rectangulo
+                doc.text(83, altura - 4, 'Quavii - Representante');
+
+                doc.rect(75, altura - 2, 50, 38) //---dibujando un rectangulo
+
+                var generarPDF = function () {
+                    //var string = doc.output('datauristring');
+                    //var iframe = "<iframe width='100%' height='100%' src='" + string + "'></iframe>";
+                    //var x = window.open();
+                    //x.document.open();
+                    //x.document.write(iframe);
+                    //x.document.close();
+
+                    var fecha = obj_data.fecha.split('/');
+                    fecha = fecha[0] + fecha[1] + fecha[2];
+                    setTimeout(function () {
+                        doc.save(obj_data.cliente_suministro + '_' + fecha + '_' + getCodUniq() + '.pdf');
+                        q.resolve('success');
+                    }, 0);
+                }
+                             
+
+                var imgData = String(obj_data.ruta_foto_1)
+                //var imgData = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+                var img = new Image;
+                img.onload = function () {
+                    doc.addImage(this, 'JPEG', 80, 230, 40, 30);
+                    generarPDF();
+                };
+                img.crossOrigin = "";  // for demo as we are at different origin than image
+                img.src = imgData;  // some random imgur image
+
+                altura = altura + 32;
+                doc.text(95, 264, 'Firma.');
+            }
+
+           else if (obj_data.id_TipoServicio == 4 || obj_data.id_TipoServicio == '4') // SERVICIO DE RECONEXIONES
+            {
+               var doc = new jsPDF();
+               var altura = 25;
+               var imgLogo = "../Content/Imagen/logoActasVeritas.jpg";
+
+            var cuerpoActa = function () {     
+
+                doc.setFontType("bold");
+                doc.setFont("courier");
+
+                doc.text(63, altura, 'FORMATO DE RECONEXION DEL SERVICIO');
+                altura = altura + 10;
+                doc.setFontSize(7);
+                doc.setFontType("normal");
+                doc.text(10, altura, 'FECHA : ' + String(obj_data.fecha));
+                doc.text(70, altura, 'HORA : ' + String(obj_data.hora));
+
+                doc.setFontSize(8);
+                doc.text(122.5, altura, 'UBICACION DE MEDIDOR :  1. EXTERNO  ');
+                doc.setFontSize(15);
+                doc.text(184, altura + 1, String(obj_data.ubicacion_medidor_externo));
+                doc.rect(181, altura - 3.5, 10, 5)
+                altura = altura + 5;
+                doc.setFontSize(8);
+                doc.text(163, altura, '2. INTERNO');
+                doc.setFontSize(15);
+                doc.text(184, altura + 1, String(obj_data.ubicacion_medidor_interno));
+                doc.rect(181, altura - 3, 10, 5);
+                altura = altura - 1;
+                doc.setFontSize(8);
+                doc.text(10, altura, 'COD. CONTRATO : ' + String(obj_data.cliente_suministro));
+                doc.text(70, altura, 'MEDIDOR N° : ' + String(obj_data.medidor));
+
+                altura = altura + 6;
+                               
+                doc.text(15, altura + 1, '1. DECLARACIÓN');
+                doc.rect(8, altura - 2, 195, 5) //---dibujando un rectangulo
+                altura = altura + 8;
+
+
+                doc.text(10, altura, 'Quien suscribe la presente Orden de Reconexión del Servicio,  declará bájo su entera responsabilidad que las');
+                altura = altura + 4;
+                doc.text(10, altura, 'instalaciones internas y Equipos del predio ubicado en la dirección detallada precedentemente. (i) Se encuentran en');
+                altura = altura + 4;
+                doc.text(10, altura, 'las adecuadas condiciones para proceder a la Reconexión del suministro de Gas Natural. (ii) No han sido');
+                altura = altura + 4;
+                doc.text(10, altura, 'modificados y/o manipulados desde su Habilitación o ultima Reconexión del Servicio de Distribución de Gas Natural');
+                altura = altura + 6;
+                doc.text(10, altura, '(iii) La distribuidora no sera responsable por los daños y perjuicios que se generen  o puedan generar en el ');
+                altura = altura + 4;
+                doc.text(10, altura, 'incumplimiento de la Presente Declaración Jurada.');
+
+                altura = altura + 6;
+
+                doc.text(15, altura + 1, '2. DATOS DEL CLIENTE ');
+                doc.rect(8, altura - 2, 195, 5) //---dibujando un rectangulo
+                altura = altura + 8;
+
+                doc.text(10, altura, 'Nombre del Cliente : ' + String(obj_data.nombre_cliente));
+                altura = altura + 4;
+                doc.text(10, altura, 'Direccion del Suministro : ' + String(obj_data.direccion_suministro));
+                altura = altura + 4;
+                doc.text(10, altura, 'Distrito  : ' + String(obj_data.distrito));
+
+                altura = altura + 6;
+                   
+                doc.text(15, altura + 1, '3. DATOS DEL PERSONAL DE QUAVII O CONTRATISTA ENCARGADO ');
+                doc.rect(8, altura - 2, 195, 5) //---dibujando un rectangulo
+                altura = altura + 7;
+
+                doc.text(10, altura, 'Nombre del Técnico : ' + String(obj_data.nombre_personal));
+                doc.text(140, altura, 'DNI : ' + String(obj_data.dni_personal));
+
+                altura = altura + 6;
+                doc.text(15, altura + 1, '4. DATOS DE LA VISITA');
+                doc.rect(8, altura - 2, 195, 5) //---dibujando un rectangulo
+                altura = altura + 8;
+                doc.setFontType("bold");
+                doc.text(10, altura, 'Motivo de Reconexión'); doc.setFontType("normal");
+                doc.text(75, altura, '1. Pago de Deuda'); doc.rect(105, altura - 3, 5, 4); doc.text(106.5, altura, String(obj_data.motivo_deuda)); 
+                //doc.text(84, altura, '2.APC'); doc.text(99.5, altura, String(obj_data.motivo_apc)); doc.rect(98, altura - 3, 5, 4);
+                doc.text(118, altura, '2.TECNICO'); doc.text(136.5, altura, String(obj_data.motivo_tecnico)); doc.rect(135, altura - 3, 5, 4);
+                doc.text(145, altura, '3.OTROS'); doc.text(161.5, altura, String(obj_data.motivo_otros)); doc.rect(160, altura - 3, 5, 4);
+
+                altura = altura + 6;
+                doc.setFontType("bold");
+                doc.text(10, altura, 'RECONEXIÓN EXITOSA'); doc.text(51.5, altura, String(obj_data.recone_exitosa)); doc.rect(50, altura - 3, 5, 4);
+                   doc.setFontType("normal"); doc.text(62, altura, 'Lectura de Reconexion ' + String(obj_data.lectura_cierre) + '  m3 (OBLIGATORIO)' );   
+                altura = altura + 6;
+                doc.text(10, altura, 'Artefactos reconectados');
+                altura = altura + 5;
+                doc.text(10, altura, 'Cocina'); doc.text(31.5, altura, String(obj_data.artefac_cocina)); doc.rect(30, altura - 3, 5, 4);
+                doc.text(50, altura, 'Terma'); doc.text(71.5, altura, String(obj_data.artefac_terma)); doc.rect(70, altura - 3, 5, 4);
+                   doc.text(98, altura, 'Otro'); doc.text(121.5, altura, String(obj_data.artefac_otro)); doc.rect(120, altura - 3, 5, 4);
+                altura = altura + 6;
+                doc.setFontType("bold");
+                doc.text(10, altura, 'RECONEXIÓN INFRUCTUOSA'); doc.text(51.5, altura, String(obj_data.recone_infrutuosa)); doc.rect(50, altura - 3, 5, 4);
+                altura = altura + 6;
+                doc.text(10, altura, 'Motivo del Impedimento'); doc.setFontType("normal");
+                altura = altura + 6;
+                doc.text(10, altura, 'Cliente Ausente'); doc.text(51.5, altura, String(obj_data.motivo_cliente_ausente)); doc.rect(50, altura - 3, 5, 4); doc.text(100, altura, 'Primera Visita de Reconexion'); doc.text(151.5, altura, String(obj_data.primera_visita_recone)); doc.rect(150, altura - 3, 5, 4);
+                altura = altura + 5;
+                doc.text(10, altura, 'Sin acceso al medidor'); doc.text(51.5, altura, String(obj_data.motivo_sin_acceso)); doc.rect(50, altura - 3, 5, 4); doc.text(100, altura, 'Proxima Visita de Reconexion');
+                altura = altura + 5;
+                doc.text(10, altura, 'Cliente Impide corte'); doc.text(51.5, altura, String(obj_data.motivo_cliente_impide)); doc.rect(50, altura - 3, 5, 4);         doc.rect(98, altura - 3, 5, 4); doc.text(99.5, altura, String(obj_data.proxima_visita_fecha_check)); doc.text(105, altura, 'Fecha : ' + String(obj_data.proxima_visita_fecha)); doc.text(140, altura, 'Hora ' + String(obj_data.proxima_visita_hora));
+                altura = altura + 5;
+                   doc.text(10, altura, 'Otros'); doc.rect(20, altura - 3, 5, 4); doc.text(21.5, altura, String(obj_data.motivo_cliente_otroCheck));      doc.text(99.5, altura, String(obj_data.proxima_visita_solicita)); doc.rect(98, altura - 3, 5, 4); doc.text(105, altura, 'solicite su visita al 0801 00001');
+                altura = altura + 5;
+                doc.text(10, altura, String(obj_data.motivo_cliente_otros)); 
+                altura = altura + 6;
+                doc.text(10, altura, 'ESTIMADO(A) CLIENTE(A) EN CASO DE NO REALIZARSE EL SERVICIO DE RECONEXIÓN, PUEDE LLAMAR A LA LINEA DE SERVICIO');
+                altura = altura + 4;
+                doc.text(10, altura, 'AL CLIENTE 0801 00001 PARA  PROGRAMARLO O REPROGRAMAR SU PROXIMA VISITA RE RECONEXIÓN DE SERVICIO');
+
+                altura = altura + 6;
+                doc.text(15, altura + 1, '5. OBSERVACIONES');
+                doc.rect(8, altura - 2, 195, 5) //---dibujando un rectangulo
+                altura = altura + 6;
+                var splitTitle = doc.splitTextToSize(String(obj_data.observaciones), 180);
+                doc.text(10, altura, splitTitle);
+                altura = altura + 10;
+                doc.text(10, altura, 'Esta prohibido el uso de este formato por personal no autorizado. solo puede ser empleado por el personal de Quavii');
+                   doc.text(10, altura + 2, 'y sus contratistas para los fines indicados.');
+                altura = altura + 20;
+                doc.setFontType("bold");
+
+                doc.rect(40, altura - 8, 50, 6) //---dibujando un rectangulo
+                doc.text(60, altura - 4, 'Usuario');
+                doc.rect(40, altura - 2, 50, 38) //---dibujando un rectangulo 
+
+
+                doc.rect(120, altura - 8, 50, 6) //---dibujando un rectangulo
+                doc.text(126, altura - 4, 'Quavii - Representante');
+                   doc.rect(120, altura - 2, 50, 38) //---dibujando un rectangulo 
+
+                var generarPDF = function () {
+                    //var string = doc.output('datauristring');
+                    //var iframe = "<iframe width='100%' height='100%' src='" + string + "'></iframe>";
+                    //var x = window.open();
+                    //x.document.open();
+                    //x.document.write(iframe);
+                    //x.document.close();
+
+                    var fecha = obj_data.fecha.split('/');
+                    fecha = fecha[0] + fecha[1] + fecha[2];
+                    setTimeout(function () {
+                        doc.save(obj_data.cliente_suministro + '_' + fecha + '_' + getCodUniq() + '.pdf');
+                        q.resolve('success');
+                    }, 0);
+                }
+
+                var generarImagen_2 = function () {
+                    var imgData2 = String(obj_data.ruta_foto_2)
+                    //var imgData2 = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+                    var img2 = new Image;
+                    img2.onload = function () {
+                        doc.addImage(this, 'JPEG', 45, 232, 40, 30);
+                        doc.text(60, 265, 'Firma.');
+                        generarPDF();
+                    };
+                    img2.crossOrigin = "";  // for demo as we are at different origin than image
+                    img2.src = imgData2;  // some random imgur image
+                }
+
+                var imgData = String(obj_data.ruta_foto_1)
+                //var imgData = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+                //var img = new Image;
+
+                ///---doc.addImage( posicion, altura, 40, 30)
+                img.onload = function () {
+                    doc.addImage(this, 'JPEG', 125, 232, 40, 30);
+                    generarImagen_2();
+                };
+                img.crossOrigin = "";
+                img.src = imgData;  // some random imgur image
+
+                altura = altura + 32;
+                doc.text(140, 265, 'Firma.');
+
+               }
+ 
+               var img = new Image;
+               ///---doc.addImage( posicion, altura, 40, 30)
+               img.onload = function () {
+                   doc.addImage(this, 'JPEG', 3, 2, 60, 25);
+                   cuerpoActa();
+               };
+               img.crossOrigin = "";
+               img.src = imgLogo;  // some random imgur images 
+            }
+
+           return q.promise;
+        }
+                       
+        $scope.getPdf_2 = function (obj_data) {
+            var q = $q.defer();
+            var doc = new jsPDF();
+            var altura = 25;
+            var imgLogo = '';
+            //doc.addImage(imgLogo, 'JPEG', 10, 4, 60, 25)
+            doc.setFontSize(7);
+            doc.text(40, 8, 'Contratista al servicio de :');
+            doc.setFontSize(7);
+            doc.setFont("courier");
+            doc.setFontType("bold");
+            doc.text(80, 10, 'Gas Natural de Lima y Callao S.A');
+            doc.setFontType("normal");
+            doc.text(80, 14, 'Calle Morelli Nro. 150 Urb. San Borja');
+            doc.text(80, 18, '(Torre 2 CC la Rambla) Lima - Lima - San Borja');
+
+            doc.setFontSize(12);
+            doc.setFontType("bold");
+            doc.text(65, altura, 'ORDEN DE RECONEXIÓN DEL SERVICIO');
+            altura = altura + 6;
+            doc.setFontSize(7);
+            doc.setFontType("normal");
+            doc.text(10, altura, 'FECHA : ' + String(obj_data.fecha));
+            doc.text(80, altura, 'HORA : ' + String(obj_data.hora));
+            doc.text(130, altura, 'CLIENTE N° : ' + String(obj_data.cliente_suministro));
+            altura = altura + 4;
+            doc.text(10, altura, 'INSTALACION : ' + String(obj_data.instalacion));
+            doc.text(80, altura, 'MEDIDOR N° : ' + String(obj_data.medidor));
+            doc.text(130, altura, 'UBICACION DE MEDIDOR : ');
+
+            doc.setFontSize(8);
+            doc.text(169, altura, 'E');
+            doc.setFontSize(15);
+            doc.text(169, altura + 1, String(obj_data.ubicacion_medidor_externo));
+            doc.rect(165, altura - 3, 10, 5)
+
+            doc.setFontSize(8);
+            doc.text(181, altura, 'I');
+            doc.setFontSize(15);
+            doc.text(181, altura + 1, String(obj_data.ubicacion_medidor_interno));
+            doc.setFontSize(8);
+            doc.rect(177, altura - 3, 10, 5)
+
+ 
+            altura = altura + 6;
+            doc.text(15, altura + 1, '1. DATOS DEL CLIENTE');
+            doc.rect(8, altura - 2, 180, 5) //---dibujando un rectangulo
+            altura = altura + 8;
+            doc.text(10, altura, 'Nombre del Cliente : ' + String(obj_data.nombre_cliente));
+            altura = altura + 4;
+            doc.text(10, altura, 'Direccion del Suministro : ' + String(obj_data.direccion_suministro));
+            altura = altura + 4;
+            doc.text(10, altura, 'Distrito  : ' + String(obj_data.distrito));
+            altura = altura + 6;
+            doc.text(15, altura + 1, '2. DATOS DEL PERSONAL DE CALIDDA O CONTRATISTA ENCARGADO');
+            doc.rect(8, altura - 2, 180, 5) //---dibujando un rectangulo
+            altura = altura + 8;
+            doc.text(10, altura, 'Nombre : ' + String(obj_data.nombre_personal));
+            doc.text(140, altura, 'DNI : ' + String(obj_data.dni_personal));
+            altura = altura + 6;
+            doc.text(15, altura + 1, '3. DECLARACIÓN');
+            doc.rect(8, altura - 2, 180, 5) //---dibujando un rectangulo
+            altura = altura + 7;
+            doc.text(10, altura, 'Quien suscribe la presente Orden de Reconexión del Servicio declará bájo juramento y responsabilidad que las');
+            altura = altura + 4;
+            doc.text(10, altura, 'instalaciones internas y Equipos del predio ubicado en la dirección detallada precedentemente se encuentran en');
+            altura = altura + 4;
+            doc.text(10, altura, 'condiciones seguras para proceder a la Reconexión del suministro de Gas Natural. Asi mismo, declara que dichas');
+            altura = altura + 4;
+            doc.text(10, altura, 'instalaciones internas y Equipos no han sido modificados y/o manipulados desde su Habilitación o ultima Reconexión');
+            altura = altura + 4;
+            doc.text(10, altura, 'del servicio de distribucion de Gas Natural y que la información que se detalla a continuación es veraz.');
+            altura = altura + 6;
+            doc.text(10, altura, 'Cálidda no sera responsable por los daños y perjuicios que se generen  o puedan generar en el incumplimiento de');
+            altura = altura + 4;
+            doc.text(10, altura, 'la Presente Declaración Jurada.');
+            
+            altura = altura + 6;
+            doc.text(15, altura + 1, '4. DATOS DE LA VISITA');
+            doc.rect(8, altura - 2, 180, 5) //---dibujando un rectangulo
+            altura = altura + 8;
+            doc.setFontType("bold");
+            doc.text(10, altura, 'Motivo de Reconexión'); doc.setFontType("normal");
+            doc.text(50, altura, '1.Deuda'); doc.text(65.5, altura, String(obj_data.motivo_deuda));   doc.rect(64, altura - 3, 5, 4);
+            doc.text(84, altura, '2.APC'); doc.text(99.5, altura, String(obj_data.motivo_apc));  doc.rect(98, altura - 3, 5, 4);
+            doc.text(118, altura, '3.TECNICO'); doc.text(136.5, altura, String(obj_data.motivo_tecnico));  doc.rect(135, altura - 3, 5, 4);
+            doc.text(145, altura, '4.OTROS'); doc.text(161.5, altura, String(obj_data.motivo_otros));  doc.rect(160, altura - 3, 5, 4);
+
+            altura = altura + 6;
+            doc.setFontType("bold");
+            doc.text(10, altura, 'RECONEXIÓN EXITOSA'); doc.text(51.5, altura, String(obj_data.recone_exitosa)); doc.rect(50, altura - 3, 5, 4);
+            doc.setFontType("normal"); doc.text(62, altura, 'Lectura '); doc.text(76, altura, String(obj_data.lectura_cierre));  
+            altura = altura + 6;
+            doc.text(10, altura, 'Artefactos reconectados');
+            altura = altura + 5;
+            doc.text(10, altura, 'Cocina'); doc.text(31.5, altura, String(obj_data.artefac_cocina));  doc.rect(30, altura - 3, 5, 4);
+            doc.text(50, altura, 'Terma'); doc.text(71.5, altura, String(obj_data.artefac_terma)); doc.rect(70, altura - 3, 5, 4);
+            doc.text(98, altura, 'Secadora'); doc.text(121.5, altura, String(obj_data.artefac_secadora)); doc.rect(120, altura - 3, 5, 4);
+            doc.text(145, altura, 'Estufa'); doc.text(161.5, altura, String(obj_data.artefac_estufa)); doc.rect(160, altura - 3, 5, 4);
+            altura = altura + 6;
+            doc.setFontType("bold");
+            doc.text(10, altura, 'RECONEXIÓN INFRUCTUOSA'); doc.text(51.5, altura, String(obj_data.recone_infrutuosa));  doc.rect(50, altura - 3, 5, 4);  
+            altura = altura + 6;
+            doc.text(10, altura, 'Motivo del Empedimento'); doc.setFontType("normal");
+            altura = altura + 6;
+            doc.text(10, altura, 'Cliente Ausente'); doc.text(51.5, altura, String(obj_data.motivo_cliente_ausente)); doc.rect(50, altura - 3, 5, 4); doc.text(100, altura, 'Primera Visita de Reconexion'); doc.text(151.5, altura, String(obj_data.primera_visita_recone));  doc.rect(150, altura - 3, 5, 4);
+            altura = altura + 5;
+            doc.text(10, altura, 'Cliente Impide Acceso'); doc.text(51.5, altura, String(obj_data.motivo_cliente_impide));  doc.rect(50, altura - 3, 5, 4); doc.text(100, altura, 'Proxima Visita de Reconexion');  
+            altura = altura + 5;
+            doc.text(10, altura, 'Otros'); doc.text(99.5, altura, String(obj_data.proxima_visita_fecha_check)); doc.rect(98, altura - 3, 5, 4); doc.text(105, altura, 'Fecha : ' + String(obj_data.proxima_visita_fecha)); doc.text(140, altura, 'Hora ' + String(obj_data.proxima_visita_hora));     
+            altura = altura + 5;
+            doc.text(10, altura, String(obj_data.motivo_cliente_otros));    doc.text(99.5, altura, String(obj_data.proxima_visita_solicita));   doc.rect(98, altura - 3, 5, 4); doc.text(105, altura, 'solicite su visita al 614-9000');
+            altura = altura + 6;         
+            doc.text(10, altura, 'ESTIMADO(A) CLIENTE(A) DE NO REALIZARSE EL SERVICIO DE RECONEXIÓN, PUEDE PROGRAMAR o REPROGRAMAR SU PRÓXIMA');
+            altura = altura + 4;
+            doc.text(10, altura, 'VISITA DE RECONEXIÓN DE SERVICIO ATRAVÉS DE LA LINEA DE SERVICIO AL CLIENTE 614-9000');
+
+            altura = altura + 6;
+            doc.text(15, altura + 1, '4. OBSERVACIONES');
+            doc.rect(8, altura - 2, 180, 5) //---dibujando un rectangulo
+            altura = altura + 6;
+            var splitTitle = doc.splitTextToSize(String(obj_data.observaciones), 180);
+            doc.text(10, altura, splitTitle);
+            altura = altura + 10;
+            doc.text(10, altura, 'Este formato solo puede ser empleado por el personal de Calidda y sus contratistas para los fines indicados,');
+            doc.text(10, altura + 2, 'esta terminantemente  prohibido su uso por personal no autorizado.');
+            altura = altura + 20;
+            doc.setFontType("bold");
+
+            doc.rect(40, altura - 8, 50, 6) //---dibujando un rectangulo
+            doc.text(60, altura - 4, 'Usuario');
+            doc.rect(40, altura - 2, 50, 38) //---dibujando un rectangulo
+
+
+            doc.rect(120, altura - 8, 50, 6) //---dibujando un rectangulo
+            doc.text(128, altura - 4, 'Cálidda - Representante');
+            doc.rect(120, altura - 2, 50, 38) //---dibujando un rectangulo
+
+            var generarPDF = function () {
+                var fecha = obj_data.fecha.split('/');
+                fecha = fecha[0] + fecha[1] + fecha[2];
+                setTimeout(function () {
+                    doc.save(obj_data.cliente_suministro + '_' + fecha + '_' + getCodUniq() + '.pdf');
+                    q.resolve('success');
+                }, 0);
+            }
+
+            var generarImagen_4 = function () {
+                //PRUEBA RUTA
+                var imgData4 = String(obj_data.ruta_foto_4)
+                //var imgData4 = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+                var img4 = new Image;
+                img4.onload = function () {
+
+                    doc.text(90, 200, 'FOTO DEL ACTA.');
+                    doc.addImage(this, 'JPEG', 60, 210, 80, 70)
+
+                    generarPDF();
+                };
+                img4.crossOrigin = "";  // for demo as we are at different origin than image
+                img4.src = imgData4;  // some random imgur image
+            }
+
+            var generarImagen_3 = function () {
+                // prueba
+                var imgData3 = String(obj_data.ruta_foto_3)
+                //var imgData3 = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+                var img3 = new Image;
+                img3.onload = function () {
+                    doc.addImage(this, 'JPEG', 60, 110, 80, 70)
+
+                    generarPDF();
+                };
+                img3.crossOrigin = "";  // for demo as we are at different origin than image
+                img3.src = imgData3;  // some random imgur image
+            }
+
+            var generarImagen_2 = function () {
+                var imgData2 = String(obj_data.ruta_foto_2)
+                //var imgData2 = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+                var img2 = new Image;
+                img2.onload = function () {
+                    doc.addImage(this, 'JPEG', 45, 226, 40, 30);
+                    doc.text(60, 260, 'Firma.');
+                    generarPDF();
+                };
+                img2.crossOrigin = "";  // for demo as we are at different origin than image
+                img2.src = imgData2;  // some random imgur image
+            }
+
+            var imgData = String(obj_data.ruta_foto_1)
+            //var imgData = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+            var img = new Image;
+
+            ///---doc.addImage( posicion, altura, 40, 30)
+            img.onload = function () {
+                doc.addImage(this, 'JPEG', 125, 226, 40, 30);
+                generarImagen_2();
+                //generarPDF();
+            };
+            img.crossOrigin = "";   
+            img.src = imgData;  // some random imgur image
+
+            altura = altura + 32;
+            doc.text(140, 260, 'Firma.');
+
+            return q.promise;
+
+        }
+ 
+        
+        $scope.crear_pdf_inspecciones = function () {
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../GeneracionActas/get_generacionPdf_inspecciones',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_inspeccion: 1, 
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (data.length > 0) {
+                        $scope.getPdf_3(data)
+                    } else {
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                });
+        }
+        
+        $scope.getPdf_3 = function (obj_data) {
+
+            var q = $q.defer();
+            var doc = new jsPDF();
+            var altura = 12;
+            var imgLogo = '';
+            //doc.addImage(imgLogo, 'JPEG', 10, 4, 60, 25)
+            doc.setFontSize(13);
+            doc.setFont("courier");
+            doc.setFontType("bold");
+            doc.text(80, altura, 'CONTROL PREVENTIVO');
+            doc.setFontType("normal");
+            doc.setFontSize(6); 
+            doc.text(165, altura, 'Código: CO-FO-9122-SSOMA-021');
+            altura = altura + 3;  
+            doc.setFontType("normal");
+            doc.setFontSize(7); 
+            doc.text(90, altura, 'Lista de autochequeo'); doc.setFontSize(6); doc.text(165, altura, 'Rev.: 00');   
+            altura = altura + 3;   
+            doc.setFontSize(7);
+            doc.text(90, altura, 'Servicios Auxiliares'); doc.setFontSize(6); doc.text(165, altura, 'Fecha: Mayo 2019');
+            altura = altura + 4;  
+            doc.setFontSize(7);
+            doc.setFontType("bold");
+            doc.text(6, altura, 'OPERARIO :'); doc.text(90, altura, 'AREA :');
+            altura = altura + 4;  
+            doc.text(6, altura, 'EMPRESA :'); doc.text(90, altura, 'FECHA :'); doc.text(150, altura, 'HORA :');
+            altura = altura + 4;  
+            doc.setFontSize(9);
+            doc.text(60, altura, 'Campo a verificar al inicio de la jornada (en la base)');
+            altura = altura + 6;  
+            doc.setFontSize(6);
+
+            //-----lado izquierdo---------------------
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+
+            doc.rect(5, altura - 3, 59, 8, 'FD');
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220,)
+            doc.rect(64, altura - 3, 30, 4, 'FD');
+            doc.text(65, altura, 'Disponible     ESTADO');
+            //-----lado Derecho---------------------
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(98, altura - 3, 75, 8, 'FD');
+
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(173, altura - 3, 30, 4,'FD');
+            doc.text(174, altura, 'Disponible     ESTADO');
+
+            doc.setFontSize(8);
+            doc.text(12, altura, 'PROTECCIONES INDIVIDUALES Y');
+            altura = altura + 2; 
+            doc.text(120, altura, 'MEDIOS DE TRABAJO');
+            altura = altura + 2; 
+            doc.text(25, altura, 'ESPECIFICAS');
+                        //-----lado izquierdo---------------------
+            doc.text(65, altura, 'SI'); doc.rect(64, altura - 3, 5, 4);
+            doc.text(70, altura, 'NO'); doc.rect(69, altura - 3, 5, 4);
+            doc.text(75, altura, 'NA'); doc.rect(74, altura - 3, 5, 4);
+            doc.text(80, altura, 'B'); doc.rect(79, altura - 3, 5, 4);
+            doc.text(85, altura, 'M'); doc.rect(84, altura - 3, 5, 4);
+            doc.text(90, altura, 'NA'); doc.rect(89, altura - 3, 5, 4);
+            //-----lado Derecho---------------------
+            doc.text(174, altura, 'SI'); doc.rect(173, altura - 3, 5, 4);
+            doc.text(179, altura, 'NO'); doc.rect(178, altura - 3, 5, 4);
+            doc.text(184, altura, 'NA'); doc.rect(183, altura - 3, 5, 4);
+            doc.text(189, altura, 'B'); doc.rect(188, altura - 3, 5, 4);
+            doc.text(194, altura, 'M'); doc.rect(193, altura - 3, 5, 4);
+            doc.text(199, altura, 'NA'); doc.rect(198, altura - 3, 5, 4); 
+            doc.setFontSize(7);
+            doc.setFontType("normal");
+ 
+            for (item of obj_data) {
+                if (item.Lado == 1) {
+                    if (item.id_CheckList > 1) {
+                        altura = altura + 4;
+                        doc.text(6, altura, item.descripcion); doc.rect(5, altura - 3, 59, 4);
+                        doc.text(65, altura, item.valor_SI); doc.rect(64, altura - 3, 5, 4);
+                        doc.text(70, altura, item.valor_NO); doc.rect(69, altura - 3, 5, 4);
+                        doc.text(75, altura, item.valor_NA); doc.rect(74, altura - 3, 5, 4);
+                        doc.text(80, altura, item.valor_B); doc.rect(79, altura - 3, 5, 4);
+                        doc.text(85, altura, item.valor_M); doc.rect(84, altura - 3, 5, 4);
+                        doc.text(90, altura, item.valor_NA2); doc.rect(89, altura - 3, 5, 4);
+                    }
+                }
+            }
+ 
+            altura = 40; 
+            for (row of obj_data) {    
+                if (row.Lado == 2) {
+                    if (row.id_CheckList > 31) {
+                        altura = altura + 4;
+                        doc.text(100, altura, row.descripcion); doc.rect(98, altura - 3, 75, 4);
+                        doc.text(174, altura, row.valor_SI); doc.rect(173, altura - 3, 5, 4);
+                        doc.text(179, altura, row.valor_NO); doc.rect(178, altura - 3, 5, 4);
+                        doc.text(184, altura, row.valor_NA); doc.rect(183, altura - 3, 5, 4);
+                        doc.text(189, altura, row.valor_B); doc.rect(188, altura - 3, 5, 4);
+                        doc.text(194, altura, row.valor_M); doc.rect(193, altura - 3, 5, 4);
+                        doc.text(199, altura, row.valor_NA2); doc.rect(198, altura - 3, 5, 4);
+                    }
+                }
+            }
+
+            var generarPDF = function () {
+
+                doc.setFontType("bold");
+                doc.setFontSize(10);
+                doc.text(60, altura, 'Verificar antes del inicio de la jornada.');
+                altura = altura + 6;
+                doc.setFontType("normal");
+                doc.setFontSize(7);
+                doc.setFontType("bold");
+                doc.text(6, altura, '1. Condiciones de Zona de Trabajo (Evaluación y verificación de la zona de trabajo, Interferencia con terceros, clima del ambiente, etc.)');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("bold");
+                doc.text(6, altura, '2. Comprobación de entorno de suministro');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("normal");
+                doc.text(6, altura, '- Identificación visual  (Medidor de Suministro con objetos suspendidos sobre éste, Medidor de suministros sin acceso o acceso ');
+                altura = altura + 4;
+                doc.text(6, altura, '  inseguro Medidor de Suministro Inteno; Medidor de suminsitro ubicado en Altura)');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.text(6, altura, '- En caso de medidores de suministros ubicados en azoteas o altura con accesos no estandarizados, reportar el suministro ');
+                altura = altura + 4;
+                doc.text(6, altura, '  con el responsable del área, para que éste asigne el trabajo a la cuadrilla correspondiente.');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("bold");
+                doc.text(6, altura, '3. Trabajo en Altura:');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("normal");
+                doc.text(6, altura, '-  Escaleras (revisión  de  estado de peldaños, zapatas, largueros, atado correcto de la escalera al poste…)');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.text(6, altura, '-  Sistema anticaída (arnés anticaídas, cuerda semiestatica, estrobo, grip, línea de vida….)');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.text(6, altura, '-  Trabajo a medio tramo/vano: carro porta-escaleras, coordinar con Supervisor de Obra.');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.text(6, altura, '-  Trabajo en armario (revisión del estado de la plataforma, barandas, soportes, abrazaderas y tuercas libres de corrosión,');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.text(6, altura, '   deterioro y/o ausencias de estas)');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("bold");
+                doc.text(6, altura, '4. Trabajos en Azotea ');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("normal");
+                doc.text(6, altura, '- Verificación de techo (material noble, Presencia de animales, Estructura)');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("bold");
+                doc.text(6, altura, '5. Trabajos en Fachada');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("normal");
+                doc.text(6, altura, '- Verificación de las fachadas.');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.text(6, altura, '- Verificación del tipo de anclaje.');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.text(6, altura, '- Verificación de la ausencia de instalaciones eléctricas "hechizas"');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                altura = altura + 4;
+                doc.setFontType("bold");
+                doc.text(6, altura, '6. Trabajo con desplazamiento en vehículos menores  ');
+                doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                doc.setFontType("normal");
+                altura = altura + 8;
+
+                doc.text(20, altura + 2, 'MEDIOS DE TRABAJO');
+                doc.rect(5, altura - 3, 65, 8);
+                doc.text(77, altura, 'Ejecucion'); doc.rect(70, altura - 3, 30, 4);
+                altura = altura + 4;
+                doc.text(80, altura, 'Si/No'); doc.rect(70, altura - 3, 30, 4);
+ 
+                for (items of obj_data) {
+                    if (items.Lado == 3) {
+                        if (items.id_CheckList > 62) {
+                            altura = altura + 4;
+                            doc.text(6, altura, items.descripcion);
+                            doc.rect(5, altura - 3, 65, 4);
+                            doc.rect(70, altura - 3, 30, 4);
+                            doc.text(80, altura, items.valor_SI);
+                        }
+                    }
+                }
+
+                var string = doc.output('datauristring');
+                var iframe = "<iframe width='100%' height='100%' src='" + string + "'></iframe>";
+                var x = window.open();
+                x.document.open();
+                x.document.write(iframe);
+                x.document.close();
+            }
+
+            var generarImagen_2 = function () {
+                //var imgData2 = String(obj_data.ruta_foto_2)
+                var imgData2 = String('../content/foto/foto/1000127_1_08012019_1452452900.jpg');
+                var img2 = new Image;
+                img2.onload = function () {
+                    doc.addImage(this, 'JPEG', 150, 275, 28, 15);
+                    generarPDF();
+                };
+                img2.crossOrigin = "";  // for demo as we are at different origin than image
+                img2.src = imgData2;  // some random imgur image
+                doc.setFontType("bold");
+                doc.text(150, 293, 'Firma de trabajador');
+                doc.setFontType("normal");
+            }
+
+            altura = 156;
+            doc.setFontSize(9);
+            doc.setFontType("bold");
+            doc.text(6, 175, 'Nombre y apellidos: LANGUASCO BARRON JULIO CESAR ');
+            doc.text(137, 175, 'Firma:');
+            doc.line(6, 176.5, 148, 176.5) // horizontal line
+
+            doc.setFontSize(7);
+            doc.setFontType("normal");
+
+            var imgData = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+            var img = new Image;
+            img.onload = function () {
+                doc.addImage(this, 'JPEG', 150, 168, 28, 15);
+                generarImagen_2();
+            };
+            img.crossOrigin = "";
+            img.src = imgData;  // some random imgur image
+            altura = altura + 29;
+ 
+            return q.promise;
+
+        }
+
+        $scope.getPdf_4 = function (obj_data) {
+
+            var q = $q.defer();
+            var doc = new jsPDF();
+            var altura = 12;
+            var lados = 0;
+            var imgLogo = '';
+
+
+            //doc.addImage(imgLogo, 'JPEG', 10, 4, 60, 25)
+            doc.setFontSize(13);
+            doc.setFont("courier");
+            doc.setFontType("bold");
+            doc.text(80, altura, 'CONTROL PREVENTIVO');
+            doc.setFontType("normal");
+            doc.setFontSize(6);
+            doc.text(165, altura, 'Código: CO-FO-9122-SSOMA-021');
+            altura = altura + 3;
+            doc.setFontType("normal");
+            doc.setFontSize(7);
+            doc.text(90, altura, 'CHARLA PREOPERACIONAL'); doc.setFontSize(6); doc.text(165, altura, 'Rev.: 00');
+            altura = altura + 3;
+            doc.setFontSize(7);
+            doc.text(90, altura, 'Servicios Auxiliares'); doc.setFontSize(6); doc.text(165, altura, 'Fecha: Mayo 2019');
+            altura = altura + 8;
+            doc.setFontSize(8);
+            doc.setFontType("bold");
+            doc.text(6, altura, 'NOMBRE EMPRESA: ');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.text(6, altura, 'RESPONSABLE DE TRABAJO: ');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.text(6, altura, 'TÍTULO DEL TRABAJO: ');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.text(6, altura, 'LUGAR: '); doc.text(90, altura, 'FECHA :'); doc.text(150, altura, 'HORA :');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+
+            altura = altura + 10;
+            doc.text(35, altura, 'ANTES DE REALIZAR LOS TRABAJOS ASIGNADOS VERIFICAR Y REALIZAR LO SIGUIENTE: ');  
+            doc.line(35, altura + 1.5, 160, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.setFontSize(7);
+            doc.text(6, altura, '¤ Charla Pre Operacional, reconociendo previamente su zona de trabajo. Identificar los peligros y evaluar los riesgos, ');
+            altura = altura + 3;
+            doc.text(6, altura, '  estableciendo las medidas de control vinculadas.');
+            altura = altura + 4;
+            doc.text(6, altura, '¤ Revisar que los EPP, herramientas y otros medios de trabajos se encuentren en buen estado de conservación.');
+
+            altura = altura + 4;
+            doc.setFontType("normal");
+            doc.text(6, altura, '* Luego de la evaluación del entorno de trabajo, marcar con una X los peligros y riesgos identificados. Anotar en el apartado');
+            altura = altura + 3;
+            doc.text(6, altura, '*  de Medidas de control, los controles correspondientes referenciando el item del riesgo identificado');
+            altura = altura + 6;
+
+            doc.setFontSize(9);
+
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(10, altura - 3, 90, 8, 'FD');
+            doc.text(32, altura + 2, 'PELIGROS IDENTIFICADOS');
+
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(110, altura - 3, 91, 8, 'FD');
+            doc.text(137, altura + 2, 'RIESGOS IDENTIFICADOS');
+            altura = altura + 4;
+
+            //------LADO IZQUIERDO ---
+            lados = altura;
+            altura = lados; 
+
+            for (var i = 0; i < 12; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(18, altura, 'X'); doc.rect(10, altura - 3, 20, 4);
+                doc.text(38, altura, String(i + 1)); doc.rect(30, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(55, altura, 'Trasporte manual de cargas'); doc.rect(50, altura - 3, 50, 4);
+            }
+            altura = 84; 
+            for (var i = 0; i < 12; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(118, altura, 'A'); doc.rect(110, altura - 3, 20, 4);
+                doc.text(138, altura, String(i + 1)); doc.rect(130, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(151, altura, 'Sobreexposición a radiación solar'); doc.rect(150, altura - 3, 51, 4);
+            }
+            //------LADO DERECHO ---
+            altura = altura + 8;
+            doc.setFontSize(8);
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(10, altura - 3, 90, 4, 'FD'); doc.text(10, altura, 'Otros peligros y riesgos');
+
+            lados = 0;
+            lados = altura; 
+            altura = lados; 
+
+            for (var i = 0; i < 3; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(18, altura, ''); doc.rect(10, altura - 3, 20, 4);
+                doc.text(38, altura, ''); doc.rect(30, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(55, altura, ''); doc.rect(50, altura - 3, 50, 4);
+            }
+
+            altura = lados; 
+            for (var i = 0; i < 3; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(118, altura, ''); doc.rect(110, altura - 3, 20, 4);
+                doc.text(138, altura, ''); doc.rect(130, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(151, altura, ''); doc.rect(150, altura - 3, 51, 4);
+            }
+
+            altura = altura + 8;
+            doc.setFontSize(8);
+
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(10, altura - 3, 191, 4, 'FD'); 
+            doc.text(10, altura, 'Item del Riesgo'); doc.text(80, altura, 'Medidas de Control del Riesgo');  
+
+            lados = 0;
+            lados = altura; 
+ 
+            for (var i = 0; i < 11; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(21, altura, 'A'); doc.rect(10, altura - 3, 25, 4);
+                doc.setFontSize(8);
+                doc.text(38, altura, 'x--------x'); doc.rect(35, altura - 3, 166, 4);
+            }
+            //----
+            altura = altura + 8;
+ 
+            var generarPDF = function () {
+                var string = doc.output('datauristring');
+                var iframe = "<iframe width='100%' height='100%' src='" + string + "'></iframe>";
+                var x = window.open();
+                x.document.open();
+                x.document.write(iframe);
+                x.document.close(); 
+            }
+
+            //var imgData = String(obj_data.ruta_foto_1)
+            var imgData = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+            var img = new Image;
+
+            img.onload = function () {
+                doc.addImage(this, 'JPEG', 125, 226, 40, 30);
+                generarPDF();
+            };
+            img.crossOrigin = "";
+            img.src = imgData;  // some random imgur image 
+
+            altura = altura + 32;
+            doc.text(127, 260, 'Firma del trabajador.');                   
+
+            return q.promise;
+
+        }
+        
+        function getDateNow() {
+            var meses = new Array("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre");
+            var diasSemana = new Array("Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado");
+            var f = new Date()
+            return diasSemana[f.getDay()] + ", " + f.getDate() + " de " + meses[f.getMonth()] + " de " + f.getFullYear();
+        };
+
+        function getDateHour() {
+            var f = new Date()
+            return f.getHours() + ':' + f.getMinutes() + ':' + f.getSeconds();
+        } 
+
+    });
+
+</script>
+
+
+<div class="panel panel-oscuro" ng-app="appActas" ng-controller="ctrlActas" ng-init="inicializando_variables();">
+    <div class="panel-heading"  style="margin-top: -14px;">
+        <h6><i class="fa fa-table fa-lg"></i> GENERACIÓN DE ACTAS </h6>
+    </div>
+    <div class="panel-body">
+        <div id="Contenedor">
+            <form class="form-inline">
+                <div class="row" style=" margin-top: -7px;">
+                    <div class="col-lg-12">
+                        <div class="well" style="background: #314b75; color: white;">
+                            <center style="margin-top: -20px;margin-bottom: -20px;">
+
+
+                                <div class="form-group" style="padding-left: 15px;">
+                                    <label for="cbo_local" style="font-size:11px; margin-top: 5px;">Local:</label>
+                                    <select id="cbo_local"  class="form-control"    ng-model="id_local" >
+                                        <option value=0>--[ Seleccione ]-- </option>
+                                        <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                            {{item.loc_nombre}}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="padding-left: 15px;">
+                                    <label for="cbo_servicio" style="font-size:11px; margin-top: 5px;">Servicio:</label>
+                                    <select id="cbo_servicio" class="form-control" ng-model="id_tipoServicio">
+                                        <option value=0>--[ Seleccione ]-- </option>
+                                        <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                            {{item.nombre_tiposervicio}}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="padding-left: 15px;">
+                                    <label for="id_fecha" style="font-size:11px">Fecha: </label>
+                                    <input class="form-control" style="width: 150px;" id="id_fecha" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                </div>
+
+                                <div class="form-group" style="padding-left: 15px;  margin-top: 5px;">
+                                    <label for="cbo_operario" style="font-size:11px">Operario:</label>
+                                    <select id="cbo_operario" class="form-control" ng-model="id_operario">
+                                        <option value=0>--[ Todos ]-- </option>
+                                        <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                            {{item.id_Operario}} : {{item.desc_operario}}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                    <button class="btn btn-success" ng-click="Listado_Cabecera_Lecturas();"><span class="glyphicon glyphicon-refresh"></span> Mostrar</button>
+                                    <button class="btn btn-primary " ng-click="descargarMasivo();"><span class="glyphicon glyphicon-download-alt"></span> PDF</button>
+                                </div>
+                            </center>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" style="width: {{progress}}%;" aria-valuenow="{{progress}}" aria-valuemin="0" aria-valuemax="100">{{progress | number : 2}}%</div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <div id="Principal" class="table-responsive">
+                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                        <thead style="color:#7991a5;">
+                            <tr>
+                                <th style="text-align:center">#</th>
+                                <th style="text-align:center">Suministro</th>
+                                <th style="text-align:center">Medidor</th>
+                                <th style="text-align:center">Cliente</th>
+                                <th style="text-align:center">Operario</th>
+                                <th style="text-align:center"> Descargar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="item in Obj_List_Cabecera" on-finish-render="ngRepeatFinished_cabecera">
+                                <td>{{$index + 1}}</td>
+                                <td style="text-align:center">{{item.cliente_suministro}}</td>
+                                <td style="text-align:center">{{item.medidor}}</td>
+                                <td>{{item.nombre_cliente}}</td>
+                                <td>{{item.nombre_personal}}</td>
+                                <td style="text-align:center"> <button class="btn btn-xs btn-primary" ng-click="getPdf(item);"><span class="glyphicon glyphicon-download-alt"></span> </button> </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

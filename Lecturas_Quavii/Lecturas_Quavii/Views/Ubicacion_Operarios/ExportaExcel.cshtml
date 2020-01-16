@@ -1,0 +1,16 @@
+﻿@{
+    Layout = null;
+}
+<table>
+    <tr>
+        <th>Operario</th>
+        <th>Total</th>
+        <th>Realizado</th>
+        <th>Pendiente</th>
+        <th>% Avance</th>
+    </tr>
+    @foreach (var item in ViewBag.DatosExcel)
+    {
+        <tr><td>@item.ope_nombre</td><td>@item.totAsig</td><td>@item.totReali</td><td>@item.totPend</td><td>@item.pocenAvance</td><td></td></tr>
+    }
+</table>

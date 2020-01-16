@@ -1,0 +1,493 @@
+﻿
+
+
+@{
+    ViewBag.Title = "Unidad de Lectura";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    @Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+    <script src="~/Content/angular/infinite-scroll.js"></script>
+
+    <style>
+        .modal-dialog {
+            width: 400px;
+        }
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        .btn {
+            font-size: 12px;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 600px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 600px;
+        }
+
+        #Contenedor {
+            width: 98%;
+        }
+
+        #Marco {
+            padding-left: 5px;
+            padding-top: 15px;
+            margin: -10px;
+        }
+
+        .datepicker {
+            width: 200px;
+        }
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+            padding: 2px;
+        }
+
+        div.dataTables_wrapper div.dataTables_filter input {
+            background: beige;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2
+        }
+    </style>
+
+    <script type="text/javascript">
+
+        function soloNumeros(e) {
+            var key = window.Event ? e.which : e.keyCode
+            return (key >= 48 && key <= 57)
+        }
+        var app = angular.module('myApp', ['infinite-scroll'])
+
+        app.directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit(attr.onFinishRender);
+                        });
+                    }
+                }
+            }
+        });
+        app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+            function MostrandoFechaSistemaActual() {
+                var fecha = new Date();
+                var ano = fecha.getFullYear();
+                var mes = fecha.getMonth();
+                var mesFormato = '';
+
+                if (mes <= 9) {
+                    mesFormato = '0' + (mes + 1);
+                } else {
+                    mesFormato = (mes + 1);
+                }
+
+                $scope.id_anio = String(ano);
+                $scope.id_mes = String(mesFormato);
+
+                setTimeout(function () {
+                    $('#cbo_anio').val(String(ano)).trigger('change');
+                    $('#cbo_mes').val(String(mesFormato)).trigger('change');
+                }, 200);
+
+            }
+
+            var oTableU = null;
+            $scope.$on('ngRepeatFinished_unidadLect', function (ngRepeatFinishedEvent) {
+                oTableU = $('#tblcabecera').DataTable(
+                    {
+                        scrollY: "400px",
+                        paging: false,
+                    });
+            });
+
+
+            $scope.AbrirModal_Unidad = function () {
+                let txt_cod_unidad = document.getElementById('txt_cod_unidad');
+                let txt_nombre_unidad = document.getElementById('txt_nombre_unidad');
+                let txt_dist_unidad = document.getElementById('txt_dist_unidad');
+                $("#txt_cod_unidad").prop('disabled', false);
+ 
+                let rb_activo = document.getElementById('rb_activo');
+
+                setTimeout(function () {
+                    txt_cod_unidad.value = '';
+                    txt_nombre_unidad.value = '';
+                    txt_dist_unidad.value = '';
+                    rb_activo.checked = true;
+                    $('#modal_mantenimiento').modal({ show: 'false' });
+                }, 200);
+            }
+
+            var flag_modo_edicion = false;
+            $scope.AbrirModal_Unidad_editar = function (obj) {
+                console.log('AbrirModal_Unidad_editar')
+                console.log(obj)
+
+                let txt_cod_unidad = document.getElementById('txt_cod_unidad');
+                let txt_nombre_unidad = document.getElementById('txt_nombre_unidad');
+                let txt_dist_unidad = document.getElementById('txt_dist_unidad');
+                let rb_activo = document.getElementById('rb_activo');
+                let rb_inactivo = document.getElementById('rb_inactivo');
+
+                $("#txt_cod_unidad").prop('disabled', true);
+                               
+                setTimeout(function () {
+                    $('#modal_mantenimiento').modal({ show: 'false' });
+                    txt_cod_unidad.value = obj.Cod_UnidadLectura;
+                    txt_nombre_unidad.value = obj.nombre_UnidadLectura;
+                    txt_dist_unidad.value = obj.Distrito_UnidadLectura;
+
+                    if (obj.Estado == 1 || obj.Estado == '1') {
+                        rb_activo.checked = true;
+                    }
+                    else if (obj.Estado == 2|| obj.Estado == 2) {
+                        rb_inactivo.checked = true;
+                    }  
+                }, 200);
+            }
+                                 
+            
+            $scope.guardar_informacion = function () {
+
+                let txt_cod_unidad = document.getElementById('txt_cod_unidad').value;
+                let txt_nombre_unidad = document.getElementById('txt_nombre_unidad').value;
+                let txt_dist_unidad = document.getElementById('txt_dist_unidad').value;
+ 
+                let rb_activo = document.getElementById('rb_activo');
+                let estado = 2;
+                if (rb_activo.checked == true) {
+                    estado = 1;
+                }
+
+                if (txt_cod_unidad == undefined || txt_cod_unidad == '' || txt_cod_unidad == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el codigo de unidad.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (txt_nombre_unidad == undefined || txt_nombre_unidad == '' || txt_nombre_unidad == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el Nombre de la Unidad de Lectura.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (txt_dist_unidad == undefined || txt_dist_unidad == '' || txt_dist_unidad == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el Distrito.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                var variables = {
+                    method: 'POST',
+                    url: '../asignar_supervisor/set_Insert_Update_Unidad_lectura',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        codigo: txt_cod_unidad,
+                        nombre: txt_nombre_unidad,
+                        distrito: txt_dist_unidad,
+                        estado: estado
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        if (data == 'OK' || data == '"OK"') {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso realizado, Realizado Correctamente.',
+                                type: 'success'
+                            });
+                            $scope.Actualizando_informacion();
+
+                            $("#modal_mantenimiento").modal('hide');
+                        } else {
+                            alert(data)
+                        }
+
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            }
+
+            $scope.Actualizando_informacion = function () {
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../asignar_supervisor/Listando_UnidadLectura_Principal',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $scope.Lista_unidad_lectura = [];
+                $http(variables)
+                    .success(function (data) {
+
+                        if (oTableU == null) {
+                            $scope.Lista_unidad_lectura = data;
+                        } else {
+                            oTableU.clear();
+                            oTableU.destroy();
+                            oTableU = null;
+                            $scope.Lista_unidad_lectura = data;
+                        }
+
+                        setTimeout(function () {
+                            $('.sige-load').hide();
+                        }, 1000);
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            }
+            $scope.Actualizando_informacion();
+
+            /// anulando 
+            $scope.AnulandoRegistro = function (Cod_UnidadLectura) {
+                var variables = {
+                    method: 'POST',
+                    url: '../asignar_supervisor/set_anulando_unidad_lectura',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        //Parametros de  la Funcion del Controlador                               
+                        Cod_UnidadLectura: Cod_UnidadLectura
+                    }
+                }
+                $http(variables)
+                    .success(function (data) { 
+                        if (data == 'OK' || data == '"OK"') {
+                            $scope.Actualizando_informacion();
+                            new PNotify({
+                                title: ' ',
+                                text: 'Anulado Exitosamente.',
+                                type: 'success'
+                            });
+                        } else {
+                            alert(data)
+                        }
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            }
+
+            // AUDITORIA
+            $scope.AuditoriaRegistro = function (obj) {             
+                    new PNotify({
+                        title: '<center>Auditoria: registro</center>',
+                        text: '<b>Registrado por</b>: ' + obj.usuario_registra
+                            + '<br /><b>Fecha de registro</b>: ' + obj.fecha_creacion
+                            + '<br /><b>Modificado por</b>: ' + obj.usuario_edicion
+                            + '<br /><b>Fecha de modificacion</b>: ' + obj.fecha_modificacion,
+                        type: 'info'
+                    });
+            }   
+
+
+        }).directive('fileModel', ['$parse', function ($parse) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attrs) {
+                    var model = $parse(attrs.fileModel);
+                    var modelSetter = model.assign;
+
+                    element.bind('change', function () {
+                        scope.$apply(function () {
+                            modelSetter(scope, element[0].files[0]);
+                        });
+                    });
+                }
+            };
+        }])
+        app.service('fileUpload', ['$http', function ($http) {
+            this.uploadFileToUrl = function (idlocal, file, uploadUrl) {
+
+                var fd = new FormData();
+                fd.append('file', file);
+                fd.append('idlocal', idlocal);
+                $http.post(uploadUrl, fd, {
+                    transformRequest: angular.identity,
+                    headers: { 'Content-Type': undefined }
+                })
+                    .success(function (data) {
+
+                    })
+                    .error(function () {
+
+                    });
+            }
+        }]);
+
+
+    </script>
+
+    <!DOCTYPE html>
+    <html ng-app="myApp">
+    <body ng-controller="MainCtrl">
+        <div class=" container panel panel-oscuro">
+            <div class="panel-heading">
+                <h6><i class="fa fa-table fa-lg"></i> MANTENIMIENTO DE UNIDAD DE LECTURAS </h6>
+            </div>
+            <div class="panel-body">
+
+                <div class=" row">
+                    <div class="col-sm-4 col-md-4 col-lg-4">
+                        <button class="btn btn-primary" ng-click="AbrirModal_Unidad();"><span class="glyphicon glyphicon-plus"></span> Nuevo</button>
+                    </div>
+                </div>
+                <hr style=" margin-top: 1px; margin-bottom: 1px;" />
+
+                <table id="tblcabecera" class="table  table-bordered table-responsive">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">  Codigo</th>
+                            <th style="text-align:left;">  Nombre Unidad Lectura</th>
+                            <th style="text-align:left;">  Distrito</th>
+                            <th style="text-align:left;">  Estado</th>
+                            <th style="text-align:center;">  Acciones</th>
+
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 10px;font-family: tahoma !important;">
+                        <tr ng-repeat="item in Lista_unidad_lectura" on-finish-render="ngRepeatFinished_unidadLect">
+                            <td style="text-align:center"> {{item.Cod_UnidadLectura}}</td>
+                            <td> {{item.nombre_UnidadLectura}}</td>
+                            <td> {{item.Distrito_UnidadLectura}}</td>
+                            <td style="width:100px;" align="center" ng-if="item.Estado==1"><i style="color: #4f8edc;" class="fa fa-check fa-lg .activo"></i></td>
+                            <td style="width:100px;" align="center" ng-if="item.Estado==2"><i style="color: #e73c3c;" class="fa fa-times fa-lg .inactivo"></i></td>
+                            <td style="text-align:center">
+                                <div class="form-group">
+                                    @*<button class="btn btn-xs btn-default" ng-click="AbrirModal_Unidad_editar(item);"><span class="glyphicon glyphicon-pencil"></span> Editar</button>
+                                    <button class="btn btn-xs btn-danger" ng-click="AnulandoRegistro(item.Cod_UnidadLectura);"><span class="glyphicon glyphicon-minus"></span> Anular</button>
+                                    <button ng-click="AuditoriaRegistro(item)" class="btn btn-xs btn-info"><span class="glyphicon glyphicon-stats"></span> Auditoria</button>*@
+
+                                    <button class="btn btn-xs btn-primary" ng-click="AbrirModal_Unidad_editar(item);" ><span class="glyphicon glyphicon-pencil"></span> Editar</button>                                  
+                                    <button class="btn btn-xs btn-danger" ng-click="AnulandoRegistro(item.Cod_UnidadLectura);" ><span class="glyphicon glyphicon-trash"></span> Anular</button>                                    
+                                    <button class="btn btn-xs btn-info" ng-click="AuditoriaRegistro(item)" ><span class="glyphicon glyphicon-edit"></span> Auditoria</button>
+                                    
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="modal_mantenimiento" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog  modal_dsige " style="width:30%;">
+                <div class="panel panel-oscuro">
+                    <div class="panel-heading">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h6 class="modal-title"><i class="fa fa-calendar fa-lg"></i> Configuracion de Unidad de Lectura</h6>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+
+                            <div class="col-sm-12 col-md-12 col-lg-12">
+                                <div class="form-group">
+                                    <label class="control-label"> Codigo unidad lectura </label>
+                                    <br />
+                                    <input type="text" id="txt_cod_unidad" maxlength="30" class="form-control" placeholder="Ingresar codigo">
+                                </div>
+                            </div>
+
+
+                            <div class="col-sm-12 col-md-12 col-lg-12">
+                                <div class="form-group">
+                                    <label class="control-label"> Nombre de unidad lectura </label>
+                                    <br />
+                                    <input type="text" id="txt_nombre_unidad" maxlength="50" class="form-control" placeholder="Ingresar nombre">
+                                </div>
+                            </div>
+
+
+                            <div class="col-sm-12 col-md-12 col-lg-12">
+                                <div class="form-group">
+                                    <label class="control-label"> Distrito unidad lectura </label>
+                                    <br />
+                                    <input type="text" id="txt_dist_unidad" maxlength="30" class="form-control" placeholder="Ingresar distrito">
+                                </div>
+                            </div>
+
+
+                            <div class="col-sm-12 col-md-12 col-lg-12" style="text-align:center">
+                                <br />
+                                <div class="form-group">
+                                    <label class="radio-inline"><input id="rb_activo" type="radio" name="optradio" checked>Activo</label>
+                                    <label class="radio-inline"><input id="rb_inactivo" type="radio" name="optradio">Inactivo</label>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button class="btn btn-success" ng-click="guardar_informacion();"><span class="glyphicon glyphicon-floppy-disk"></span> Guardar</button>
+                                    <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </body>
+</html>
+
+

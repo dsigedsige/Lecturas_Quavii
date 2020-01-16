@@ -1,0 +1,624 @@
+﻿@{
+    ViewBag.Title = "seguimientosFotos";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+
+<style>
+    .modal-dialog {
+        width: 400px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+ 
+
+ 
+    div.dataTables_wrapper div.dataTables_filter input {
+        background: beige;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2
+    }
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+    var app = angular.module('myApp', []).directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    });;
+
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $(function () {
+            $('#dtp_fechaIni').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+            $('#dtp_fechaFin').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $scope.InicializandoVariables = function () {
+
+        }
+
+        $scope.listando_Locales = function () {
+            var variables = {
+                method: 'post',
+                url: '../AsignaOrdenTrabajo/ListandoLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.ListaLocales = data;
+                setTimeout(function () {
+                    $scope.id_local = '1';
+                    $('#cbo_local').val(1).trigger('change');
+                }, 200);
+            })
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Locales();
+
+        $scope.listando_Servicios = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../LecturaEnviarCliente/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.ListaServicios = data;
+
+                setTimeout(function () {
+                    $scope.id_tipoServicio = '1';
+                    $('#cbo_servicio').val(1).trigger('change');
+                }, 200);
+
+            })
+            .error(function () {
+                    $('.sige-load').hide();
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Servicios();
+
+
+
+        var oTable = null;
+        $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            oTable = $('#tblLista').DataTable(
+                 {
+                     scrollY: "400px",
+                     paging: false
+                 });
+        });
+        
+
+        $scope.ListaLecturas = [];
+        $scope.ActualizarInformacion = function () {
+
+                var cbo_local = document.getElementById('cbo_local');
+                var cbo_servicio = document.getElementById('cbo_servicio');
+                var dtp_fechaIni = document.getElementById('dtp_fechaIni');
+                var dtp_fechaFin = document.getElementById('dtp_fechaFin');
+            
+            //if (cbo_local.value == '0' || cbo_local.value == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+            if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (dtp_fechaIni.value == '0' || dtp_fechaIni.value == "") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione la fecha inicial. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (dtp_fechaFin.value == '0' || dtp_fechaFin.value == "") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione la fecha final. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+            
+
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../seguimientoFotos/ListandoLectura_Seguimiento',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        id_local: 1,
+                        id_servicio: cbo_servicio.value,
+                        fechainicial: dtp_fechaIni.value,
+                        fechafinal: dtp_fechaFin.value
+
+                    }
+                }
+
+                $scope.ListaLecturas = [];
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (oTable == null) {
+                        $scope.ListaLecturas = data;
+                    } else {
+                        oTable.clear();
+                        oTable.destroy();
+                        oTable = null;
+                        $scope.ListaLecturas = data;
+                    }
+ 
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    $('.sige-load').hide();
+                });
+            }
+
+        var opcion_global = '';
+        var fecha_global = '';
+
+
+        $scope.AbrirModal_evento = function (opcion, fecha) { 
+
+            opcion_global = opcion;
+            fecha_global = fecha;
+
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio');
+
+            //if (cbo_local.value == '0' || cbo_local.value == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+            if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('#modal_opcion').modal({ show: 'false' });
+        }
+
+        $scope.descagar_data = function () {
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio');
+
+            //if (cbo_local.value == '0' || cbo_local.value == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+
+            if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro de  descargar la Data..?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../seguimientoFotos/Listando_Data_Descargar_seguimiento',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        local: 1,
+                        servicio: cbo_servicio.value,
+                        fecha: fecha_global,
+                        option: opcion_global
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        var res = data.split("|");
+                        if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                            alert(res[1]);
+                        } else {
+                            var url = res[1].replace(/["]/gi, '');
+                            window.open( url);
+                        }
+                    }).error(function () {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+
+            }).on('pnotify.cancel', function () {
+
+            });
+        }
+
+
+        $scope.descagar_foto = function () {
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio');
+            
+            //if (cbo_local.value == '0' || cbo_local.value == "0") {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+            if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro de  descargar las Fotos..?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../seguimientoFotos/ListandoFotosDescargar_seguimiento',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        local: 1,
+                        servicio: cbo_servicio.value,
+                        fecha: fecha_global,
+                        option: opcion_global
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        var res = data.split("|");
+                        if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                            alert(res[1]);
+                        } else {
+                            var url = res[1].replace(/["]/gi, '');
+                            window.open(url);
+                        }
+                    }).error(function () {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+
+            }).on('pnotify.cancel', function () {
+
+            });
+        }
+
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }])
+    app.service('fileUpload', ['$http', function ($http) {
+        this.uploadFileToUrl = function (idlocal, file, uploadUrl) {
+
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('idlocal', idlocal);
+            $http.post(uploadUrl, fd, {
+                transformRequest: angular.identity,
+                headers: { 'Content-Type': undefined }
+            })
+            .success(function (data) {
+
+            })
+            .error(function () {
+
+            });
+        }
+    }]);
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl">
+    <div class="panel panel-oscuro" style="margin-top: -13px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> SEGUIMIENTO DE FOTOS</h6>
+        </div>
+        <div class="panel-body">
+
+            <div class="well" style="background: #314b75; color: white;     margin-top: -5px;">
+                <div class="row" style="margin-top: -19px; margin-bottom: -20px;">
+                    <div class="col-md-10">
+                        <div class="col-xs-12 col-sm-6 col-md-4  col-lg-3 " style="display:none">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Local
+                                </label>
+                                <br />
+                                <select id="cbo_local" class="form-control" ng-model="id_local" ng-change="Tecnico_Change(id_tipoServicio);">
+                                    <option value=0>--[ Seleccione ]-- </option>
+                                    <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                        {{item.loc_nombre}}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-xs-12 col-sm-6 col-md-4  col-lg-3 ">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Servicios
+                                </label>
+                                <br />
+                                <select id="cbo_servicio" class="form-control" ng-model="id_tipoServicio" ng-change="Tecnico_Change(id_tipoServicio); Servicios_Change(id_tipoServicio); ChangeObservaciones(id_tipoServicio); ">
+                                    <option value=0>--[ Seleccione ]-- </option>
+                                    <option ng-repeat="item in ListaServicios" value="{{item.id_TipoServicio}}">
+                                        {{item.nombre_tiposervicio}}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-xs-12 col-sm-6 col-md-4  col-lg-3 ">
+                            <label class="control-label">
+                                Rango de Fechas
+                            </label>
+                            <br />
+                            <div class="input-group">
+                                <input id="dtp_fechaIni" type="text" class="form-control" placeholder="dd/mm/yyyy" value="@DateTime.Now.ToString("dd/MM/yyyy")">
+                                <span class="input-group-addon bg-primary" style="color:black"> Hasta </span>
+                                <input id="dtp_fechaFin" type="text" class="form-control" placeholder="dd/mm/yyyy" value="@DateTime.Now.ToString("dd/MM/yyyy")">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label class="control-label">
+                            </label>
+                            <br />
+                            <button class="btn btn-primary" ng-click="ActualizarInformacion()"><span class="glyphicon glyphicon-refresh"></span> Actualizar</button>
+                        </div>
+                    </div>
+
+                    <a id="id_link" href="" download style="display:none">link</a>
+
+                </div>
+            </div>
+
+            <div id="Contenedor">
+                <div class="table-responsive">
+                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0">
+                        <thead style="font-size: 13px;font-family: tahoma !important;color: darkslategrey; background-color: beige;">
+                            <tr>
+                                <td style="text-align:center;">Fecha</td>
+                                <td style="text-align:center;"> <span class="glyphicon glyphicon-save"></span> Nota de lectura</td>
+                                <td style="text-align:center;"> <span class="glyphicon glyphicon-save"></span> Estimacion</td>
+                                <td style="text-align:center;"> <span class="glyphicon glyphicon-save"></span> Parametros</td>
+                                <td style="text-align:center;"> <span class="glyphicon glyphicon-save"></span> Comercio</td>
+                                <td style="text-align:center;">Total</td>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 10px;font-family: tahoma !important;">
+                            <tr ng-repeat="item in ListaLecturas" on-finish-render="ngRepeatFinished">
+                                <td style="text-align:center;">{{item.fecha}}</td>
+                                <td title="Descargar fotos Nota de Lectura" style="text-align:right;cursor:pointer" ng-click="AbrirModal_evento('N', item.fecha)"><b>{{item.nota_lectura}} </b></td>
+                                <td title="Descargar fotos Estimacion" style="text-align:right;cursor:pointer" ng-click="AbrirModal_evento('E', item.fecha)"><b> {{item.estimacion}}</b></td>
+                                <td title="Descargar fotos Parametros" style="text-align:right;cursor:pointer" ng-click="AbrirModal_evento('P', item.fecha)"><b>{{item.parametros}} </b> </td>
+                                <td title="Descargar fotos Comercio" style="text-align:right;cursor:pointer" ng-click="AbrirModal_evento('C', item.fecha)"><b> {{item.comercio}} </b></td>
+                                <td style="text-align:right;"><b> {{item.total}} </b></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+                <hr />
+            </div>
+        </div>
+    </div>
+
+    <div id="modal_opcion" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog  modal_dsige " style="width:300px;">
+ 
+
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><span class="glyphicon glyphicon-save"> Descargar</span>  </h6>
+                </div>
+                <div class="panel-body">
+                    <hr style="margin-top: -1px;margin-bottom: 7px;" />
+                    <div class="row">
+                        <div class="col-sm-12 col-md-12" style="text-align:center">
+                            <button class="btn btn-primary" title="Descargar" ng-click="descagar_data();"><span class="glyphicon glyphicon-align-justify"></span> Data</button>
+                            <button class="btn btn-success" title="Descargar fotos" ng-click="descagar_foto();" ><span class="glyphicon glyphicon-camera"></span> Fotos</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Salir  </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+</html>

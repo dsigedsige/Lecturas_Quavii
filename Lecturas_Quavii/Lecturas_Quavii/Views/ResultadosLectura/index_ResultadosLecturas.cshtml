@@ -1,0 +1,523 @@
+﻿@{
+    ViewBag.Title = "index_ResultadosLecturas";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+<link href="~/Content/lightbox/css/lightbox.min.css" rel="stylesheet" />
+<script src="~/Content/lightbox/js/lightbox.min.js"></script>
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+
+
+
+<style>
+    hr {
+        display: block;
+        height: 1px;
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 1em 0;
+        padding: 0;
+    }
+
+
+    .modal-dialog {
+        width: 300px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+    .tblDsige th {
+        color: #fff !important;
+        background-color: rgba(48, 115, 181, 0.83) !important;
+        text-align: center;
+    }
+
+    .tblDsige span {
+        color: #337ab7;
+        cursor: pointer;
+    }
+
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+   var app = angular.module('myApp', []).directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+     }]);
+
+    //var app = angular.module('myApp', []).directive('fileModel', ['$parse', function ($parse) {
+    //    return {
+    //        restrict: 'A',
+    //        link: function (scope, element, attrs) {
+    //            var model = $parse(attrs.fileModel);
+    //            var modelSetter = model.assign;
+
+    //            element.bind('change', function () {
+    //                scope.$apply(function () {
+    //                    modelSetter(scope, element[0].files[0]);
+    //                });
+    //            });
+    //        }
+    //    };
+    //}]);
+
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $(function () {
+            $('#id_fecha').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+            lightbox.option({
+                'resizeDuration': 200,
+                'wrapAround': true
+            })
+
+        });
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                $scope.Obj_List_Servicios = data;
+
+                $scope.Listado_Sector();
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.Obj_List_Sector = [];
+        $scope.Listado_Sector = function () {
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/ListandoSectores',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Sector = [];
+                $scope.Obj_List_Sector = data;
+
+                $scope.Listado_Operarios();
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.Obj_List_Operario = [];
+        $scope.Listado_Operarios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Operario = [];
+                $scope.Obj_List_Operario = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+       var oTable = null;
+
+       $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+           oTable = $('#tblListaDetalle').DataTable(
+                {
+                    scrollY: "500px",
+                    paging: false
+                });
+        });
+
+
+        $scope.InicializandoVariables = function () {
+            $scope.id_tipoServicio = '0';
+            $scope.id_sector = '0';
+            $scope.id_operario = '0';
+            $scope.id_obervacion = '0';
+            $scope.Listado_Servicios()
+        }
+
+        $scope.ListaResumen = [];
+        $scope.ListaResumen_Observacion = [];
+         
+        $scope.MostrarInformacion = function () {
+            var cbo_servicio = document.getElementById('cbo_servicio').value;
+            var id_fecha = document.getElementById('id_fecha').value;
+            var cbo_sector = document.getElementById('cbo_sector').value;
+
+
+            if (cbo_servicio == '0' || cbo_servicio == '0' || cbo_servicio == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+            if (id_fecha == '' || id_fecha == '' || id_fecha == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione una Fecha',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+
+            $scope.ListaResumen = [];
+            $scope.ListaResumen_Observacion = [];
+
+            var ResumenLecturaObservacion = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../ResultadosLectura/ListandoResumenLecturas_Observacion',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fecha: id_fecha,
+                        servicio: cbo_servicio,
+                        sector: cbo_sector
+                    }
+                }
+
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.ListaResumen_Observacion = [];
+
+                    if (oTable == null) {
+                        $scope.ListaResumen_Observacion = data;
+                    } else {
+                        oTable.clear();
+                        oTable.destroy();
+                        oTable = null;     
+                        $scope.ListaResumen_Observacion = data;      
+                    }
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+            
+            var variables = {
+                method: 'POST',
+                url: '../ResultadosLectura/ListandoResumenLecturas',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fecha: id_fecha,
+                    servicio: cbo_servicio,
+                    sector: cbo_sector
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.ListaResumen = data;
+                ///---mostrando la info de obsrvacion---
+                ResumenLecturaObservacion();
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+        
+        $scope.ResultadoLecturas_Detallado = function () {
+
+            var _fecha = document.getElementById('id_fecha').value;
+            var _servicio = document.getElementById('cbo_servicio').value;
+            var _cbo_sector = document.getElementById('cbo_sector').value;
+
+            if (_servicio == '' || _servicio == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha.',
+                    type: 'error'
+                });
+                return;
+            }
+            ///------abriendo la Pagina nueva
+            var url = "../ResultadosLectura/index_ResultadosLecturas_Detallado?servicio="+ _servicio +"&fecha="+ _fecha +"&sector=" + _cbo_sector + " ";
+            var a = document.createElement("a");
+                a.target = "_blank";
+                a.href = url;
+                a.click();
+         }
+    });
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> RESULTADO DE LECTURAS </h6>
+        </div>
+        <div class="panel-body">
+            <br />
+            <div id="Contenedor" style="margin-top:-25px">
+                <form class="form-inline">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="well" style="background: #314b75; color: white;margin-bottom: 2px;">
+                                <center style="margin-bottom: -15px; margin-top: -14px;">
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="cbo_servicio" style="font-size:11px; margin-top: 5px;">Servicio:</label>
+                                        <select id="cbo_servicio" class="form-control" ng-model="id_tipoServicio">
+                                            <option value=0>--[ Seleccione ]-- </option>
+                                            <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                                {{item.nombre_tiposervicio}}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="id_fecha" style="font-size:11px">Fecha: </label>
+                                        <input class="form-control" style="width: 150px;" id="id_fecha" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                        <label for="cbo_sector" style="font-size:11px">Sector:</label>
+                                        <select id="cbo_sector" class="form-control" ng-model="id_sector">
+                                            <option value=0>--[ Todos ]-- </option>
+                                            <option ng-repeat="item in Obj_List_Sector" value="{{item.Sector}}">
+                                                {{item.Sector}}
+                                            </option>
+                                        </select>
+                                    </div> 
+
+                                    <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                        <a href="#" class="btn btn-success" style=" font-size: 14px;" ng-click="MostrarInformacion();"><span class="glyphicon glyphicon-refresh"></span> Mostrar</a>
+                                    </div>
+                                </center>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="row">
+                <div class=" col-sm-4 col-lg-4">
+
+                </div>
+                <div class=" col-sm-4 col-lg-4">
+                    <div class="panel panel-warning ">
+                        <div class="panel-heading">
+                           <center> <h6 class="panel-title"> <strong style="color:black;font-size: 9px;"> RESUMEN DE LECTURA</strong> </h6>  </center>
+                        </div>
+                        <div class="panel-body" style=" margin-bottom: -5px;">
+                            <div class="col-md-12" style=" text-align: left;" ng-repeat="obj in ListaResumen">
+                                <div class="progress" style="margin-bottom: 10px;">
+                                    <div class="progress-bar" ng-style="{'width': obj.porc_ejecutado + '%' }">
+                                        <span>{{obj.total_ejecutado}}</span>
+                                    </div>
+                                </div>
+
+                                <h5 style="margin-bottom: 10px;"> <strong> Total Lecturas :</strong>  <span class="label label-default" sstyle="font-size:14px;">        {{obj.total_lectura}}</span></h5>
+                                <h5 style="margin-bottom: 10px;"><strong> Total Ejecutados :</strong>  <span class="label label-default" style="background-color: yellow; color: black; font-size:14px;">{{obj.total_ejecutado}}</span> <strong>         {{obj.porc_ejecutado}} %</strong></h5>
+                                <h5 style="margin-bottom: 10px;"><strong> Total Pendientes :</strong>   <span class="label label-default" style="background-color: red; color: white; font-size:14px;">          {{obj.total_pendiente}}</span></h5>
+                                <h5 style="margin-bottom: 10px;"><strong> Total Fotos :</strong>  <span class="label label-default" style="background-color: aquamarine; color: white; font-size:14px;">{{obj.total_fotos}}</span> <strong>          {{obj.porc_fotos}} %</strong></h5>
+                                <hr />
+                                <button class="btn btn-block btn-success" style=" font-size: 14px;" ng-click="ResultadoLecturas_Detallado();"><span class="glyphicon glyphicon-list"></span> Ver Detalle</button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class=" col-sm-4 col-lg-4">
+
+                </div>
+            </div>
+ 
+            <div class="row">
+ 
+                <div class="col-lg-12">
+                    <div class="panel panel-warning ">
+                        <div class="panel-heading">
+                            <center> <h3 class="panel-title"><strong style="color:black;font-size: 10px">RESUMEN DE LECTURAS POR OBSERVACION </strong></h3>  </center>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <table id="tblListaDetalle" class="table table-condensed table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                    <thead style="background: #F0F3F5;">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Codigo</th>
+                                            <th>Observacion</th>
+                                            <th>Total</th>
+                                            <th>Con Foto</th>
+                                            <th>Sin Foto</th>
+                                            <th>Barra Progreso</th>
+                                            <th>%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="lista in ListaResumen_Observacion" on-finish-render="ngRepeatFinished">
+                                            <td>{{$index + 1}}</td>
+                                            <td>{{lista.codigo}}</td>
+                                            <td>{{lista.observacion}}</td>
+                                            <td style="text-align:right">{{lista.total}}</td>
+                                            <td style="text-align:right">{{lista.conFoto}}</td>
+                                            <td style="text-align:right">{{lista.sinFoto}}</td>
+                                            <td>
+                                                <div class="progress" style="margin-bottom: 2px;">
+                                                    <div class="progress progress-bar" ng-style="{'width': lista.porcentaje + '%' }">
+                                                        <span>%</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style="text-align:right">{{lista.porcentaje}}</td>
+                                        </tr>
+
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+ 
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>
+

@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{36BD441F-354A-4B1A-841F-5F7D2BB5AF69}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>DSIGE.Modelo</RootNamespace>
+    <AssemblyName>DSIGE.Modelo</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Newtonsoft.Json.4.5.6\lib\net40\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AsignaLecturaReLectura.cs" />
+    <Compile Include="Auditoria.cs" />
+    <Compile Include="Cargo_Personal.cs" />
+    <Compile Include="Cambio_Estado_Masivo_E.cs" />
+    <Compile Include="Cls_Entidad_dias_trabajo.cs" />
+    <Compile Include="Cls_Entidad_Evento_Movil_Operario.cs" />
+    <Compile Include="Cls_Entidad_Export_trabajos_lectura.cs" />
+    <Compile Include="Cls_Entidad_Importacion_Lecturas.cs" />
+    <Compile Include="Cls_Entidad_AsignaOrdenTrabajo.cs" />
+    <Compile Include="Cls_Entidad_Parametro_Consumo.cs" />
+    <Compile Include="Cls_Entidad_RecepcionLect.cs" />
+    <Compile Include="Cls_Entidad_ReproteFueraRangoCorLds.cs" />
+    <Compile Include="Cls_entidad_Usuario_Cambio_Pass.cs" />
+    <Compile Include="CLS_XXX.cs" />
+    <Compile Include="Corte.cs" />
+    <Compile Include="EnvioTrabajoCliLecReLec.cs" />
+    <Compile Include="Estado.cs" />
+    <Compile Include="GeneracionActas_E.cs" />
+    <Compile Include="Grupo_Detalle.cs" />
+    <Compile Include="HistoricoLectura.cs" />
+    <Compile Include="ImportarArchivo.cs" />
+    <Compile Include="ImportarArchivoPlano.cs" />
+    <Compile Include="ImportarDiasTrabajo.cs" />
+    <Compile Include="Inspecciones_E.cs" />
+    <Compile Include="Lectura.cs" />
+    <Compile Include="Cuadro_Produccion.cs" />
+    <Compile Include="LecturaMes.cs" />
+    <Compile Include="ListaObjeto.cs" />
+    <Compile Include="Local.cs" />
+    <Compile Include="Novedades.cs" />
+    <Compile Include="Observacion.cs" />
+    <Compile Include="Operario.cs" />
+    <Compile Include="Operario_Servicio.cs" />
+    <Compile Include="Ordenes_E.cs" />
+    <Compile Include="Perfil.cs" />
+    <Compile Include="Permisos.cs" />
+    <Compile Include="Precios.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="DistribuirLecturas_E.cs" />
+    <Compile Include="ResultadoLecturas_E.cs" />
+    <Compile Include="Seguimiento_Operarios_E.cs" />
+    <Compile Include="Servicio.cs" />
+    <Compile Include="Sesion.cs" />
+    <Compile Include="UbicacionOperario.cs" />
+    <Compile Include="Usuario.cs" />
+    <Compile Include="VerificacionFoto_E.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

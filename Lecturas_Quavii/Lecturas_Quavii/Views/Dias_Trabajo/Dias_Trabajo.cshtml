@@ -1,0 +1,622 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = "Dias_Trabajo";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+
+<script src="~/Dist/jquery.inputmask.bundle.min.js"></script>
+
+@section instances{
+
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+}
+
+
+@section styles{
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+    </style>
+}
+@section scripts{
+
+
+
+<script type="text/javascript">
+        
+        @*codigo angular*@
+
+        var app = angular.module('appDiasTrabajo', []);
+        app.controller('DiasTrabajoCtrl', function ($scope, $http) {
+
+
+            //VARIABLE GLOBALES
+
+            $scope.PB_Modo_Edicion = false;
+            //Para Filtro de busqueda
+            $scope.PS_Filtro_busqueda = "";
+            $scope.PS_valorestado;
+
+
+
+            $scope.Modo_Edicion = function (valor) {
+                $scope.PB_Modo_Edicion = valor;
+            }
+
+
+            var id_dia, id_local, id_operario, nombre_dia, hora_entrada, hora_salida, estado
+
+            id_dia = document.getElementById('id_dia');
+            id_local = document.getElementById('id_local');
+            id_operario = document.getElementById('id_operario');
+            nombre_dia = document.getElementById('nombre_dia');
+            hora_entrada = document.getElementById('hora_entrada');
+            hora_salida = document.getElementById('hora_salida');
+            estado = document.getElementById('estado');
+
+            $scope.LimpiarCajastexto = function () {
+
+                id_dia = document.getElementById('id_dia');
+                id_local = document.getElementById('id_local');
+                id_operario = document.getElementById('id_operario');
+                nombre_dia = document.getElementById('nombre_dia');
+                hora_entrada = document.getElementById('hora_entrada');
+                hora_salida = document.getElementById('hora_salida');
+                estado = document.getElementById('estado');
+
+                id_dia.value = 0
+                id_local.value = 0
+                id_operario.value = 0
+                nombre_dia.value = "";
+                hora_entrada.value = "";
+                hora_salida.value = "";
+                estado.checked = true;
+
+            }
+
+
+            // Listando
+
+            $scope.ListandoDiasTrabajo = function () {
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Dias_Trabajo/ListandoDiasTrabajo',
+                    headers: {
+                                 'Content-Type': 'application/json; charset=utf-8'
+                             }
+                }
+
+                $http(variables)
+                .success(function (data) {
+                   $scope.Lista_Dias_Trabajo = data;
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+            };
+            //inicilizando
+            $scope.ListandoDiasTrabajo()
+
+
+
+            $scope.ListandoOperario = function () {
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Dias_Trabajo/ListandoOperario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+
+                $http(variables)
+                .success(function (data) {
+                    $scope.Lista_Operario = data;
+                })
+
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+            };
+            //inicilizando
+            $scope.ListandoOperario()
+            
+            
+
+
+            //guardando la informacion
+
+            $scope.Validaciones_Generales = function () {
+
+                id_dia = document.getElementById('id_dia');
+                id_local = document.getElementById('id_local');
+                id_operario = document.getElementById('id_operario');
+                nombre_dia = document.getElementById('nombre_dia');
+                hora_entrada = document.getElementById('hora_entrada');
+                hora_salida = document.getElementById('hora_salida');
+                estado = document.getElementById('estado');
+
+
+                if ($scope.PB_Modo_Edicion == true) {
+                    if (id_dia.value == 0) {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No se encontro el Id, no se puede modificar.',
+                            type: 'error'
+                        });
+                        return false ;
+                    }                
+                }
+
+                if (id_local.value == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Local. Muchas gracias',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (id_operario.value == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Operario. Muchas gracias',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                if (nombre_dia.value == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese un nombre de Día. Muchas gracias',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+
+                if (hora_entrada.value == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese una Hora de entrada . Muchas gracias',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                if (hora_salida.value == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese una Hora de salida. Muchas gracias',
+                        type: 'error'
+                    });
+                    return false;
+                }
+                
+                return true;                
+            }
+
+
+
+            $scope.GuardandoInformacion = function () {
+                
+                if ($scope.Validaciones_Generales() == false) {
+                    return;
+                }
+
+                var Tipo_Mant = "";
+                var _status = 0;
+
+                if (estado.checked == true) {
+                    _status = 1;
+                } else {
+                    _status = 2;
+                }
+
+                if ($scope.PB_Modo_Edicion == true) {
+                    Tipo_Mant = "U"
+                } else {
+                    Tipo_Mant = "I"
+                }
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Dias_Trabajo/GuardandoInformacion',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        //Parametros de  la Funcion del Controlador 
+                        id_dia: id_dia.value,
+                        id_Operario: id_operario.value,
+                        NombreDia: nombre_dia.value,
+                        HoraEntrada: hora_entrada.value,
+                        HoraSalida: hora_salida.value,
+                        estado: _status,
+                        id_Local: id_local.value,
+                        Tipo_Mant: Tipo_Mant
+                    }
+                }
+
+
+                $http(variables)
+                .success(function (data) {
+
+                    if (data == "true") {
+
+                        $("#modal-Dias_Trabajo").modal('hide');                 
+
+                        $scope.ListandoDiasTrabajo(); // asincrona
+                        $scope.LimpiarCajastexto(); // sincrona
+
+                        new PNotify({
+                            title: ' ',
+                            text: 'Proceso generado Exitosamente.',
+                            type: 'success'
+                        });
+                    }
+                })
+
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+
+                };
+
+            //Modo_Edicion
+            $scope.EditarRegistro = function (item) {
+
+
+                console.log(item.estado)
+
+                var _status;
+
+                    if (item.estado == 1) {
+                        _status = true;
+                    }
+                    else {
+                        _status = false
+                    }
+
+                    id_dia.value = item.id_DiaTrabajo;
+                    id_local.value = item.id_Local;
+                    id_operario.value = item.id_Operario;
+                    nombre_dia.value = item.NombreDia;
+                    hora_entrada.value = item.HoraEntrada;
+                    hora_salida.value = item.HoraSalida;
+                    estado.checked = _status
+                }
+
+            /// anulando
+
+                $scope.AnulandoRegistro = function (id_dia) {
+
+                    //"1"  -- activo
+                    //"2"  -- anulado
+
+                  var estado_anul = "2"
+
+                    var variables = {
+                        method: 'POST',
+                        url: '../Dias_Trabajo/AnulandoRegistro',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8'
+                        },
+                        data: {
+                            //Parametros de  la Funcion del Controlador
+                            id_dia: id_dia,
+                            estado_anul: estado_anul
+                        }
+                    }
+
+                    $http(variables)
+                    .success(function (data) {
+
+                        if (data == "true") {
+                            //Cargando la informacion de los Estudiantes
+                            $scope.ListandoDiasTrabajo(); // asincrona
+
+                            new PNotify({
+                                title: ' ',
+                                text: 'Registro Anulado exitosamente.',
+                                type: 'success'
+                            });
+                        }
+                    })
+
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+
+                }
+
+            // AUDITORIA
+
+                $scope.AuditoriaRegistro = function (id_dia) {
+                    //"1"  -- activo
+                    //"2"  -- anulado
+                    var variables = {
+                        method: 'POST',
+                        url: '../Dias_Trabajo/AuditoriaRegistro',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8'
+                        },
+                        data: {
+                            //Parametros de  la Funcion del Controlador
+                            id_dia: id_dia
+                        }
+                    }
+
+                    $('.sige-load').show();
+
+                    $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                                new PNotify({
+                                title: 'Auditoria: registro',
+                                text: '<b>Registrado por</b>: ' + data[0].nombre_usu_crea
+                                    + '<br /><b>Fecha de registro</b>: ' + data[0].fecha_creacion
+                                    + '<br /><b>Modificado por</b>: ' + data[0].nombre_usu_modi
+                                    + '<br /><b>Fecha de modificacion</b>: ' + data[0].fecha_edicion,
+                                type: 'info'
+                            });
+                     })
+
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+                }
+        })
+
+
+        function fnParametros() {
+            return {
+                type: 'owner',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 100,
+                page: 1
+            };
+        }
+
+        $(function () {
+            $('.fixed-table-toolbar > .search').css('width', '170px');
+            $('.fixed-table-toolbar > .search').addClass('input-group');
+            /*<select class="form-control" onchange="fnBusca($(this))"><option value=""></option><option value=".Activo">Activo</option><option value=".Inactivo">Inactivo</option></select>*/
+            $('.fixed-table-toolbar > .search').append('<div class="input-group-btn"><button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onclick="fnBusca(\'\')">Estado <span class="caret"></span></button><ul class="dropdown-menu"><li onclick="fnBusca(\'.Activo\')"><a href="javascript:">Activo</a></li><li onclick="fnBusca(\'.Inactivo\')"><a href="javascript:">Inactivo</a></li></ul></div>');
+        })
+
+        $(window).resize(function () {
+            $('#table-registro').bootstrapTable('resetView');
+        });
+
+        function fnBusca(__a) {
+            $('.fixed-table-toolbar > .search > input').val(__a);
+            $('.fixed-table-toolbar > .search > input').trigger('keyup');
+        }
+
+
+
+        function estadoFormatter(__val) {
+            var $html;
+
+            if (__val == 2) {
+                $html = '<i style=\" color: #e73c3c; \" class=\"fa fa-times fa-lg .inactivo\"></i>';
+            } else {
+                $html = '<i style=\" color: #4f8edc; \" class=\"fa fa-check fa-lg .activo\"></i>';
+            }
+
+            return $html;
+        }
+
+        function fnIsNumeric(__e) {
+            var charCode = (__e.which) ? __e.which : event.keyCode
+            if (charCode > 31 && (charCode < 48 || charCode > 57))
+                return false;
+            return true;
+        }
+
+
+        function SoloNumerosDecimales3(e, valInicial, nEntero, nDecimal) {
+            var obj = e.srcElement || e.target;
+            var tecla_codigo = (document.all) ? e.keyCode : e.which;
+            var tecla_valor = String.fromCharCode(tecla_codigo);
+            var patron2 = /[\d.]/;
+            var control = (tecla_codigo === 46 && (/[.]/).test(obj.value)) ? false : true;
+            var existePto = (/[.]/).test(obj.value);
+
+            //el tab
+            if (tecla_codigo === 8)
+                return true;
+
+            if (valInicial !== obj.value) {
+                var TControl = obj.value.length;
+                if (existePto === false && tecla_codigo !== 46) {
+                    if (TControl === nEntero) {
+                        obj.value = obj.value + ".";
+                    }
+                }
+
+                if (existePto === true) {
+                    var subVal = obj.value.substring(obj.value.indexOf(".") + 1, obj.value.length);
+
+                    if (subVal.length > 1) {
+                        return false;
+                    }
+                }
+
+                return patron2.test(tecla_valor) && control;
+            }
+            else {
+                if (valInicial === obj.value) {
+                    obj.value = '';
+                }
+                return patron2.test(tecla_valor) && control;
+            }
+        }
+
+        
+        $(document).ready(function () {            
+            $("#hora_entrada,#hora_salida").inputmask();
+        });
+
+
+
+    </script>
+}
+
+<div ng-app="appDiasTrabajo" ng-controller="DiasTrabajoCtrl">
+
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> DÍAS DE TRABAJO</h6>
+        </div>
+        <div class="panel-body">
+            <form class="form-horizontal">
+                <div class="row">
+                    <div role="group" class="btn-group btn-group-sm col-md-8">
+                        <button type="button" class="btn btn-success" data-toggle="modal" data-target="#modal-Dias_Trabajo" ng-click="Modo_Edicion(false);LimpiarCajastexto()"><i class="fa fa-plus fa-lg"></i> Nuevo</button>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="txt_buscar" class="control-label col-md-6">Buscar:</label>
+                            <div class="col-md-6 ">
+                                <input class="form-control" type="text" id="txt_buscar" ng-model="PS_Filtro_busqueda" placeholder="Buscar">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <table id="tblLista" class="table  table-responsive table-bordered  table-condensed">
+                <thead style="background:#F0F3F5;">
+                    <tr>
+                        <th>Id</th>
+                        <th>LOCAL</th>
+                        <th>OPERARIO</th>
+                        <th align="center">DÍA</th>
+                        <th>HORA ENTRADA</th>
+                        <th>HORA SALIDA</th>
+                        <th>ESTADO</th>
+                        <th colspan="3"> </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="item in Lista_Dias_Trabajo | filter:PS_Filtro_busqueda " ng-style="item.estado === 2 && {'background-color':'rgba(255, 0, 0, 0.31)'}  || item.estado === '1' && {'background-color':'white'}" on-finish-render="ngRepeatFinished">
+                        <td>{{item.id_DiaTrabajo}}</td>
+                        <td>{{item.nombre_local}}</td>
+                        <td>{{item.desc_operario}}</td>
+                        <td align="center">{{item.NombreDia}}</td>
+                        <td>{{item.HoraEntrada}}</td>
+                        <td>{{item.HoraSalida}}</td>
+                        <td style="width:100px;" align="center" ng-if="item.estado==1"><i style="color: #4f8edc;" class="fa fa-check fa-lg .activo"></i></td>
+                        <td style="width:100px;" align="center" ng-if="item.estado==2"><i style="color: #e73c3c;" class="fa fa-times fa-lg .inactivo"></i></td>
+                        <td colspan="3" align="center">
+                            <div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">
+                                <button role="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#modal-Dias_Trabajo" ng-click="Modo_Edicion(true);EditarRegistro(item)"><i class="fa fa-edit fa-lg"></i>Editar</button>
+                                <button role="button" class="btn btn-default btn-xs" ng-click="AnulandoRegistro(item.id_DiaTrabajo)"><i class="fa fa-trash-o fa-lg"></i>Anular</button>
+                                <button role="button" class="btn btn-default btn-xs" ng-click="AuditoriaRegistro(item.id_DiaTrabajo)"><i class="fa fa-android fa-lg"></i>Auditoria</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="modal-Dias_Trabajo" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> DÍAS DE TRABAJO</h6>
+                </div>
+
+                <div class="panel-body">
+                    <form class="form-horizontal">
+                        <div class="form-group form-group-sm">
+                            <label for="_id" class="col-sm-3 control-label">ID</label>
+                            <div class="col-sm-6">
+                                <input  disabled="disabled" class="form-control" id="id_dia" placeholder="Codigo" type="text" value="0">
+                            </div>
+                        </div>
+
+                        <div class="form-group form-group-sm">
+                            <label for="id_local" class="col-sm-3 control-label">Local :</label>
+                            <div class="col-sm-6">
+                                <select class="form-control" id="id_local">
+                                    <option value="0" selected="selected">-- Seleccione --</option>
+                                    @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                    {
+                                        <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group form-group-sm">
+                            <label for="id_operario" class="col-sm-3 control-label">Operario :</label>
+                            <div class="col-sm-6">
+                                <select class="form-control" id="id_operario">
+                                    <option value="0" selected="selected">-- Seleccione --</option>
+                                    <option ng-repeat="item in Lista_Operario" value="{{item.id_Operario}}"> {{item.desc_operario}} </option>           
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-group-sm">
+                            <label for="nombre_dia" class="col-sm-3 control-label">Nombre de Día</label>
+                            <div class="col-sm-6">
+                                <input class="form-control" id="nombre_dia" placeholder="Nombre del día" type="text">
+                            </div>
+                        </div>
+
+                        <div class="form-group form-group-sm">
+                            <label for="hora_entrada" class="col-sm-3 control-label">Hora de entrada</label>
+                            <div class="col-sm-3">
+                               <input class="form-control" data-inputmask="'mask': '99:99'" id="hora_entrada" placeholder="Hora de entrada" type="text">
+                            </div>
+                        </div>
+                        <div class="form-group form-group-sm">
+                            <label for="hora_salida" class="col-sm-3 control-label">Hora de salida</label>
+                            <div class="col-sm-3">
+                                <input class="form-control" data-inputmask="'mask': '99:99'" id="hora_salida" placeholder="Hora de salida" type="text">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="estado" class="col-sm-3 control-label">Estado</label>
+                            <div class="col-sm-6">
+                                <div class="checkbox block">
+                                    <label><input type="checkbox" id="estado"></label>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" style=" background-color: #245580;color: #fff;" class="btn btn-primary" ng-click="GuardandoInformacion()"><i class="fa fa-save fa-lg"></i>Guardar</button>
+                                <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal" ng-click="Modo_Edicion(false)"><i class="fa fa-close fa-lg"></i>Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

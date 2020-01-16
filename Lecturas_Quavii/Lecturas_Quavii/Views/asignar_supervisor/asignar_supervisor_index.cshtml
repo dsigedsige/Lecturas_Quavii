@@ -1,0 +1,618 @@
+﻿ 
+
+
+@{
+    ViewBag.Title = "Asignar supervisor";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+
+<style>
+    .modal-dialog {
+        width: 400px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+
+
+    div.dataTables_wrapper div.dataTables_filter input {
+        background: beige;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2
+    }
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+    var app = angular.module('myApp', [])
+
+    app.directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit(attr.onFinishRender);
+                    });
+                }
+            }
+        }
+    });    
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $(function () {
+            $('#dtp_fechaIni').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+            $('#dtp_fechaFin').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $scope.InicializandoVariables = function () {
+
+        }
+
+
+        $scope.ListaSupervisor = [];
+        $scope.listando_Supervisor = function () {
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoSupervisor',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                $scope.ListaSupervisor = data;
+                setTimeout(function () {
+                    $scope.id_supervisor = '0';
+                    $('#cbo_supervisor').val(0).trigger('change');
+                }, 200);
+
+            })
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Supervisor();
+               
+        var oTableO = null;
+        $scope.$on('ngRepeatFinished_operario', function (ngRepeatFinishedEvent) {
+             oTableO = $('#tbloperarios').DataTable(
+                 {
+                    scrollY: "400px",
+                    paging: false,
+                 });
+        });
+
+
+        var oTableU = null;
+        $scope.$on('ngRepeatFinished_usuario', function (ngRepeatFinishedEvent) {
+            oTableU = $('#tblusuario_responsable').DataTable(
+                {
+                    scrollY: "400px",
+                    paging: false,
+                });
+        });
+
+
+        $scope.ListaOperarios = [];
+        $scope.listando_Operarios = function () {
+            var variables = {
+                method: 'post',
+                url: '../asignar_supervisor/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $('.sige-load').show();          
+            $scope.ListaOperarios = [];
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();    
+
+                if (oTableO == null) {
+                    $scope.ListaOperarios = data;
+                } else {
+                    oTableO.clear();
+                    oTableO.destroy();
+                    oTableO = null;
+                    $scope.ListaOperarios = data;
+                } 
+            })
+            .error(function () {
+                alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+            });
+        };
+        $scope.listando_Operarios();
+               
+        $scope.ListaUsuario_Operarios = [];
+        $scope.Change_listando_Usuario_Operarios = function (obj_id_supervisor) {
+            if (obj_id_supervisor == 0 || obj_id_supervisor == '0') {
+                if (oTableU == null) {
+                    $scope.ListaUsuario_Operarios = [];
+                } else {
+                    oTableU.clear();
+                    oTableU.destroy();
+                    oTableU = null;
+                    $scope.ListaUsuario_Operarios = [];
+                }
+                return;
+            }
+
+            var variables = {
+                method: 'post',
+                url: '../asignar_supervisor/ListandoUsuario_Operarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_supervisor: obj_id_supervisor
+                }
+            }
+            $scope.checkedAll_U = false;
+            $('.sige-load').show();
+            $scope.ListaUsuario_Operarios = [];
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (oTableU == null) {
+                        $scope.ListaUsuario_Operarios = data;
+                    } else {
+                        oTableU.clear();
+                        oTableU.destroy();
+                        oTableU = null;
+                        $scope.ListaUsuario_Operarios = data;
+                    }
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+     
+        $scope.checkedAll = false;
+        $scope.checkedAll_U = false;
+
+        $scope.checkedAll_registros = function (checked, TipoTrabajo) {
+            if (TipoTrabajo == 1) {  // Operarios
+                if (checked) {
+                    angular.forEach($scope.ListaOperarios, function (child) {
+                        child.checkeado = true;
+                    })
+                } else {
+                    angular.forEach($scope.ListaOperarios, function (child) {
+                        child.checkeado = false;
+                    })
+                }
+            }
+            else if (TipoTrabajo == 2) {  // usuarios
+                if (checked) {
+                    angular.forEach($scope.ListaUsuario_Operarios, function (child) {
+                        child.checkeado = true;
+                    })
+                } else {
+                    angular.forEach($scope.ListaUsuario_Operarios, function (child) {
+                        child.checkeado = false;
+                    })
+                }
+            }     
+        }
+
+
+        function MarcoCheck(tipo) {
+            var flag_marco = false;
+
+            if (tipo == 1 || tipo == '1') { // //  Operarios
+                for (var i = 0; i < $scope.ListaOperarios.length; i++) {
+                    if ($scope.ListaOperarios[i].checkeado == true) {
+                        flag_marco = true;
+                        break;
+                    }
+                }
+            } else if (tipo == 2 || tipo == '2') { // usuarios
+                for (var i = 0; i < $scope.ListaUsuario_Operarios.length; i++) {
+                    if ($scope.ListaUsuario_Operarios[i].checkeado == true) {
+                        flag_marco = true;
+                        break;
+                    }
+                }
+            }
+            return flag_marco;
+        }
+
+
+        function ListaMarcoCheck(Tipo) {
+            var List_id = [];
+
+            if (Tipo == 1 || Tipo == '1') { // Operarios
+                for (var i = 0; i < $scope.ListaOperarios.length; i++) {
+                    if ($scope.ListaOperarios[i].checkeado == true) {
+                        List_id.push($scope.ListaOperarios[i].id_Operario)
+                    }
+                }
+            } else if (Tipo == '2' || Tipo == 2) { // usuarios
+                for (var i = 0; i < $scope.ListaUsuario_Operarios.length; i++) {
+                    if ($scope.ListaUsuario_Operarios[i].checkeado == true) {
+                        List_id.push($scope.ListaUsuario_Operarios[i].id_Usuario_Responsable)
+                    }
+                }
+            }
+            return List_id;
+        }
+
+
+ 
+        $scope.agregarOperario = function () {
+            var flag_marco = false;
+            var List_codigos = [];
+
+            flag_marco = MarcoCheck(1);
+            if (flag_marco == false) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione al menos un Operario.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+
+            if (cbo_supervisor == 0 || cbo_supervisor == -1 || cbo_supervisor == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un supervisor.',
+                    type: 'error'
+                });
+                return;
+            }
+            var cantUsuario = $scope.ListaUsuario_Operarios.length;
+            List_codigos = ListaMarcoCheck(1);
+            
+            if (cantUsuario > 0) {// validar si no hay duplicidad
+                for (var i = 0; i < List_codigos.length; i++) {
+                    for (let oper of $scope.ListaUsuario_Operarios) { 
+                        //console.log(List_codigos[i] + '==' + oper.id_Operario)
+                        if (List_codigos[i] == oper.id_Operario) {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'el Operario ' + oper.desc_operario + ' se encuentra ya registrado.',
+                                type: 'error'
+                            });
+                            return;
+                            break;
+                        }             
+                    }
+                }
+
+            } 
+            
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/set_agregarOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    objOperarios: List_codigos.toString(),
+                    id_supervisor: cbo_supervisor
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data == '"OK"' || data == '"OK' || data == 'OK') {
+
+                        for (oper of $scope.ListaOperarios) {
+                            if (oper.checkeado ==true) {
+                                oper.checkeado = false;
+                            }               
+                        }
+                        $scope.Change_listando_Usuario_Operarios(cbo_supervisor);
+                    } else {
+                        alert(data);
+                    }  
+                }).error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        }
+
+        $scope.quitarUsuario = function () {
+            var flag_marco = false;
+            var List_codigos = [];
+
+            flag_marco = MarcoCheck(2);
+            if (flag_marco == false) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione al menos un Operario asignado a un Supervisor.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+
+            if (cbo_supervisor == 0 || cbo_supervisor == -1 || cbo_supervisor == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Supervisor.',
+                    type: 'error'
+                });
+                return;
+            }
+            List_codigos = ListaMarcoCheck(2);
+
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/set_eliminarOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    objOperarios: List_codigos.toString(),
+                    id_supervisor: cbo_supervisor
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data == '"OK"' || data == '"OK' || data == 'OK') {
+                        for (oper of $scope.ListaOperarios) {
+                            if (oper.checkeado == true) {
+                                oper.checkeado = false;
+                            }
+                        }
+                        $scope.Change_listando_Usuario_Operarios(cbo_supervisor);
+                    } else {
+                        alert(data);
+                    }
+                }).error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        }
+ 
+
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }])
+    app.service('fileUpload', ['$http', function ($http) {
+        this.uploadFileToUrl = function (idlocal, file, uploadUrl) {
+
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('idlocal', idlocal);
+            $http.post(uploadUrl, fd, {
+                transformRequest: angular.identity,
+                headers: { 'Content-Type': undefined }
+            })
+            .success(function (data) {
+
+            })
+            .error(function () {
+
+            });
+        }
+    }]);
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> ASIGNACION DE USUARIOS A SUPERVISORES</h6>
+        </div>
+        <div class="panel-body">
+            <div id="Contenedor">
+
+                <div class="row">
+                    <div class="col-sm-12 col-md-5 col-lg-5">
+                        <br />
+                        <br />
+                        <center> <span class="label label-default" style="font-size: 12px;">Operario</span></center>
+                        <hr style=" margin-top: 1px; margin-bottom: 1px;" />
+                        <div class="table-responsive">
+                            <table id="tbloperarios" class="table  table-bordered table-responsive" >
+                                <thead style="font-size: 13px;font-family: tahoma !important;color: white; background-color: #2e6da4;">
+                                    <tr>
+                                        <th style="text-align:left;">
+                                            <div class="checkbox clip-check check-danger checkbox-inline">
+                                                <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedAll" ng-click="checkedAll_registros(checkedAll,1)">
+                                                <label for="checkboxAll">
+                                                </label>
+                                            </div>
+                                        </th>
+                                        <th style="text-align:center;">  Operario</th>
+                                    </tr>
+                                </thead>
+                                <tbody style="font-size: 10px;font-family: tahoma !important;">
+                                    <tr ng-repeat="item in ListaOperarios" on-finish-render="ngRepeatFinished_operario">
+                                        <td style="text-align:left;">
+                                            <div class="checkbox clip-check check-primary checkbox-inline" style="margin-top: 0px;margin-bottom: -2px;">
+                                                <input type="checkbox" id="checkbox{{$index}}" value="true" ng-model="item.checkeado">
+                                                <label for="checkbox{{$index}}">
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td style="text-align:left"> {{item.desc_operario}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-12 col-md-2 col-lg-2">
+                        <div style="text-align:center">
+                            <br />
+                            <br />
+                            <br />
+                            <br />
+                            <br />
+                            <br />
+
+                            <button class="btn btn-success" title="Agregar" ng-click="agregarOperario();"><span class="glyphicon glyphicon-chevron-right"></span> </button>
+                            <br />
+                            <br />
+                            <button class="btn btn-danger" title="Quitar" ng-click="quitarUsuario();"><span class="glyphicon glyphicon-chevron-left"></span> </button>
+                            <br />
+                            <br />
+                            <br />
+                            <br />
+                        </div>
+
+                    </div>
+
+                    <div class="col-sm-12 col-md-5 col-lg-5">
+                        <center><span class="label label-primary" style="font-size: 12px;">Supervisor</span></center>
+                        <div class="form-group"> 
+                            <select id="cbo_supervisor" class="form-control" ng-model="id_supervisor" ng-change="Change_listando_Usuario_Operarios(id_supervisor); ">
+                                <option value=0>--[ Seleccione ]-- </option>
+                                <option ng-repeat="item in ListaSupervisor" value="{{item.id_Usuario}}">
+                                    {{item.supervisor}}
+                                </option>
+                            </select>
+                        </div>
+
+                        <hr style=" margin-top: 1px; margin-bottom: 1px;" />
+                        <div class="table-responsive">
+                            <table id="tblusuario_responsable" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0">
+                                <thead style="font-size: 13px;font-family: tahoma !important;color: white; background-color: #2e6da4;">
+                                    <tr>
+                                        <th style="text-align:left;">
+                                            <div class="checkbox clip-check check-danger checkbox-inline">
+                                                <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedAll_U" ng-click="checkedAll_registros(checkedAll_U,2)">
+                                                <label for="checkboxAll">
+                                                </label>
+                                            </div>
+                                        </th>
+                                        <th style="text-align:left;">  Operario</th>
+                                    </tr>
+                                </thead>
+                                <tbody style="font-size: 10px;font-family: tahoma !important;">
+                                    <tr ng-repeat="item in ListaUsuario_Operarios" on-finish-render="ngRepeatFinished_usuario">
+                                        <td style="text-align:left;">
+                                            <div class="checkbox clip-check check-primary checkbox-inline" style="margin-top: 0px;margin-bottom: -2px;">
+                                                <input type="checkbox" id="checkbox{{$index}}" value="true" ng-model="item.checkeado">
+                                                <label for="checkbox{{$index}}">
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td style="text-align:left"> {{item.desc_operario}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+
+
+
+                    <hr />
+                </div>
+        </div>
+    </div>
+ 
+
+</body>
+</html>

@@ -1,0 +1,57 @@
+﻿@{
+    Layout = null;
+}
+
+
+<style>
+    table#t01, td, th {
+        border: 1px solid black;
+    }
+
+        table#t01 th {
+            color: white;
+            background-color: #446dc2;
+        }
+</style>
+
+
+
+
+<table id="t01">
+    @{
+
+            @*<tr align="center" valign="middle">
+                <th colspan="9"><h1>VISUALIZAR ENVIO AL CLIENTE</h1></th>
+            </tr>
+            <tr align="center" valign="middle">
+                <th colspan="9"><h1>A LA FECHA  @ViewBag.fecha</h1></th>
+            </tr>*@       
+ 
+            <tr>
+                <th>SECTOR</th>
+                <th>ZONA</th>
+                <th>SUMINISTRO</th>
+                <th>LECTURA</th>
+                <th>CODIGO</th>
+                <th>OBSERVACIONES</th>
+                <th>BLOCK</th>
+                <th>FECHA DE LECTURA</th>
+                <th>CONFIRMACION DE LECTURA</th>
+            </tr>
+            foreach (var item in ViewBag.DatosExcel)
+            {
+                <tr>
+                    <td>@item.Seccion_Lectura</td>
+                    <td>@item.Zona_lectura</td>
+                    <td>@item.suministro_lectura</td>
+                    <td>@item.lecturaMovil_lectura</td>
+                    <td>@item.abreviatura_observacion</td>
+                    <td>@item.Observacion_lectura</td>
+                    <td>@item.Block_lectura</td>
+                    <td>@item.fechaAsignacion_Lectura</td>
+                    <td>@item.confirmacion_Lectura</td>
+                </tr>
+            }
+        
+        }
+</table>

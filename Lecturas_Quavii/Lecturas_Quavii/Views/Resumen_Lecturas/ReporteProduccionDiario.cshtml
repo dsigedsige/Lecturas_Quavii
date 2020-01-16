@@ -1,0 +1,514 @@
+﻿@using System.Configuration
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Resumen de Lecturas ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    @Scripts.Render("~/Content/pdf/jspdf.js")
+    @Scripts.Render("~/Content/pdf/pdfFromHTML.js")
+    @Scripts.Render("~/Content/pdf/jspdf.plugin.autotable.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+
+    <script src="~/Content/moment/moment.min.js"></script>
+
+
+}
+
+@section styles{
+
+    <style type="text/css">
+        body {
+            font-size: 9.5px;
+        }
+
+        #tblLista table {
+            margin-bottom: 0px !important;
+        }
+
+        #tblLista td {
+            text-align: center;
+            padding: 2px;
+            line-height: 1;
+        }
+
+        #tblLista th {
+            text-align: center;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        .modal-dialog {
+            width: 1200px;
+        }
+
+        .anchoCarousel {
+            width: 600px;
+        }
+
+
+        .datepicker {
+            width: 200px;
+            top: 150px !important;
+        }
+
+        tfoot {
+            color: red;
+        }
+    </style>
+}
+
+@section scripts{
+
+    <script type="text/javascript">
+
+        var $ruta = '@ConfigurationManager.AppSettings["servidor-foto-lectura"]';
+
+
+        //oculto los divs de consultas
+        $(function () {
+            //$('#lectura').hide();
+            $('#relectura').hide();
+        })
+
+        //inicializando fechas
+        $(function () {
+            $('#f_inicial').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        $(function () {
+            $('#f_final').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+
+        //fin inicializando fechas
+
+        var app = angular.module('appResumen', []);
+
+        app.directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit(attr.onFinishRender);
+                        });
+                    }
+                }
+            }
+        });
+
+        app.controller('ctrlResumen', function ($scope, $http, $window, $timeout) {
+            var diasEntreFechas = function (desde, hasta) {
+                var dia_actual = desde;
+                var fechas = [];
+                while (dia_actual.isSameOrBefore(hasta)) {
+                    fechas.push(dia_actual.format('DD/MM/YYYY'));
+                    dia_actual.add(1, 'days');
+                }
+                return fechas;
+            };
+
+
+            $scope.listFechas = [];
+            $scope.listOperarios = [];
+
+            $scope.listarReporteDiario = function () {
+                $scope.listFecha = [];
+                $scope.listOperarios = [];
+                $scope.listDataTotal = [];
+                console.log($('#idservicios').val());
+                if ($('#idservicios').val() == -1) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccionar un tipo de servicio.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../Resumen_Lecturas/ListadoReporteDiario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    params: {
+                        cliente: 1,
+                        fechaini: $('#f_inicial').val(),
+                        fechafin: $('#f_final').val(),
+                        idServicio: $('#idservicios').val()
+                    }
+                }
+                console.log(variables);
+                $http(variables)
+                .success(function (data) {
+
+                    $scope.listDataTotal = data;
+                    var fechaDesde = $('#f_inicial').val().split('/').reverse().join('-');
+                    var fechaHasta = $('#f_final').val().split('/').reverse().join('-');
+
+                    var desde = moment(fechaDesde);
+                    var hasta = moment(fechaHasta);
+                    $scope.listFecha = diasEntreFechas(desde, hasta)
+
+                    // LLENAMOS LOS OPERARIOS SIN REPETIR
+                    $scope.listOperarios = [];
+                    var cod = null;
+                    data.forEach(function (item, index) {
+                        if (cod != item.id_Operario) {
+                            cod = item.id_Operario;
+                            $scope.listOperarios.push({
+                                id_operario: cod,
+                                apellido_operario: item.apellidos_operario
+                            })
+                        }
+                    });
+                    $('.sige-load').hide();
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                });
+
+            }
+
+            $scope.calculateEfectivo = function (id_operario, fecha) {
+                var Efectivo = [];
+                $scope.listDataTotal.forEach(function (item, index) {
+                    if (id_operario == item.id_Operario && fecha == item.Fecha) {
+                        Efectivo.push({
+                            efectivo: item.Efectivo,
+                            horas: item.totalHora,
+                            color: '#3073ad'
+                        })
+                    }
+                })
+                if (Efectivo.length == 0) {
+                    Efectivo.push({
+                        efectivo: '0',
+                        horas: '0',
+                        color: '#E91E63'
+                    })
+                }
+                return Efectivo;
+            }
+
+            var convertSecondToHour = function (time) {
+                var hours = Math.floor(time / 3600);
+                var minutes = Math.floor((time % 3600) / 60);
+                var seconds = time % 60;
+
+                //Anteponiendo un 0 a los minutos si son menos de 10
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+
+                //Anteponiendo un 0 a los segundos si son menos de 10
+                seconds = seconds < 10 ? '0' + seconds : seconds;
+
+                var result = hours + ":" + minutes + ":" + seconds;  // 2:41:30
+                return result;
+            }
+
+            $scope.calculateTotalOperario = function (id_operario) {
+                var total = [];
+                var totalEfectivo = 0;
+                var totalHora = 0;
+
+                $scope.listDataTotal.forEach(function (item, index) {
+                    if (id_operario == item.id_Operario) {
+                        totalEfectivo += parseFloat(item.Efectivo);
+                        if (item.totalHora != 0) {
+                            var t = item.totalHora;
+                            // creamos una fecha genérica con tu tiempo
+                            var d = new Date("0001-01-01T" + t);
+                            // calculamos los minutos a partir de las horas y minutos de la fecha creada
+                            var minutos = d.getHours() * 60 + d.getMinutes();
+                            totalHora += minutos;
+                        }
+
+                    }
+                })
+                total.push({
+                    totalEfectivo: totalEfectivo,
+                    totalHora: convertSecondToHour(totalHora * 60)
+                })
+                return total;
+            }
+            $scope.calcualteTotalByFecha = function (fecha) {
+                var total = [];
+                var totalEfectivo = 0;
+                var totalHora = 0;
+
+                $scope.listDataTotal.forEach(function (item, index) {
+                    if (fecha == item.Fecha) {
+                        totalEfectivo += parseFloat(item.Efectivo);
+                        if (item.totalHora != 0) {
+                            var t = item.totalHora;
+                            // creamos una fecha genérica con tu tiempo
+                            var d = new Date("0001-01-01T" + t);
+                            // calculamos los minutos a partir de las horas y minutos de la fecha creada
+                            var minutos = d.getHours() * 60 + d.getMinutes();
+                            totalHora += minutos;
+                        }
+
+                    }
+                })
+                total.push({
+                    totalEfectivo: totalEfectivo,
+                    totalHora: convertSecondToHour(totalHora * 60)
+                })
+                return total;
+            }
+
+
+
+        });
+
+        $(document).ready(function () {
+            CargarServicioxUsuario();
+        });
+
+
+        function CargarServicioxUsuario() {
+            var servicio = $("#idservicios");
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                cache: false,
+                dataType: "json",
+                CrossDomain: true,
+                success: function (response) {
+
+                    // var resultado = response.ListarUsuariosxCargoCreditoResult;
+                    // console.log(response.length);
+                    servicio.html("");
+                    if (parseInt(response.length) == parseInt(response[0].cantidad)) {
+                        // alert("correcto");
+                        // console.log("cccccc");
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        servicio.append('<option value="0" >Todos</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    } else {
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    }
+
+
+                },
+
+                error: function (result) {
+                    alert('ERROR.... en ' + result.status + '... ' + result.statusText);
+                }
+            });
+
+
+        }
+
+
+
+
+
+    </script>
+}
+
+<div class="panel panel-oscuro" ng-app="appResumen" ng-controller="ctrlResumen" id="resumenLecturas">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i> RESUMEN DE LECTURAS - VERIFICACIONES</h6>
+    </div>
+    <div class="panel-body">
+        <div class="row">
+
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="panel panel-info col-sm-12" style="background-color: #F8F8F8;">
+                            <div class="panel-body">
+                                <form class="form-inline">
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="_supervisor" class="control-label">Servicios</label>
+                                        <select class="form-control" id="idservicios" style="width: 200px">
+                                            <option value="0">Seleccione</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="_fechaAsigna" class="control-label">Fecha Inicial</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input style="width:90px;" class="form-control" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="_fechaAsigna" class="control-label">Fecha Final</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input style="width:90px;" class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <button role="button" class="btn btn-primary btn-sm" id="btn_actualizar" ng-click="listarReporteDiario();"><i class="fa fa-refresh fa-lg"></i> Actualizar</button>
+                                    </div>
+
+                                </form>
+                                <br />
+                                <div id="Principal" class="table-responsive">
+                                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align:center;width: 70px;">Cod. lector</th>
+                                                <th style="text-align:center;width: 260px;">Apellidos Operario</th>
+                                                <th ng-repeat="item in listFecha">{{item}}</th>
+                                                <th style="text-align:center;width:70px;">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="item in listOperarios">
+                                                <td style="padding-top: 10px;">{{item.id_operario}}</td>
+                                                <td style="padding-top: 10px;">{{item.apellido_operario}}</td>
+                                                <td ng-repeat="itemF in listFecha">
+                                                    <table class="table  table-bordered table-responsive">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Efectivo</th>
+                                                                <th>Horas</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr ng-repeat="itemRes in calculateEfectivo(item.id_operario,itemF)" style="color:{{itemRes.color}}">
+                                                                <td>
+                                                                    {{itemRes.efectivo}}
+                                                                </td>
+                                                                <td>
+                                                                    {{itemRes.horas}}
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                                <td style="color:#3073ad;">
+                                                    <table class="table  table-bordered table-responsive">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Efectivo</th>
+                                                                <th>Horas</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr ng-repeat="itemRes in calculateTotalOperario(item.id_operario)">
+                                                                <td>
+                                                                    {{itemRes.totalEfectivo}}
+                                                                </td>
+                                                                <td>
+                                                                    {{itemRes.totalHora}}
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td></td>
+                                                <td></td>
+                                                <td ng-repeat="itemFF in listFecha" style="color:#3073ad;">
+                                                    <table class="table  table-bordered table-responsive">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Efectivo</th>
+                                                                <th>Horas</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr ng-repeat="itemRes in calcualteTotalByFecha(itemFF)">
+                                                                <td>
+                                                                    {{itemRes.totalEfectivo}}
+                                                                </td>
+                                                                <td>
+                                                                    {{itemRes.totalHora}}
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-footer">
+        <div class="panel-body" style="height: 40px;">
+            <div class="col-sm-12" style="text-align:right;">
+
+                <div class="col-sm-12">
+                    <div class="form-group form-group-sm">
+                        @*<button role="button" class="btn btn-info btn-sm" ng-click="getPdf()"><i class="fa fa-download fa-lg"></i> Imprimir</button>
+                            <button role="button" class="btn btn-danger btn-sm" ng-click="exportToExcel('#table-consulta_relec');"><i class="fa fa-windows fa-lg"></i> Exportar</button>*@
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

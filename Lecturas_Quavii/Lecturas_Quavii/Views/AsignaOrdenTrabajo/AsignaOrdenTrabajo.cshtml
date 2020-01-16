@@ -1,0 +1,1406 @@
+﻿@{
+    ViewBag.Title = "AsignaOrdenTrabajo";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+ 
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+    <link href="~/Plugin/dateTimePicker/jquery.datetimepicker.min.css" rel="stylesheet" />
+    <script src="~/Plugin/dateTimePicker/jquery.datetimepicker.full.min.js"></script>
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+ 
+
+
+}
+
+
+@section styles{
+      <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalLecturass {
+            width: 530px;
+        }
+
+
+        .datepicker {
+            width: 200px;
+        }
+
+
+        #Principal {
+            /*width: 98%;*/
+            height: 400px;
+        }
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+            padding-top: 4px;
+            padding-bottom: 3px;
+        }
+
+        .table tbody tr:hover td, .table tbody tr:hover th, .table tbody tr:hover th a {
+            background-color: rgba(28, 96, 177, 0.72) !important;
+            background-color: #00ACAC !important;
+            color: white !important;
+        }
+
+        .Julio table, th {
+            background-color: #019199 !important;
+            color: white !important;
+        }
+
+        .Julio table, td {
+            cursor: pointer;
+            text-align: right
+        }
+
+        .JulioCesar table, td {
+            cursor: pointer;
+            text-align: right
+        }
+    </style>
+}
+@section scripts{
+    <script type="text/javascript">
+        var app = angular.module('appAsignaOrdenTrabajo', []).directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit('ngRepeatFinished');
+                        });
+                    }
+                }
+            }
+        }).directive('fileModel', ['$parse', function ($parse) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attrs) {
+                    var model = $parse(attrs.fileModel);
+                    var modelSetter = model.assign;
+
+                    element.bind('change', function () {
+                        scope.$apply(function () {
+                            modelSetter(scope, element[0].files[0]);
+                        });
+                    });
+                }
+            };
+        }]);
+        app.controller('AsignaOrdenTrabajoCtrl', function ($scope, $http) {
+
+            //ORDEN DE TRABAJO CALIDA
+            // Listando
+
+
+            //inicializando fechas
+            $(function () {
+                $('#dtp_fechaAsigna').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+            })
+
+            $(function () {
+                $('#_fechaEnvioMovil').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+            })
+            $(function () {
+                $('#_fechaReasignaOperador').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+            })
+
+            $(function () {
+                $('#horaInicial').datetimepicker({
+                    datepicker: false,
+                    format: 'H:i'
+                });
+
+                $('#horaFinal').datetimepicker({
+                    datepicker: false,
+                    format: 'H:i'
+                });
+
+                $('#horaInicial').val('00:00');
+                $('#horaFinal').val('00:00');
+            })
+                         
+ 
+            setTimeout(function () {
+                $("select").select2();
+            }, 300);
+
+            oTable = null;
+
+
+            $scope.ListaLocales = [];
+            $scope.ListaServicios = [];
+            $scope.ListaEstados = [];
+            $scope.ListaTecnico = [];
+            $scope.ListaTecnicoReasignar = [];
+
+            $scope.ListaLecturasRelectura = [];
+            $scope.ListaCortes = [];
+
+            $scope.Flag_Show_LecturaRelectura = false;
+            $scope.Flag_Show_CorteReconexion = false;
+
+            $scope.InicializandoVariables = function () {
+                $scope.id_local = '0';
+                $scope.id_tipoServicio = '0';
+                $scope.ListaLecturasRelectura = [];
+                $scope.ListaCortes = [];
+                $scope.Flag_Show_LecturaRelectura = true;
+                $scope.Flag_Show_CorteReconexion = false;
+
+                setTimeout(function () {
+                    var cbo_local = document.getElementById('cbo_local');
+                    var cbo_servicio = document.getElementById('cbo_servicio');
+                    var cbo_estado = document.getElementById('cbo_estado');
+                    var txt_suministro = document.getElementById('txt_suministro');
+                    var txt_medidor = document.getElementById('txt_medidor');
+                    var cbo_tecnico = document.getElementById('cbo_tecnico');
+                    var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+
+                    cbo_local.value = '0';
+                    cbo_servicio.value = '0';
+                    cbo_estado.value = '0';
+                    txt_suministro.value = '';
+                    txt_medidor.value = '';
+                    cbo_tecnico.value = '0';
+                    dtp_fechaAsigna.value = FechaActualSistema();;
+                }, 500);
+
+            }
+
+            $scope.listando_Locales = function () {
+
+                var variables = {
+                    method: 'post',
+                    url: '../AsignaOrdenTrabajo/ListandoLocales',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.ListaLocales = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+            $scope.listando_Servicios = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/ListandoServicios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+
+                        $scope.ListaServicios = [];
+                        for (obj of data) { 
+                            if (obj.id_TipoServicio == 3 || obj.id_TipoServicio == 4) {
+                                $scope.ListaServicios.push(obj);
+                            }
+                        }
+               
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+            $scope.listando_Estados = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/ListandoEstados',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+
+                $http(variables)
+                    .success(function (data) {
+                        $scope.ListaEstados = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+            $scope.listando_Tecnico = function (local, servicio) {
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/ListandoTecnicos',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        id_local: local,
+                        id_tipo_servicio: servicio
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.ListaTecnico = [];
+                        $scope.ListaTecnicoReasignar = [];
+                        $scope.ListaTecnico = data;
+                        $scope.ListaTecnicoReasignar = data;
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+            $scope.Tecnico_Change = function (id) {
+
+                var cbo_local = document.getElementById('cbo_local').value;
+                var cbo_servicio = document.getElementById('cbo_servicio').value;
+
+                //if (cbo_local == 0 || cbo_local == "0") {
+                //    return;
+                //}
+                if (cbo_servicio == 0 || cbo_servicio == "0" || cbo_servicio == '? undefined:undefined ?') {
+                    return;
+                }
+
+                setTimeout(function () {
+                    //mostrando info de los tecnicos
+                    $scope.listando_Tecnico(1, cbo_servicio);
+                }, 100);
+
+            }
+
+            $scope.Servicios_Change = function (id) {
+                var cbo_servicio = document.getElementById('cbo_servicio').value;
+                if (cbo_servicio == 0 || cbo_servicio == "0" || cbo_servicio == '? undefined:undefined ?') {
+                    console.log('no hay servicio')
+                    return;
+                }
+
+                $scope.ListaLecturasRelectura = [];
+                $scope.ListaCortes = [];
+                $scope.Flag_Show_LecturaRelectura = false;
+                $scope.Flag_Show_CorteReconexion = false;
+
+                if (cbo_servicio == 1 || cbo_servicio == 2) {
+                    $scope.Flag_Show_LecturaRelectura = true;
+                }
+                if (cbo_servicio == 3 || cbo_servicio == 4) {
+                    $scope.Flag_Show_CorteReconexion = true;
+                }
+            }
+
+            function ValidacionesGenerales() {
+                var cbo_local = document.getElementById('cbo_local');
+                var cbo_servicio = document.getElementById('cbo_servicio');
+                var cbo_estado = document.getElementById('cbo_estado');           
+                var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+                var horaInicial = document.getElementById('horaInicial');
+                var horaFinal = document.getElementById('horaFinal');
+
+                if (cbo_local.value == '0' || cbo_local.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Local. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+                if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                if (cbo_estado.value == '0' || cbo_estado.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Estado. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                if (dtp_fechaAsigna.value == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha se Asignación. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                if (cbo_servicio.value == '4' || cbo_servicio.value == 4) {
+                    if (horaInicial.value == '') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Por favor ingrese o seleccione la Hora inicial. Muchas gracias.',
+                            type: 'error'
+                        });
+                        return false;
+                    }
+                    if (horaFinal.value == '') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Por favor ingrese o seleccione la Hora final. Muchas gracias.',
+                            type: 'error'
+                        });
+                        return false;
+                    }
+
+                    if (horaFinal.value == '00:00') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Por favor ingrese o seleccione una Hora final correcta. Muchas gracias.',
+                            type: 'error'
+                        });
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            $scope.ListandoInformacionOrdenesTrabajo = function () {
+
+                $scope.checkedAll = false;
+                if (ValidacionesGenerales() == false) {
+                    return;
+                }
+                                             
+                var cbo_local = document.getElementById('cbo_local');
+                var cbo_servicio = document.getElementById('cbo_servicio');
+                var cbo_estado = document.getElementById('cbo_estado');
+                var txt_suministro = document.getElementById('txt_suministro');
+                var txt_medidor = document.getElementById('txt_medidor');
+                var cbo_tecnico = document.getElementById('cbo_tecnico');
+                var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+                var horaInicial = document.getElementById('horaInicial');
+                var horaFinal = document.getElementById('horaFinal');
+
+
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/ListandoOrdenesTrabajoGeneral',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        id_local: cbo_local.value,
+                        id_tipo_servicio: cbo_servicio.value,
+                        estado: cbo_estado.value,
+                        suministro: txt_suministro.value,
+                        medidor: txt_medidor.value,
+                        tecnico: cbo_tecnico.value,
+                        fechaAsignacion: dtp_fechaAsigna.value,
+                        horainicial: horaInicial.value,
+                        horafinal: horaFinal.value,
+                    }
+                }
+
+                $scope.ListaLecturasRelectura = [];
+                $scope.ListaCortes = [];
+
+                $http(variables)
+                    .success(function (data) {
+
+                        var Servicio = cbo_servicio.value;
+                        if (Servicio == '1' || Servicio == '2') { // Lecturas Relectura
+                            $scope.ListaLecturasRelectura = data;
+                        } else if (Servicio == '3' || Servicio == '4') { // Cortes
+                            $scope.ListaCortes = data;
+                        }
+                        $('.sige-load').hide();
+                    })
+                    .error(function (err) {
+                        console.log(err)
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $scope.ListaLecturasRelectura = [];
+                        $scope.ListaCortes = [];
+                        $('.sige-load').hide();
+                    });
+            }
+
+
+            // METODO PARA CHEKED ALL
+            $scope.checkedAll = false;
+            $scope.checkedAll_OrdenTrabajo = function (checked, TipoTrabajo) {
+                if (TipoTrabajo == 1) {  // Lecturas Relecturas
+                    if (checked) {
+                        angular.forEach($scope.ListaLecturasRelectura, function (child) {
+                            child.checkeado = true;
+                        })
+                    } else {
+                        angular.forEach($scope.ListaLecturasRelectura, function (child) {
+                            child.checkeado = false;
+                        })
+                    }
+                } else if (TipoTrabajo == 2) {  // Cortes Reconexiones
+                    if (checked) {
+                        angular.forEach($scope.ListaCortes, function (child) {
+                            child.checkeado = true;
+                        })
+                    } else {
+                        angular.forEach($scope.ListaCortes, function (child) {
+                            child.checkeado = false;
+                        })
+                    }
+                }
+            }
+
+
+
+            //Historico Lectura Relectura
+            $scope.OrdenTrabajo_Historico_LecturasRelecturas = function (id_suministro) {
+
+                console.log('entroo')
+
+                console.log(id_suministro)
+
+                $('.sige-load').show();
+                var TipoServicio = document.getElementById('cbo_servicio').value;
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/LecturasRelectura_Historico',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        suministro: id_suministro,
+                        tiposervicio: TipoServicio
+                    }
+                }
+                $scope.Lista_OrdenTrabajo_LecturaRelectura = [];
+                $http(variables)
+                    .success(function (data) {
+                        $scope.Lista_OrdenTrabajo_LecturaRelectura = data;
+                        $('.sige-load').hide();
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+            //Historico Cortes y reconexiones
+
+            $scope.OrdenTrabajo_Historico_CortesReconexiones = function (id_suministro) {
+                var TipoServicio = document.getElementById('cbo_servicio').value;
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/CortesReconexiones_Historico',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        suministro: id_suministro,
+                        tiposervicio: TipoServicio
+                    }
+                }
+                $scope.Lista_OrdenTrabajo_CortesReconexiones = [];
+                $http(variables)
+                    .success(function (data) {
+                        $scope.Lista_OrdenTrabajo_CortesReconexiones = data;
+                        $('.sige-load').hide();
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+
+            //$scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+
+            //    var TipoServicio = document.getElementById('cbo_servicio').value;
+            //    if (TipoServicio == 0 || TipoServicio == "0" || TipoServicio == '? undefined:undefined ?') {
+            //        console.log('no hay servicio')
+            //        return;
+            //    }
+            //    console.log(TipoServicio)
+            //    if (TipoServicio == 1 || TipoServicio == 2) {
+            //        console.log('lecturas')
+            //        oTable = $('#tblLecturasRelecturas').DataTable();
+            //    } else {
+            //        console.log('cortes')
+            //        oTable = $('#tblCortesReconexiones').DataTable();
+            //    }
+            //});
+
+
+
+
+            //// EXPORTAR A EXCEL
+
+            $scope.tableToExcel_Historico = function (tableId) {
+
+                var TipoServicio = document.getElementById('cbo_servicio').value;
+                var nameDoc = '';
+                if (TipoServicio == 1) {
+                    nameDoc = 'HistoricoLectura.xls';
+                } else if (TipoServicio == 2) {
+                    nameDoc = 'HistoricoRelectura.xls';
+                } else if (TipoServicio == 3) {
+                    nameDoc = 'HistoricoCortes.xls';
+                }
+
+                var uri = 'data:application/vnd.ms-excel;base64,',
+                    template = '<html lang="es" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Historico</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>',
+                    base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))); },
+                    format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+                var table = $(tableId),
+                    ctx = { worksheet: 'descar123', table: table.html() };
+
+                var link = document.createElement("a");
+                link.download = nameDoc,
+                    link.href = uri + base64(format(template, ctx));
+                link.click()
+
+            }
+
+            $scope.UpdateFechaAplicativoMovil = function () {
+
+                var TipoServicio = document.getElementById('cbo_servicio').value;
+                var fechaMovil = document.getElementById('_fechaEnvioMovil').value;
+
+                var flag_marco = false;
+                var List_codigos = [];
+
+                flag_marco = MarcoCheck(TipoServicio);
+                if (flag_marco == false) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione al menos un registro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+                List_codigos = ListaMarcoCheck(TipoServicio);
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/UpdateFechaAplicativoMovil',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fechamovil: fechaMovil,
+                        tipoServicio: TipoServicio,
+                        List_codigos: List_codigos
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        var res = data.split('|');
+                        if (res[0] == 0 || res[0] == "0") {
+                            console.log(res[1])
+                        } else {
+                            QuitarDetalles(List_codigos, TipoServicio)
+                            $("#modal-envioAppMovil").modal('hide');
+                        }
+                        $('.sige-load').hide();
+                    }).error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $('.sige-load').hide();
+                    });
+            }
+
+            function QuitarDetalles(data, tipoServicio) {
+                if (tipoServicio == 1 || tipoServicio == 2) { // lectura Relectura
+                    angular.forEach(data, function (obj_value, key) {
+                        for (var i = 0; i < $scope.ListaLecturasRelectura.length; i++) {
+                            if ($scope.ListaLecturasRelectura[i].id_Lectura == obj_value) {
+                                $scope.ListaLecturasRelectura.splice(i, 1);
+                                break;
+                            }
+                        }
+                    });
+                } else if (tipoServicio == 3 || tipoServicio == 4) { // lectura Cortes Reconexion
+                    angular.forEach(data, function (obj_value, key) {
+                        for (var i = 0; i < $scope.ListaCortes.length; i++) {
+                            if ($scope.ListaCortes[i].id_Corte == obj_value) {
+                                $scope.ListaCortes.splice(i, 1);
+                                break;
+                            }
+                        }
+                    });
+                }
+            }
+
+
+            function MarcoCheck(tipoServicio) {
+                var flag_marco = false;
+
+                if (tipoServicio == 1 || tipoServicio == 2) { // lectura Relectura
+                    for (var i = 0; i < $scope.ListaLecturasRelectura.length; i++) {
+                        if ($scope.ListaLecturasRelectura[i].checkeado == true) {
+                            flag_marco = true;
+                            break;
+                        }
+                    }
+                } else if (tipoServicio == 3 || tipoServicio == 4) { // lectura Cortes Reconexion
+                    for (var i = 0; i < $scope.ListaCortes.length; i++) {
+                        if ($scope.ListaCortes[i].checkeado == true) {
+                            flag_marco = true;
+                            break;
+                        }
+                    }
+                }
+                return flag_marco;
+            }
+
+            function ListaMarcoCheck(tipoServicio) {
+                var List_id = [];
+
+                if (tipoServicio == 1 || tipoServicio == 2) { // lectura Relectura
+                    for (var i = 0; i < $scope.ListaLecturasRelectura.length; i++) {
+                        if ($scope.ListaLecturasRelectura[i].checkeado == true) {
+                            List_id.push($scope.ListaLecturasRelectura[i].id_Lectura)
+                        }
+                    }
+                } else if (tipoServicio == 3 || tipoServicio == 4) { // Cortes Reconexiones
+                    for (var i = 0; i < $scope.ListaCortes.length; i++) {
+                        if ($scope.ListaCortes[i].checkeado == true) {
+                            List_id.push($scope.ListaCortes[i].id_Corte)
+                        }
+                    }
+                }
+                return List_id;
+            }
+
+
+            function FechaActualSistema() {
+                var today = new Date();
+                var dd = today.getDate();
+                var mm = today.getMonth() + 1;
+
+                var yyyy = today.getFullYear();
+                if (dd < 10) {
+                    dd = '0' + dd
+                }
+                if (mm < 10) {
+                    mm = '0' + mm
+                }
+                var today = dd + '/' + mm + '/' + yyyy;
+
+                return today;
+            }
+
+            $scope.ReasignarFecha = function () {
+                var _fechaEnvioMovil = document.getElementById('_fechaEnvioMovil');
+                _fechaEnvioMovil.value = FechaActualSistema();
+            }
+
+            $scope.ReasignarOperador = function () {
+                var cbo_tecnicoReasignar = document.getElementById('cbo_tecnicoReasignar');
+                var _fechaReasignaOperador = document.getElementById('_fechaReasignaOperador');
+
+                cbo_tecnicoReasignar.value = 0;
+                _fechaReasignaOperador.value = FechaActualSistema();
+                setTimeout(function () {
+                    $('#cbo_tecnicoReasignar').val(0).trigger('change');
+                }, 300);
+            }
+
+            $scope.updReasignaOperador = function (Tipo) {
+
+                var flag_marco = false;
+                var List_codigo = [];
+
+                var TipoServicio = document.getElementById('cbo_servicio').value;
+                var cbo_tecnicoReasignar = document.getElementById('cbo_tecnicoReasignar').value;
+                var _fechaReasignaOperador = document.getElementById('_fechaReasignaOperador').value;
+
+                flag_marco = MarcoCheck(TipoServicio);
+                if (flag_marco == false) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione al menos un registro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                List_codigo = ListaMarcoCheck(TipoServicio);
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/UpdateReasignaOperador',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        TipoServicio: TipoServicio,
+                        tecnico: cbo_tecnicoReasignar,
+                        fechaReasigna: _fechaReasignaOperador,
+                        List_codigos: List_codigo,
+                        opcion: Tipo
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+
+                        var res = JSON.parse(data).split('|');
+                        if (res[0] == 0 || res[0] == "0") {
+                            console.log(res[1])
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Lo sentimos, se produjo un error.',
+                                type: 'error'
+                            });
+                            return;
+                        } else {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso realizado exitosamente.',
+                                type: 'success'
+                            });
+
+                            if (Tipo == 1 || Tipo == '1') {
+                                QuitarDetalles(List_codigo, TipoServicio)
+                            }
+                        }
+
+                    }).error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                        $('.sige-load').hide();
+                    });
+            }
+
+            $scope.CerraModalReasignar = function () {
+                $scope.ListandoInformacionOrdenesTrabajo();
+            }
+            // FIN DE ORDEN TRABAJO CALIDA
+
+        })
+
+
+        function fnParametros() {
+            return {
+                type: 'owner',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 100,
+                page: 1
+            };
+        }
+
+        $(function () {
+            $('.fixed-table-toolbar > .search').css('width', '170px');
+            $('.fixed-table-toolbar > .search').addClass('input-group');
+            /*<select class="form-control" onchange="fnBusca($(this))"><option value=""></option><option value=".Activo">Activo</option><option value=".Inactivo">Inactivo</option></select>*/
+            $('.fixed-table-toolbar > .search').append('<div class="input-group-btn"><button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onclick="fnBusca(\'\')">Estado <span class="caret"></span></button><ul class="dropdown-menu"><li onclick="fnBusca(\'.Activo\')"><a href="javascript:">Activo</a></li><li onclick="fnBusca(\'.Inactivo\')"><a href="javascript:">Inactivo</a></li></ul></div>');
+        })
+
+        $(window).resize(function () {
+            $('#table-registro').bootstrapTable('resetView');
+        });
+
+        function fnBusca(__a) {
+            $('.fixed-table-toolbar > .search > input').val(__a);
+            $('.fixed-table-toolbar > .search > input').trigger('keyup');
+        }
+
+
+
+    </script>
+}
+
+<div ng-app="appAsignaOrdenTrabajo" ng-controller="AsignaOrdenTrabajoCtrl" ng-init="listando_Locales();listando_Servicios();listando_Estados();InicializandoVariables() ">
+
+    <div class="panel panel-oscuro" style="margin-top: -13px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> RE-ASIGNACIÓN DE ORDENES DE TRABAJO</h6>
+        </div>
+        <div class="panel-body">
+
+            <div class="well" style="background: #314b75; color: white;     margin-top: -5px;">
+                <div class="row" style="    margin-top: -17px;">
+                    <div class="col-md-10">
+                        <div class="col-sm-6 col-md-3">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Local
+                                </label>
+                                <br />
+                                <select id="cbo_local" style="width:95%;" ng-model="id_local" ng-change="Tecnico_Change(id_tipoServicio);">
+                                    <option value=0>--[ Seleccione ]-- </option>
+                                    <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                        {{item.loc_nombre}}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 col-md-3">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Servicios
+                                </label>
+                                <br />
+                                <select id="cbo_servicio" style="width:95%;" ng-model="id_tipoServicio" ng-change="Tecnico_Change(id_tipoServicio); Servicios_Change(id_tipoServicio);">
+                                    <option value=0>--[ Seleccione ]-- </option>
+                                    <option ng-repeat="item in ListaServicios" value="{{item.id_TipoServicio}}">
+                                        {{item.nombre_tiposervicio}}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 col-md-3">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Estados
+                                </label>
+                                <br />
+                                <select id="cbo_estado" style="width:95%;">
+                                    <option value=0>--[ Seleccione ]-- </option>
+                                    <option ng-repeat="item in ListaEstados" value="{{item.id_Estado}}">
+                                        {{item.descripcion_estado}}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 col-md-3">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Suministro
+                                </label>
+                                <br />
+                                <input id="txt_suministro" class="form-control" type="text" placeholder="Ingresar Suministro" maxlength="30">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-12 col-md-6">
+                        <div class="col-sm-6 col-md-6" style="display:none">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Medidor
+                                </label>
+                                <br />
+                                <input id="txt_medidor" class="form-control" type="text" placeholder="Ingresar medidor" maxlength="30">
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 col-md-6">
+                            <label class="control-label"> Fecha de Asignación   </label>
+                            <br />
+                            <input class="form-control"   style="width:100%;" id="dtp_fechaAsigna" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" /> 
+                        </div>
+                        <div class="col-sm-6 col-md-6">
+                            <div class="form-group">
+                                <label class="control-label">
+                                    Técnico Asignado
+                                </label>
+                                <br />
+                                <select id="cbo_tecnico" style="width:95%;">
+                                    <option value=0>--[ Todos ]-- </option>
+                                    <option ng-repeat="item in ListaTecnico" value="{{item.ope_id}}">
+                                        {{item.ope_nombre}}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+
+                    </div>
+
+                    <div class="col-sm-12 col-md-6">
+                        <div class="col-sm-6 col-md-6">
+                            <label class="control-label">Rango Hora (24-Horas)</label>
+                            <br />
+                            <div class="input-group">
+                                <input id="horaInicial" class="form-control" placeholder="Hora inicial" type="text">
+                                <span class="input-group-addon">-</span>
+                                <input id="horaFinal" class="form-control" placeholder="Hora final" type="text">
+                            </div>
+                        </div>
+
+                        <div class="col-sm-6 col-md-6">
+                            <br />
+                            <button class="btn btn-block btn-primary" ng-click="ListandoInformacionOrdenesTrabajo()"><span class="glyphicon glyphicon-refresh"></span> Actualizar</button>
+                        </div>
+                    </div>
+
+                    </div>
+            </div>
+
+            <div id="Principal" class="table-responsive">
+
+                <table id="tblLecturasRelecturas" class="table  table-responsive table-bordered  table-condensed " ng-show="Flag_Show_LecturaRelectura;" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+
+                    <thead style="background:#F0F3F5;">
+                        <tr>
+                            <th>
+                                <div class="checkbox clip-check check-danger checkbox-inline">
+                                    <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedAll" ng-click="checkedAll_OrdenTrabajo(checkedAll,1)">
+                                    <label for="checkboxAll">
+                                    </label>
+                                </div>
+                            </th>
+                            <th>#</th>
+                            <th>Suministro</th>
+                            <th>Medidor</th>
+                            <th>Dirección</th>
+                            <th>Lect. Ant.</th>
+                            <th>Lect. Min.</th>
+                            <th>Lect. Mx.</th>
+                            <th>Operador</th>
+                            <th>Fecha Asignación</th>
+                            <th>Cliente</th>
+                            <th>Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="item in ListaLecturasRelectura" on-finish-render="ngrepeatfinished">
+                        <tr ng-repeat="item in ListaLecturasRelectura">
+                            <td>
+                                <div class="checkbox clip-check check-primary checkbox-inline">
+                                    <input type="checkbox" id="checkbox{{$index}}" value="true" ng-model="item.checkeado">
+                                    <label for="checkbox{{$index}}">
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                {{$index + 1}}
+                            </td>
+                            <td>{{item.suministro_lectura}}</td>
+                            <td>{{item.medidor_lectura}}</td>
+                            <td>{{item.direccion_lectura}}</td>
+                            <td>{{item.lectura_Anterior}}</td>
+                            <td>{{item.limite_Minimo_lectura}}</td>
+                            <td>{{item.limite_Maximo_lectura}}</td>
+                            <td>{{item.ope_nombre}}</td>
+                            <td>{{item.fechaAsignacion_Lectura}}</td>
+                            <td>{{item.nombreCliente_lectura}}</td>
+                            <td>{{item.abreviatura_estado}}</td>
+                            <td><a data-toggle="modal" data-target="#modal-historico_LecturaRelectura" ng-click="OrdenTrabajo_Historico_LecturasRelecturas(item.suministro_lectura);" href="#"> Histórico</a></td>
+
+
+                        </tr>
+                    </tbody>
+                </table>
+
+                <table id="tblCortesReconexiones" class="table  table-responsive table-bordered  table-condensed" ng-show="Flag_Show_CorteReconexion ;" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                    <thead style="background:#F0F3F5;">
+                        <tr>
+                            <th>
+                                <div class="checkbox clip-check check-danger checkbox-inline">
+                                    <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedAll" ng-click="checkedAll_OrdenTrabajo(checkedAll,2)">
+                                    <label for="checkboxAll">
+                                    </label>
+                                </div>
+                            </th>
+                            <th>#</th>
+                            <th>Ord.Asig.</th>
+                            <th>Fecha Importación</th>
+                            <th>Solicitud</th>
+                            <th>Cuenta Contrato</th>
+                            <th>Nro. Serie Medidor</th>
+                            <th>Cliente</th>
+                            <th>Dirección de Instalación</th>
+                            <th>Distrito</th>
+                            <th>UL</th>
+                            <th>Apellidos Nombres del Lector</th>
+                            @*<th>Grand Total</th>
+                            <th>Count</th>
+                            <th>Accion</th>
+                            <th>Resultado de Corte</th>*@
+                            <th>Fecha de Corte</th>
+                            @*<th>Mes de Corte</th>
+                            <th>Hora de Corte</th>*@
+                            <th>Lectura al Corte</th>
+                            @*<th>Tipo de Corte</th>*@
+                            <th>Cod. OBS</th>
+                            <th>Observacion de Lectura</th>
+                            @*<th>Detalle de Observación</th>*@
+                            <th>Estado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="item in ListaCortes">
+                            <td>
+                                <div class="checkbox clip-check check-primary checkbox-inline">
+                                    <input type="checkbox" id="checkbox{{$index}}" value="true" ng-model="item.checkeado" ng-click="addIdChecked(item.Numero_OrdImport,item.checked)">
+                                    <label for="checkbox{{$index}}">
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                {{$index + 1}}
+                            </td>
+                            <td>{{item.ord_asig}}</td>
+                            <td>{{item.fecha_importacion}}</td>
+                            <td>{{item.solicitud}}</td>
+                            <td>{{item.cuenta_contrato}}</td>
+
+                            <td>{{item.nro_serie_medidor}}</td>
+                            <td class="text-left">{{item.cliente}}</td>
+                            <td class="text-left">{{item.direc_instalacion}}</td>
+                            <td>{{item.distrito}}</td>
+
+                            <td>{{item.UL}}</td>
+                            <td class="text-left">{{item.apellido_lector}}</td>
+                            @*<td>{{item.grand_total}}</td>
+                            <td>{{item.count}}</td>
+
+                            <td>{{item.accion}}</td>
+                            <td>{{item.resultado_corte}}</td>*@
+                            <td>{{item.fecha_corte}}</td>
+                            @*<td>{{item.mes_corte}}</td>
+                            <td>{{item.hora_corte}}</td>*@
+
+
+                            <td>{{item.lectura_corte}}</td>
+                            @*<td>{{item.tipo_corte}}</td>*@
+                            <td>{{item.cod_OBS}}</td>
+                            <td>{{item.observacion_lectura}}</td>
+                            @*<td>{{item.detalle_observaciones}}</td>*@
+                            <td>{{item.abreviatura_estado}}</td>
+                            <td><a data-toggle="modal" data-target="#modal-historico_CortesReconexiones" ng-click="OrdenTrabajo_Historico_CortesReconexiones(item.suministro_corte);" href="#"> Histórico</a></td>
+
+
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <br />
+            <div class="row">
+                <div class=" text-center col-sm-12">
+                    <button role="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal-envioAppMovil" ng-click="ReasignarFecha();"><i class="fa fa-mobile-phone fa-lg"></i> Enviar al Movil</button>
+                    <button role="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal-reasignaoperador" ng-click="ReasignarOperador()"><i class="fa fa-user fa-lg"></i> Reasignar Operador</button>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <div id="modal-envioAppMovil" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>Enviar al Movil</h6>
+                </div>
+                <div class="panel-body">
+                    <form class="form-horizontal">
+
+                        <fieldset class="fieldset-border">
+                            <legend>Enviar Datos al Aplicativo Movil</legend>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="col-md-10">
+
+                                        <label class="control-label">
+                                            Fecha Asignación :
+                                        </label>
+                                        <br />
+                                        <br />
+                                        <div class="form-group form-group-sm">
+                                            <div class="input-group">
+                                                @*<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                                    <input style=" width: 125%!important;" class="form-control" id="_fechaEnvioMovil" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToShortDateString()" />*@
+                                                <input style=" width: 125%!important; margin-left:10px" class="form-control" id="_fechaEnvioMovil" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" class="btn btn-primary" ng-click="UpdateFechaAplicativoMovil();"><i class="fa fa-mobile-phone fa-lg"></i> Enviar al Movil</button>
+                                <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-historico_LecturaRelectura" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" style=" width: 60% !important;">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> HISTÓRICO LECTURA Y/O RELECTURA</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <table id="table_historico_Lectura_Relectura" class="table table-condensed table-bordered table-responsive" cellspacing="0">
+                            <thead style="background:#F0F3F5;">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Medidor</th>
+                                    <th>Fecha de Lectura</th>
+                                    <th>Lectura</th>
+                                    <th>Operario</th>
+                                    <th>Observación</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="lista in Lista_OrdenTrabajo_LecturaRelectura" on-finish-render="ngRepeatFinished">
+                                    <td>{{$index + 1}}</td>
+                                    <td>{{lista.medidor_lectura}}</td>
+                                    <td>{{lista.fechaLecturaMovil_lectura}}</td>
+                                    <td>{{lista.lectura_Anterior}}</td>
+                                    <td>{{lista.ope_nombre}}</td>
+                                    <td>{{lista.Observacion_lectura}}</td>
+                                    <td>{{lista.abreviatura_estado}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" class="btn btn-default" ng-click="tableToExcel_Historico('#table_exportar_lecturaRelectura')"><i class="fa fa-download fa-lg"></i> Exportar</button>
+                                <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i>Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-reasignaoperador" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" id="modalreasig" style="    width: 400px;"> 
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> RE-ASIGNAR OPERADOR</h6>
+                </div>
+                <div class="panel-body">
+                    <fieldset class="fieldset-border">
+                        <legend>Reasignar Operador</legend>
+                        <form class="form-inline">
+                            <div class="row">
+                                <div class="col-md-12">
+         
+                                        <label for="_operador" class="control-label">Operador:</label>
+                                        <select style="width:95%;" id="cbo_tecnicoReasignar"  >
+                                            <option value=0>--[ Seleccione ]-- </option>
+                                            <option ng-repeat="item in ListaTecnicoReasignar" value="{{item.ope_id}}">
+                                                {{item.ope_nombre}}
+                                            </option>
+                                        </select>
+                       
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label for="_fechaReasignaOperador" class="control-label">Fecha Toma : </label>
+                                        <input style=" width: 120px;" class="form-control" id="_fechaReasignaOperador" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+
+
+                    </fieldset>
+
+
+
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" class="btn btn-success" ng-click="updReasignaOperador(0);"><i class="fa fa-save fa-lg"></i> Guardar</button>
+                                <button role="button" class="btn btn-primary" ng-click="updReasignaOperador(1);"><i class="fa fa-mobile-phone fa-lg"></i> Enviar al Movil</button>
+                                <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table id="table_exportar_lecturaRelectura" ng-show="false">
+        <tr>
+            <th>Medidor</th>
+            <th>Fecha de Lectura</th>
+            <th>Lectura</th>
+            <th>Operario</th>
+            <th>Observación</th>
+            <th>Estado</th>
+        </tr>
+        <tr ng-repeat="lista in Lista_OrdenTrabajo_LecturaRelectura">
+            <td>{{lista.medidor_lectura}}</td>
+            <td>{{lista.fechaLecturaMovil_lectura}}</td>
+            <td>{{lista.lectura_Anterior}}</td>
+            <td>{{lista.ope_nombre}}</td>
+            <td>{{lista.Observacion_lectura}}</td>
+            <td>{{lista.abreviatura_estado}}</td>
+        </tr>
+    </table>
+
+
+    <table id="table_exportar_CortesReconexiones" ng-show="false">
+        <tr>
+            <th>#</th>
+            <th>Medidor</th>
+            <th>Fecha de Lectura</th>
+            <th>Lectura</th>
+            <th>Operario</th>
+            <th>Observación</th>
+            <th>Estado</th>
+        </tr>
+        <tr ng-repeat="lista in Lista_OrdenTrabajo_CortesReconexiones">
+            <td>{{$index + 1}}</td>
+            <td>{{lista.medidor_corte}}</td>
+            <td>{{lista.fechaAsignacion_corte}}</td>
+            <td>{{lista.id_Corte}}</td>
+            <td>{{lista.ope_nombre}}</td>
+            <td>{{lista.Observacion_corte}}</td>
+            <td>{{lista.abreviatura_estado}}</td>
+        </tr>
+    </table>
+
+
+    <div id="modal-historico_CortesReconexiones" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" style=" width: 60% !important;">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> HISTÓRICO LECTURA Y/O RELECTURA</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <table id="table_historico_CortesReconexiones" class="table table-condensed table-bordered table-responsive" cellspacing="0">
+                            <thead style="background:#F0F3F5;">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Medidor</th>
+                                    <th>Fecha de Corte</th>
+                                    <th>Corte</th>
+                                    <th>Operario</th>
+                                    <th>Observación</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="lista in Lista_OrdenTrabajo_CortesReconexiones">
+                                    <td>{{$index + 1}}</td>
+                                    <td>{{lista.medidor_corte}}</td>
+                                    <td>{{lista.fechaAsignacion_corte}}</td>
+                                    <td>{{lista.id_Corte}}</td>
+                                    <td>{{lista.ope_nombre}}</td>
+                                    <td>{{lista.Observacion_corte}}</td>
+                                    <td>{{lista.abreviatura_estado}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" class="btn btn-default" ng-click="tableToExcel_Historico('#table_exportar_CortesReconexiones')"><i class="fa fa-download fa-lg"></i> Exportar</button>
+                                <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i>Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+</div>

@@ -1,0 +1,427 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    List<Sesion_Modulo> oSe = new List<Sesion_Modulo>();
+    
+    if (Session["Session_Usuario_Acceso"] == null)
+    {
+        Response.Redirect("../Login/Login");
+    }else{
+        oSe = ((Sesion)Session["Session_Usuario_Acceso"]).modulo;
+    }
+
+    int cuenta = 1;
+    
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewBag.Title</title>
+    @Styles.Render("~/Content/bootstrap/css/bootstrap.min.css")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-theme.min.css")
+    @Styles.Render("~/Content/font-awesome/css/font-awesome.min.css")
+    @Styles.Render("~/Content/pnotify/css/pnotify.custom.min.css")
+    @Styles.Render("~/Content/style.css")
+    @Styles.Render("~/Content/combobox/select2.css")
+    <link href="~/Content/menu/css/booNavigation.css" rel="stylesheet" />
+
+    @Styles.Render("~/Content/NavBar/ct-navbar.css")
+    @Styles.Render("~/Content/NavBar/pe-icon-7-stroke.css")
+    @Styles.Render("~/Content/NavBar/helper.css")
+    @Styles.Render("~/Content/iconos/fonts/style.css")
+
+
+
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery-1.12.0.min.js")
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap.min.js")
+    @Scripts.Render("~/Content/pnotify/js/pnotify.custom.min.js")
+
+    @Scripts.Render("~/Content/combobox/select2.min.js")
+    <script src="~/Content/menu/js/booNavigation.js"></script>
+    @Scripts.Render("~/Content/NavBar/ct-navbar.js")
+
+    <script async defer
+            @*src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCODMQ6da1HjWKn_nMqSl9oD8RooAyCKzA&libraries=geometry&sensor=false">*@
+              src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCODMQ6da1HjWKn_nMqSl9oD8RooAyCKzA&libraries=geometry">
+    </script>
+
+    <link href="https://fonts.googleapis.com/css?family=Muli&display=swap" rel="stylesheet">
+
+
+
+    <style type="text/css">
+
+        body {
+            font-size: 11.5px;
+            /*font-family: sans-serif;*/
+            font-family: "Tahoma", "Geneva", sans-serif;
+            color: #4D4D4D;
+        }
+
+        .container {
+            width: 100%;
+            padding: 15px;
+        }
+
+        .navbar {
+            min-height: 39px;
+            padding-right: 15px;
+            margin-bottom: 0;
+        }
+
+        .navbar-brand {
+            height: 0;
+            padding: 10px 10px;
+        }
+
+        .navbar-nav > li > a {
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        div#nav-principal {
+            margin-bottom: 0;
+            border: none;
+        }
+
+        .dropdown-menu {
+            font-size: 11.5px;
+            left: auto;
+            right: 0px;
+        }
+
+        .navbar-toggle {
+            padding: 5px 5px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        .dropdown-menu > li > a {
+            white-space: normal;
+        }
+
+        h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+
+        .form-group {
+            margin-bottom: 7px;
+        }
+
+        .form-control {
+            /*border-radius: 0 !important;*/
+            box-shadow: none;
+        }
+
+        fieldset.fieldset-border {
+            border: 1px groove #34495e !important;
+            padding: 0 1.4em 1.4em 1.4em !important;
+            /* margin: 0 0 1.5em 0 !important;*/
+            -webkit-box-shadow: 0px 0px 0px 0px #000;
+            box-shadow: 0px 0px 0px 0px #000;
+            border-radius: 3px;
+        }
+
+        .thumbnail {
+            margin-bottom: 5px !important;
+        }
+
+        legend {
+            margin-bottom: 5px;
+            border-width: 0;
+            padding: 0 10px;
+            font-size: 13px;
+            font-weight: bold;
+            width: auto;
+        }
+
+        .fixed-table-container {
+            border-top-left-radius: 0 !important;
+            border-top-right-radius: 0 !important;
+        }
+
+        /*Panel*/
+        .panel-heading,
+        .modal-header {
+            padding: 10px 15px;
+            border-top-left-radius: 2px;
+            border-top-right-radius: 2px;
+        }
+
+        .panel-body {
+            padding: 10px;
+        }
+
+        .panel-oscuro {
+            border-color: #34495e;
+        }
+
+            .panel-oscuro > .panel-heading {
+                color: #fff;
+                background-color: #019199;
+                border-color: #019199;
+                font-family: 'Quicksand', sans-serif;
+            }
+
+        /*JQuery Upload*/
+        .ajax-file-upload {
+            text-align: center;
+        }
+
+        .ajax-upload-dragdrop {
+            color: #FFF;
+            padding: 5px 10px;
+            font-size: inherit;
+            background-image: linear-gradient(to bottom, #337AB7 0px, #265A88 100%);
+            background-repeat: repeat-x;
+            border-color: #245580;
+            text-shadow: 0px -1px 0px rgba(0, 0, 0, 0.2);
+            box-shadow: 0px 1px 0px rgba(255, 255, 255, 0.15) inset, 0px 1px 1px rgba(0, 0, 0, 0.075);
+            border: 1px solid #265A88;
+            border-radius: 4px;
+        }
+
+        .label-orange {
+            background-color: #EFA131;
+        }
+
+        .navbar-inverse {
+            background-image: none !important;
+        }
+
+        .navbar-inverse {
+            background-color: #38177E !important;
+            border-color: rgb(176, 0, 45) !important;
+        }
+
+        .navbar-inverse .navbar-brand, .navbar-inverse .navbar-nav > li > a {
+            color: white !important;
+        }
+
+        table thead {
+            background-color: #ccc !important;
+            color: white !important;
+        }
+
+        .table thead {
+            background-color: #019199 !important;
+            color: white !important;
+        }
+
+        .well {
+            background-color: #018BAF !important;
+            color: white !important;
+        }
+
+        .navbar-inverse .navbar-nav > .open > a, .navbar-inverse .navbar-nav > .open > a:focus, .navbar-inverse .navbar-nav > .open > a:hover {
+            color: #fff !important;
+            background-color: #999 !important;
+        }
+
+        .navbar-inverse .navbar-nav > .active > a, .navbar-inverse .navbar-nav > .open > a {
+            background-image: none !important;
+        }
+
+        /*.nav > li {
+            position: relative;
+            display: block;
+            font-size: 11px;
+        }*/
+
+        .nav > li {
+            position: initial;
+            display: block;
+            font-size: 11px;
+        }
+
+        .navbar .nav > li > .dropdown-menu::after {
+            display: none;
+        }
+        .navbar .nav > li > .dropdown-menu::before {
+            display: none;
+        }
+
+    </style>
+
+    <script>
+
+        function fnIsNumeric(__e) {
+            var charCode = (__e.which) ? __e.which : event.keyCode
+            if (charCode > 31 && (charCode < 48 || charCode > 57))
+                return false;
+            return true;
+        }
+
+        function $ajaxUpload($url, $data, $success) {
+            $.ajax({
+                beforeSend: function (__b) {
+                    $('.sige-load').show();
+                },
+                url: $url,
+                type: 'POST',
+                data: $data,
+                cache: false,
+                contentType: false,
+                processData: false,
+                dataType: 'json',
+                //contentType: 'multipart/form-data',
+                success: function (__s) {
+                    $success(__s);
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (__e) {
+                    console.error(__e);
+
+                    $('.sige-load').hide();
+
+                    new PNotify({
+                        title: 'Error',
+                        text: 'Comuniquese con el administrador.',
+                        type: 'error'
+                    });
+                }
+            });
+        };
+
+
+        function $ajaxJson($url, $data, $success) {
+            $.ajax({
+                beforeSend: function (__b) {
+                    $('.sige-load').show();
+                },
+                url: $url,
+                type: 'POST',
+                dataType: 'json',
+                data: $data(),
+                success: function (__s) {
+                    $success(__s);
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (__e) {
+                    console.error(__e);
+
+                    $('.sige-load').hide();
+
+                    new PNotify({
+                        title: 'Error',
+                        text: 'Comuniquese con el administrador.',
+                        type: 'error'
+                    });
+                }
+            });
+        };
+
+    </script>
+
+    @RenderSection("instances", required: false)
+    @RenderSection("scripts", required: false)
+    @RenderSection("styles", required: false)
+</head>
+<body>
+ 
+
+    <nav class="navbar navbar-inverse navbar-static-top panel-primary">
+
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#nav-principal" aria-expanded="false" aria-controls="navbar">
+                <i class="fa fa-bars fa-lg"></i>
+            </button>
+            <a class="navbar-brand" href="javascript:">QUAVII PERÚ</a>
+        </div>
+        <div aria-expanded="false" id="nav-principal" class="navbar-collapse collapse">
+           <ul class="nav navbar-nav navbar-right">
+                @foreach (Sesion_Modulo oMo in oSe)
+                {
+                    if (oMo.mod_id != 0)
+                    {
+               <li class="dropdown" style="width:80px;">
+
+                   @if (@oMo.dop_url == "javascript:" || oMo.dop_url == null)
+                   {
+                       <a href="@oMo.dop_url" class="dropdown-toggle" title="@oMo.mod_descripcion.ToUpper()" data-toggle="dropdown" role="button" aria-expanded="false">
+                           <img src="~/Content/Imagen/iconMenu/@oMo.urlImagen" /> <i class="fa fa-caret-down"></i>
+                       </a>
+                   }
+                   else
+                   {
+                       <a href="@oMo.dop_url" title="@oMo.mod_descripcion.ToUpper()">
+                           <img src="~/Content/Imagen/iconMenu/@oMo.urlImagen" />  
+                       </a>
+                   }
+
+                   <ul class="dropdown-menu " role="menu" style="text-align:center;">
+                       @foreach (Sesion_Item oIt in oMo.item)
+                       {
+                           <li>
+                               @if (oIt.dop_url == "javascript:" || oIt.dop_url == null)
+                               {
+                                   <a class="dropdown-toggle">
+                                       <div class="tooltip ">
+                                           @oIt.dop_descripcion.ToUpper()
+                                       </div>
+                                   </a>
+                               }
+                               else
+                               {
+                                   <a class="dropdown-toggle con-tooltip bottom" href="@oIt.dop_url" style="cursor:pointer">
+                                       <img src="~/Content/Imagen/iconMenu/@oIt.urlImagen" />
+                                       <div class="tooltip">
+                                           @oIt.dop_descripcion.ToUpper()
+                                       </div>
+                                   </a>
+                               }
+                           </li>
+                       }
+                   </ul>
+               </li>
+                    }
+                }
+
+                <li class="dropdown">
+                    <a href="javascript:" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+                        @foreach (Sesion_Modulo oMo in oSe)
+                        {
+                            if (cuenta == 1)
+                            {
+                                <span>@oMo.nombre_usuario.ToUpper() <i class="fa fa-caret-down"></i></span>
+                                cuenta++;
+                            }
+                        }
+                    </a>
+                    <ul class="dropdown-menu" role="menu" style="width: 150px;">
+                        <li style="margin-left: 56%;"> 
+                            <a href="~/Login/Logout"  title="Cerrar Sesion"  class="dropdown-toggle con-tooltip bottom"   style="cursor:pointer">
+                                <img src="~/Content/Imagen/iconMenu/imagen40.png" />
+                            </a>
+                        </li>
+
+                    </ul>
+                </li>
+
+            </ul>
+
+
+        </div>
+    </nav>
+    <div class="container">
+        @RenderBody()
+    </div>
+    <div class="sige-load" role="dialog" style=" color: #fff; width: 100%; height: 100%; position: absolute; background-color: black;top: 0px; left: 0px; z-index: 2000; opacity: 0.6; display: none; ">
+        <div style=" margin: auto 47%; top: -25%; padding-top: 25%; ">
+            <i style=" margin: auto 15%; " class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            <h5>Cargando...</h5>
+        </div>
+    </div>
+</body>
+</html>

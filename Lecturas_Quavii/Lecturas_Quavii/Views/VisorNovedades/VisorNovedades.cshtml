@@ -1,0 +1,574 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Visor de novedades ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    @Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+
+    <style>
+        body {
+            color: #02369f;
+            background: #f1f1f1;
+        }
+
+  
+
+        .btn {
+            font-size: 12px;
+        }
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 380px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        .form-control {
+            font-size: 11px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #mensajeCorrecto {
+            width: 20%;
+            height: 0px;
+        }
+
+        #mensajeIncorrecto {
+            width: 20%;
+            height: 0px;
+        }
+
+        #Contenedor {
+            width: 98%;
+        }
+
+        #Marco {
+            padding-left: 5px;
+            padding-top: 15px;
+            margin: -10px;
+        }
+
+        .datepicker {
+            width: 200px;
+        }
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+            vertical-align: middle;
+        }
+
+
+        input[type=checkbox], input[type=radio] {
+            margin: -4px 0 0;
+        }
+
+        th {
+            text-align: left;
+        }
+    </style>
+
+
+    <script type="text/javascript">
+
+
+        var app = angular.module('myApp', []);
+        app.controller('MainCtrl', function ($scope, $http, $timeout, $q, $sce) {
+            $scope.name = 'World';
+            $scope.files = [];
+
+            $(function () {
+                $('#id_fecha_desde').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+
+                $('#id_fecha_hasta').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+            });
+
+            $scope.CargarArchivos = function () {
+
+
+                var local = document.getElementById('cbo_local').value;
+                var servicios = document.getElementById('cbo_servicio').value;
+                var tipodoc = document.getElementById('cbo_tipodoc').value;
+                var contrato = document.getElementById('txt_cuentacontrato').value;
+                var id_fecha_asignacion = document.getElementById('id_fecha_asignacion').value;
+
+                if (local == '0' || local == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Local.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+
+                if (servicios == '0' || servicios == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Servicio.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+
+
+                if (tipodoc == '0' || tipodoc == 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Tipo de Documento.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+
+
+                if (contrato == '' ) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese una Cuenta de contrato.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+
+                if (id_fecha_asignacion == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+
+                if ($scope.myFile == null || $scope.myFile == undefined || $scope.myFile == '') {
+                    new PNotify({
+                        title: ' ',
+                        text: 'Ningun Archivo Seleccionado',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                var nombreArchivo = '';
+                $('.sige-load').show();
+
+                fechaAsigna = document.getElementById('id_fecha_asignacion').value;
+                var file = $scope.myFile;
+
+                var uploadUrl = '../ImportarArchivos/saveFilesToServidor';
+                var fd = new FormData();
+                fd.append('file', file);
+                fd.append('local', local);
+                fd.append('servicio', servicios);
+                fd.append('tipodoc', tipodoc);
+                fd.append('contrato', contrato);
+                fd.append('fechaAsignacion', id_fecha_asignacion);
+                $http.post(uploadUrl, fd, {
+                    transformRequest: angular.identity,
+                    headers: { 'Content-Type': undefined }
+                }).success(function (result) {
+                    var res = result.split('|');
+                    if (res[0] == 0 || res[0] == "0") {
+                        console.log(res[1])
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Proceso realizado exitosamente.',
+                            type: 'success'
+                        });
+
+                        var btn_subir = document.getElementById('btn_subir');
+                        btn_subir.disabled = true;
+
+                    }
+                    $('.sige-load').hide();
+                })
+                .error(function (err) {
+                    console.log(err)
+                    $('.sige-load').hide();
+                })
+            }
+
+            // Listando
+            $scope.ListaOperarios = [];
+            $scope.detalleArchivos= [];
+            $scope.checkedallR = false;
+
+            $scope.ListandoOperarios  = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../VisorNovedades/ListandoOperarios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    $scope.ListaOperarios = data;
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+            };
+
+            $scope.ListandoDetallesDocumentos = function () {
+                
+               var operario = document.getElementById('cbo_operario').value; 
+               var fecha_ini = document.getElementById('id_fecha_desde').value;
+               var fecha_fin = document.getElementById('id_fecha_hasta').value;
+               var txt_contrato = document.getElementById('txt_contrato').value;
+
+                if (fecha_ini == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione la Fecha Inicial.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+                if (fecha_fin == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione la Fecha Final.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+
+                $('.sige-load').show();
+                $scope.detalleArchivos = [];
+
+                var variables = {
+                    method: 'POST',
+                    url: '../VisorNovedades/ListandoDetallesDocumentos',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        //Parametros de  la Funcion del Controlador
+                        id_operario: operario,
+                        fecha_ini: fecha_ini,
+                        fecha_fin: fecha_fin,
+                        contrato: txt_contrato
+                    }
+                }
+
+                $http(variables)
+                .success(function (data) {
+                    console.log(data)
+                    $scope.detalleArchivos = data;
+                    $('.sige-load').hide();
+                })
+                .error(function (error) {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    console.log(error)
+                    $('.sige-load').hide();
+                });
+            };
+
+            $scope.addIdChecked_All = function (checked) {
+                  for (var i = 0; i < $scope.detalleArchivos.length; i++) {
+                    $scope.detalleArchivos[i].checkeado = checked;
+                }
+            }
+
+            $scope.rutaArchivo = '';
+
+            $scope.getRuta = function (src) {
+                return $sce.trustAsResourceUrl(src);
+            }
+
+            $scope.VisorArchivos= function(urlfoto) {
+                $('#modal-archivos').modal();
+                $scope.rutaArchivo = urlfoto;
+            }
+
+            $scope.Ver_Ubicacion_Mapa = function (latitud, longitud) {
+                $('#modal_ubicacion').modal();
+                var imagen_mapa = "";
+                imagen_mapa = document.getElementById('id_Imagen_mapa');
+                imagen_mapa.src = 'http://maps.googleapis.com/maps/api/staticmap?center=' + latitud + ',' + longitud + '&zoom=15&scale=false&size=600x380&maptype=roadmap&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:A%7C' + latitud + ',' + longitud + '&key=AIzaSyBmodbRRcZjo8Bz4XCjP8kfLPj1NvvPf-w';
+               
+            }
+
+
+
+            $scope.DescargarArchivos = function () {
+                var flag_marco = false;
+                var List_codigo = [];
+
+                flag_marco = MarcoCheck();
+                if (flag_marco == false) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione al menos un registro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+                List_codigo = ListaMarcoCheck();
+                try {
+                    $('.sige-load').show();
+                    for (var i = 0; i < List_codigo.length; i++) {
+                        //window.open(List_codigo[i])
+                        SavePhoto(List_codigo[i]);
+                    }
+                    $('.sige-load').hide();
+                }
+                catch (err) {
+                    console.log(err)
+                    $('.sige-load').hide();
+                }
+            }
+
+            function SavePhoto(item) {
+
+                var link = document.createElement('a');
+                link.href = item.url;
+                link.download = item.cuentaContrato;
+                document.body.appendChild(link);                
+                link.click();
+            }
+
+            function MarcoCheck() {
+                var flag_marco = false;
+                for (var i = 0; i < $scope.detalleArchivos.length; i++) {
+                    if ($scope.detalleArchivos[i].checkeado == true) {
+                        flag_marco = true;
+                        break;
+                    }
+                }
+                return flag_marco;
+            }
+
+            function ListaMarcoCheck() {
+                var List_id = [];                
+                for (var i = 0; i < $scope.detalleArchivos.length; i++) {
+                    if ($scope.detalleArchivos[i].checkeado == true) {
+                        List_id.push({            
+                            url: $scope.detalleArchivos[i].urlfoto,
+                            cuentacontrato: $scope.detalleArchivos[i].cuentaContrato
+                        })
+                    }
+                }                
+                return List_id;
+            }
+        });
+
+    </script>
+
+}
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="ListandoOperarios()">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i>   VISOR DE NOVEDADES</h6>
+        </div>
+        <div class="panel-body" style="height:835px; background:white;">
+            <section>
+                <div class="container">
+                    <div class="row">
+                        <div class=" col-xs-12 col-md-12" style="margin-top:-20px;background:white;">
+                            <form class="form-inline">
+                                <div class="row" style="padding:3px;">
+                                   <div class=" col-xs-12 col-md-12" style="margin:auto;">
+                                        <div class="form-group">
+                                            <label class="control-label" for="cbo_operario"> Operario :    </label>
+                                            <select id="cbo_operario" class="form-control" style="  margin:auto;">
+                                                <option value=0>--[ Todos ]-- </option>
+                                                <option ng-repeat="item in ListaOperarios" value="{{item.id_Operario}}">
+                                                    {{item.desc_operario}}
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group" style="margin-left: 5px;">
+                                            <label for="id_fecha_desde" style="font-size:11px">Fecha de Registro del:</label>
+                                            <input class="form-control" style="margin: auto;" id="id_fecha_desde" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                        </div>
+                                        <div class="form-group" style="margin-left: 5px;">
+                                            <label for="id_fecha_hasta" style="font-size:11px">Al:</label>
+                                            <input class="form-control" style="  margin: auto;" id="id_fecha_hasta" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <div class="row" style="padding:4px;">
+                                    <div class=" col-xs-12  col-md-4">
+                                        <div class="form-group">
+                                            <label for="txt_contrato" style="font-size:11px"> Cuenta Contrato :</label>
+                                            <input type="text" class=" form-control" maxlength="30" id="txt_contrato"> 
+                                        </div>                
+                                        <div class="form-group">
+                                            <a href="#" class="btn btn-sm btn-primary" ng-click="ListandoDetallesDocumentos();"><span class="glyphicon glyphicon-floppy-disk"></span> Actualiza</a>
+                                        </div>                   
+                                    </div>
+                                    @*<div class="col-xs-12  col-md-4">
+                                        <div style="text-align: left;" >
+                                            <a href="#" class="btn btn-sm btn-primary" ng-click="ListandoDetallesDocumentos();"><span class="glyphicon glyphicon-floppy-disk"></span> Actualiza</a>
+                                        </div>
+                                    </div>*@
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12 col-md-12">
+                            <div id="Principal" class="table-responsive">
+                                <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                    <thead>
+                                        <tr>
+                                            <th style="width:50px;">#</th>
+                                            <th style="width:50px;">
+                                                <div class="checkbox clip-check check-danger checkbox-inline">
+                                                    <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedallR" ng-click="addIdChecked_All(checkedallR)">
+                                                    <label for="checkboxAll">          </label>
+                                                </div>
+                                            </th>
+                                            <th>Operario</th>
+                                            <th>Fecha de registro</th>
+                                            <th>Cuenta Contrato</th>
+                                            <th>Foto</th>
+                                            <th>Ubicación</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="item in detalleArchivos">
+                                            <td>
+                                                {{$index + 1}}
+                                            </td>
+                                            <td>
+                                                <div class="checkbox clip-check check-primary checkbox-inline">
+                                                    <input type="checkbox" id="checkbox{{$index}}" ng-disabled="item.disabled" value="1" ng-model="item.checkeado">
+                                                    <label for="checkbox{{$index}}">
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <td>{{item.desc_operario}}</td>
+                                            <td>{{item.fechaRegistro}}</td>
+                                            <td>{{item.cuentaContrato}}</td>
+                                            <td><a href="" ng-click="VisorArchivos(item.urlfoto);"> VER </a></td>
+                                            <td><a href="" ng-click="Ver_Ubicacion_Mapa(item.Latitud, item.Longitud);"> VER </a></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12 col-md-12">
+                            <div style="padding-left:16px;">
+                                <a href="#" class="btn btn-sm btn-success" ng-click="DescargarArchivos();"><span class="glyphicon glyphicon-download-alt"></span> Descargar Todos las Fotos Marcados</a>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+            </section>
+
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-archivos" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" style="width:500px !important;">
+            Modal content
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i>  VISTA PREVIA DE ARCHIVO</h6>
+                </div>
+                <div class="modal-body">
+                    <div class="contenidoArchivo" style="border:1px solid; margin:auto;">                     
+                        <img src={{rutaArchivo}}  width="466" height="400"  alt=" foto" />
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row no-gutter">
+                        <div class="col-md-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button role="button" id="btnCancelar" class="btn btn-default" data-dismiss="modal" ng-click="Modo_Edicion(false)"><i class="fa fa-close fa-lg"></i>Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modal_ubicacion" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="panel panel-oscuro" style="width:600px;">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> UBICACIÓN EN GOOGLE MAPS.</h6>
+                </div>
+                <!-- Modal content-->
+                <div class="modal-content" style="width:600px;">
+                    <div class="modal-body">
+                        <img id="id_Imagen_mapa" class="img-responsive img-rounded" alt="Ubicacion" style="width:100%;height:auto;">
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+
+
+

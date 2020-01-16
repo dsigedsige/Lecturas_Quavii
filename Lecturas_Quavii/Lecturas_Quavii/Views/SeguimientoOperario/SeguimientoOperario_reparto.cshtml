@@ -1,0 +1,1604 @@
+﻿ 
+
+@{
+    ViewBag.Title = "Seguimiento Operario Reparto";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+<script src="~/Content/jQueryRotate/jQueryRotate.js"></script>
+
+<style>
+    #map {
+        height: 460px;
+    }
+
+    .modal-dialog {
+        width: 600px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+    .select2-results {
+        font-size: 10px !important;
+    }
+</style>
+
+<style>
+    #legend {
+        font-family: Arial, sans-serif;
+        background: #fff;
+        padding: 10px;
+        margin: 10px;
+        border: 3px solid #000;
+    }
+
+        #legend h3 {
+            margin-top: 0;
+        }
+
+        #legend img {
+            vertical-align: middle;
+        }
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+    var listPhotos = [];
+    function previusPhoto() {
+        var photo1 = document.getElementById('foto1');
+        photo1.src = listPhotos[0].url;
+    }
+    function nextPhoto() {
+        var photo1 = document.getElementById('foto1');
+        if (listPhotos.length > 1) {
+            photo1.src = listPhotos[1].url;
+        }
+    }
+
+    function galeriaFotos(idLectura) {
+        $('#fotos').modal();
+        $.ajax({
+            async: true,
+            beforeSend: function (xhr) { },
+            url: '../Listado_Lecturas_Fotos/FotosLectura',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                __a: idLectura
+            },
+            success: function (response) {
+                $("div").remove("#x");
+                var $DivCorre = $('#corre');
+                var $DivOl = $('#ol');
+                listPhotos = [];
+                $.each(response, function (i, v) {
+                    listPhotos.push({
+                        id: i,
+                        url: response[i]._r
+                    })
+                });
+                $DivCorre.append('<div id="x" class="item active"><img id="foto1" src="' + listPhotos[0].url + '" alt="..." style = "width:450px;height:450px;" /></div>');
+            },
+            error: function (xhr) {
+                alert('Algo salió mal, por favor intente de nuevo.');
+            }
+        });
+    }
+
+    var app = angular.module('myApp', []);
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        var degrees = 0;
+        $scope.rotateImg = function () {
+            degrees += 90;
+            console.log($('#foto1'));
+            $("#foto1").rotate(degrees);
+        }
+
+
+        $(function () {
+            $('#_fechaAsigna').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $(function () {
+            $('#_fechaMovil').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $scope.InicializandoVariables = function () {
+            $scope.id_tipoServicio = '0';
+            $scope.id_operario = '0';
+            $scope.Listado_Servicios()
+            $scope.Listado_Operarios();
+
+            setTimeout(function () {
+                // inicializando el ComboBuscador
+                $("select").select2();
+            }, 500);
+
+            InicializarMapa();
+            RemoveMarker(null);
+            RemoveLine(null);
+        }
+
+
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../Ubicacion_Lecturas/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                for (obj of data) {
+                    if (obj.id_TipoServicio == 6) {
+                        $scope.Obj_List_Servicios.push(obj);
+                    }           
+                }
+
+
+                setTimeout(function () {
+                    $('#idservicios').val('6').trigger('change');
+                }, 200);
+
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.Obj_List_Operario = [];
+        $scope.Listado_Operarios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../Ubicacion_Lecturas/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Operario = [];
+                $scope.Obj_List_Operario = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        $scope.Obj_List_Lecturas = [];
+        $scope.ActualizarInformacion = function () {
+
+            var _fecha = document.getElementById('_fechaAsigna').value;
+            var _servicio = document.getElementById('idservicios').value;
+            var _operario = document.getElementById('id_operador').value;
+            var _medidor = document.getElementById('id_medidor').value;
+            var _suministro = document.getElementById('id_suministro').value;
+
+            var chk_operario = document.getElementById('chk_operario');
+            var chk_suministro = document.getElementById('chk_suministro');
+            var chk_trazabilidad = document.getElementById('chk_trazabilidad');
+
+
+            if (_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (_servicio == "-1" || _servicio == -1 || _servicio == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (_servicio == "0" || _servicio == 0 || _servicio == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            //if (_operario == "0" || _operario == 0 || _operario == '') {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Operario.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+
+            var checkOperario = false;
+            var checkSuministro = false;
+            var checkTrazabilidad = false;
+
+            if (chk_operario.checked == true) {
+                checkOperario = true;
+            }
+            if (chk_suministro.checked == true) {
+                checkSuministro = true;
+            }
+            if (chk_trazabilidad.checked == true) {
+                checkTrazabilidad = true;
+            }
+
+            if (checkOperario == false && checkSuministro == false && checkTrazabilidad == false) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor marque al menos un item (Mostrar-OPERARIO , mostrar-SUMINISTRO , mostrar-TRAZABILIDAD).',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (checkOperario == false && checkSuministro == false && checkTrazabilidad == true) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Mostrar Trazabilidad debe ser marcada conjuntamente con el check de Mostrar Operarios,  verifique..',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (checkOperario == false && checkSuministro == true && checkTrazabilidad == true) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Mostrar Trazabilidad debe ser marcada conjuntamente con el check de Mostrar Operarios,  verifique..',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var seguimiento_Operario_sin_Linea = function () {
+
+              if (_operario == "0" || _operario == 0 || _operario == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Operario.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                var variables = {
+                    method: 'POST',
+                    url: '../SeguimientoOperario/JsonSeguimiento_Operarios_GPS_Reparto',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        FechaAsiga: _fecha,
+                        servicio: _servicio,
+                        operario: _operario,
+                        suministro: _suministro,
+                        medidor: _medidor
+                    }
+                }
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (data.length > 0) {
+                        console.log('seguimiento_Operario_sin_Linea')
+                        console.log(data)
+
+                        MostrarUbicaciones_Operario_sin_Linea(data)
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información disponible del Operario para mostrar.',
+                            type: 'success'
+                        });
+
+                        AgregarLeyendaMapa();
+                        InicializarMapa();
+
+                        RemoveMarker(null);
+                        RemoveLine(null);
+                        $scope.markers = [];
+                        myCoordinates = [];
+                    }
+
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            var seguimiento_lecturas_individual = function () {
+
+                if (_suministro == "0" || _suministro == 0 || _suministro == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el numero de suministro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+
+                var variables = {
+                    method: 'POST',
+                    url: '../SeguimientoLecturas/JsonSeguimiento_lectura_III',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        FechaAsiga: _fecha,
+                        servicio: _servicio,
+                        operario: _operario,
+                        suministro: _suministro,
+                        medidor: _medidor
+                    }
+                }
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data.length > 0) {
+              
+                        MostrarUbicacionesMap_Lectura_individual(data);
+                        setTimeout(function () {
+                            $('#id_operador').val(data[0]._a).trigger('change');
+                            if (data[0]._s > 5) {
+                                if (data[0]._u != '' || data[0]._u != undefined) {
+                                    var res = data[0]._u.split(" ");
+                                    $('#_fechaAsigna').val(res[0])
+                                }
+                            } else {
+                                $('#_fechaAsigna').val(data[0]._t)
+                            }
+                        }, 200);
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información disponible del para el Suministro ingresado.',
+                            type: 'success'
+                        });
+                        AgregarLeyendaMapa();
+                        InicializarMapa();
+
+                        RemoveMarker(null);
+                        RemoveLine(null);
+                        $scope.markers = [];
+                        myCoordinates = [];
+                    }
+
+
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            var seguimiento_Operario_con_linea = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../SeguimientoOperario/JsonSeguimiento_Operarios_GPS_Reparto',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        FechaAsiga: _fecha,
+                        servicio: _servicio,
+                        operario: _operario,
+                        suministro: _suministro,
+                        medidor: _medidor
+                    }
+                }
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (data.length > 0) {
+                        MostrarUbicacionesMap(data)
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información para disponible para mostrar.',
+                            type: 'success'
+                        });
+
+                        AgregarLeyendaMapa();
+                        InicializarMapa();
+
+                        RemoveMarker(null);
+                        RemoveLine(null);
+                        $scope.markers = [];
+                        myCoordinates = [];
+                    }
+
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            var seguimiento_lecturas_ambos = function () {
+
+                if (_suministro == "0" || _suministro == 0 || _suministro == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el numero de suministro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                var variables = {
+                    method: 'POST',
+                    url: '../SeguimientoLecturas/JsonSeguimiento_lectura_III',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        FechaAsiga: _fecha,
+                        servicio: _servicio,
+                        operario: _operario,
+                        suministro: _suministro,
+                        medidor: _medidor
+                    }
+                }
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (data.length > 0) {
+                        MostrarUbicacionesMap_Lecturas(data)
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información de los Suministros disponibles para mostrar.',
+                            type: 'success'
+                        });
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            var seguimiento_Operario_todos = function () {
+
+                if (_operario == "0" || _operario == 0 || _operario == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Operario.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+
+                if (_suministro == "0" || _suministro == 0 || _suministro == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el numero de suministro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                var variables = {
+                    method: 'POST',
+                    url: '../SeguimientoOperario/JsonSeguimiento_Operarios_GPS_Reparto',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        FechaAsiga: _fecha,
+                        servicio: _servicio,
+                        operario: _operario,
+                        suministro: _suministro,
+                        medidor: _medidor
+                    }
+                }
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (data.length > 0) {
+                        MostrarUbicacionesMap(data)
+
+                        setTimeout(function () {
+                            console.log("generando markers de las lecturas..");
+                            seguimiento_lecturas_ambos();
+                        }, 3000);
+
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información para disponible para mostrar.',
+                            type: 'success'
+                        });
+
+                        AgregarLeyendaMapa();
+                        InicializarMapa();
+
+                        RemoveMarker(null);
+                        RemoveLine(null);
+                        $scope.markers = [];
+                        myCoordinates = [];
+                    }
+
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            var seguimiento_Operario_Suministros = function () {
+                if (_operario == "0" || _operario == 0 || _operario == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Operario.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+
+                var variables = {
+                    method: 'POST',
+                    url: '../SeguimientoOperario/JsonSeguimiento_Operarios_GPS_Reparto',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        FechaAsiga: _fecha,
+                        servicio: _servicio,
+                        operario: _operario,
+                        suministro: _suministro,
+                        medidor: _medidor
+                    }
+                }
+                $('.sige-load').show();
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+
+                    if (data.length > 0) {
+                        MostrarUbicaciones_Operario_sin_Linea(data)
+
+                        setTimeout(function () {
+                            console.log("generando markers de las lecturas..");
+                            seguimiento_lecturas_ambos();
+                        }, 3000);
+
+                    } else {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'No hay información para disponible para mostrar.',
+                            type: 'success'
+                        });
+
+                        AgregarLeyendaMapa();
+                        InicializarMapa();
+
+                        RemoveMarker(null);
+                        RemoveLine(null);
+                        $scope.markers = [];
+                        myCoordinates = [];
+                    }
+
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            if (checkOperario == true && checkSuministro == true && checkTrazabilidad == true) {
+                ///// ejecutando el recorrido completo
+                seguimiento_Operario_todos();
+            } else {
+                if (checkOperario == true && checkSuministro == false && checkTrazabilidad == false) {
+                    seguimiento_Operario_sin_Linea();
+                }
+                if (checkOperario == false && checkSuministro == true && checkTrazabilidad == false) {
+                    seguimiento_lecturas_individual();
+                }
+                //--operarios y suministros
+                if (checkOperario == true && checkSuministro == true && checkTrazabilidad == false) {
+                    seguimiento_Operario_Suministros();
+                }
+                //--operarios y suministros
+                if (checkOperario == true && checkSuministro == false && checkTrazabilidad == true) {
+                    seguimiento_Operario_con_linea();
+                }
+            }
+        }
+
+        //Inicializar el Mapa
+        $scope.markers = [];
+        var myCoordinates = [];
+        var id_marker = 0;
+        var Polyline;
+
+        var service;
+        var renderer;
+
+        function InicializarMapa() {
+
+            service = new google.maps.DirectionsService;
+            // renderer = new google.maps.DirectionsRenderer;
+
+            renderer = new google.maps.DirectionsRenderer({
+                polylineOptions: {
+                    strokeColor: "green",
+                    width: 10
+                }
+            });
+
+            $scope.map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: { lat: -12.046374, lng: -77.0427934 },
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                    position: google.maps.ControlPosition.TOP_CENTER
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_CENTER
+                },
+                scaleControl: true,
+                streetViewControl: true,
+                streetViewControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_TOP
+                }
+            });
+
+            renderer.setMap($scope.map);
+
+            var icons = {
+                Termino: {
+                    name: 'Operario Termino Recorrido',
+                    icon: '../Content/Imagen/supervisor_on.png',
+                },
+                Inicio: {
+                    name: 'Operario Inicio Recorrido',
+                    icon: '../Content/Imagen/operario.png'
+                },
+                Recorrido: {
+                    name: 'Operario Recorrido',
+                    icon: '../Content/Imagen/seg_operario.png',
+                },
+                RecorridoLDS: {
+                    name: 'Suministro Consultado',
+                    icon: '../Content/Imagen/m_blue.png',
+                },
+                //RecorridoLDS_Pend: {
+                //    name: 'Suministro no Visitado',
+                //    icon: '../Content/Imagen/m_red.png',
+                //},
+                //Foto: {
+                //    name: 'Suministro con Foto',
+                //    icon: '../Content/Imagen/novisita.png',
+                //}
+            };
+
+            var legend = document.getElementById('legend');
+            for (var key in icons) {
+                var type = icons[key];
+                var name = type.name;
+                var icon = type.icon;
+                var div = document.createElement('div');
+
+                if (name == 'Operario Inicio Recorrido') {
+                    div.innerHTML = '<img src="' + icon + '" style="margin-top: -16px;margin-left: -4px;"> ' + name;
+                }
+                else if (name == 'Operario Recorrido') {
+                    div.innerHTML = '<img src="' + icon + '" style="margin-top: -12px;margin-left: -4px;"> ' + name;
+                }
+                else {
+                    div.innerHTML = '<img src="' + icon + '"> ' + name;
+                }
+
+
+                legend.appendChild(div);
+            }
+            $scope.map.controls[google.maps.ControlPosition.TOP_LEFT].push(legend);
+
+         };
+
+        var maxRecorrido = 0;
+        var maxRecorrido2 = 0;
+        var Index_Global = 0;
+
+        function funct_mover_mapa_especifico(lat, long) {
+            service = new google.maps.DirectionsService;
+            renderer = new google.maps.DirectionsRenderer({
+                polylineOptions: {
+                    strokeColor: "green"
+                }
+            });
+
+            $scope.map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: { lat: parseFloat(lat), lng: parseFloat(long) },
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                    position: google.maps.ControlPosition.TOP_CENTER
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_CENTER
+                },
+                scaleControl: true,
+                streetViewControl: true,
+                streetViewControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_TOP
+                }
+            });
+            renderer.setMap($scope.map);
+
+
+        }
+
+        function AgregarLeyendaMapa() {
+            var icons = {
+                Termino: {
+                    name: 'Operario Termino Recorrido',
+                    icon: '../Content/Imagen/supervisor_on.png',
+                },
+                Inicio: {
+                    name: 'Operario Inicio Recorrido',
+                    icon: '../Content/Imagen/operario.png'
+                },
+                Recorrido: {
+                    name: 'Operario Recorrido',
+                    icon: '../Content/Imagen/seg_operario.png',
+                },
+                RecorridoLDS: {
+                    name: 'Suministro Consultado',
+                    icon: '../Content/Imagen/m_blue.png',
+                },
+                //RecorridoLDS_Pend: {
+                //    name: 'Suministro no Visitado',
+                //    icon: '../Content/Imagen/m_red.png',
+                //},
+                //Foto: {
+                //    name: 'Suministro con Foto',
+                //    icon: '../Content/Imagen/novisita.png',
+                //}
+            };
+
+            document.getElementById("content_leyenda").innerHTML = "<div id='legend'></div>";
+
+            var legend = document.getElementById('legend');
+            for (var key in icons) {
+                var type = icons[key];
+                var name = type.name;
+                var icon = type.icon;
+                var div = document.createElement('div');
+                if (name == 'Operario Inicio Recorrido') {
+                    div.innerHTML = '<img src="' + icon + '" style="margin-top: -16px;margin-left: -4px;"> ' + name;
+                }
+                else if (name == 'Operario Recorrido') {
+                    div.innerHTML = '<img src="' + icon + '" style="margin-top: -12px;margin-left: -4px;"> ' + name;
+                }
+                else {
+                    div.innerHTML = '<img src="' + icon + '"> ' + name;
+                }
+                legend.appendChild(div);
+            }
+            $scope.map.controls[google.maps.ControlPosition.TOP_LEFT].push(legend);
+        }
+
+        function MostrarUbicaciones_Operario_sin_Linea(obj_Lista) {
+            $scope.markers = [];
+            myCoordinates = [];
+
+            //contiene la Latitud y Longitud de los Operarios
+            maxRecorrido = obj_Lista.length - 1;
+ 
+
+            ///--- Enfocando el recorrido
+            for (var i = 0; i < obj_Lista.length; i++) {
+                if (i == 0) {
+                    if (parseFloat(obj_Lista[i]._c) != 0 && parseFloat(obj_Lista[i]._d) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._c, obj_Lista[i]._d);
+                        break;
+                    }
+                } else {
+                    if (parseFloat(obj_Lista[i]._c) != 0 && parseFloat(obj_Lista[i]._d) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._c, obj_Lista[i]._d);
+                        break;
+                    }
+                }
+            }
+
+            if (maxRecorrido > 0) {
+                AgregarLeyendaMapa();
+            }
+            for (var i = 0; i < obj_Lista.length; i++) {
+                // creando los marcadores
+                createMarker(obj_Lista[i], i);
+                // Fin de creando los marcadores
+            }
+        }
+
+
+        function MostrarUbicacionesMap(obj_Lista) {
+            //RemoveMarker(null);
+            //RemoveLine(null);
+            $scope.markers = [];
+            myCoordinates = [];
+
+            //contiene la Latitud y Longitud de los Operarios
+            var List_direcciones = [];
+            maxRecorrido = obj_Lista.length - 1;
+            ///--- Enfocando el recorrido
+            for (var i = 0; i < obj_Lista.length; i++) {
+                if (i == 0) {
+                    if (parseFloat(obj_Lista[i]._c) != 0 && parseFloat(obj_Lista[i]._d) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._c, obj_Lista[i]._d);
+                        break;
+                    }
+                } else {
+                    if (parseFloat(obj_Lista[i]._c) != 0 && parseFloat(obj_Lista[i]._d) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._c, obj_Lista[i]._d);
+                        break;
+                    }
+                }
+            }
+
+            if (maxRecorrido > 0) {
+                AgregarLeyendaMapa();
+            }
+
+            ///---fin de  Enfocando el recorrido
+
+            service = new google.maps.DirectionsService;
+
+
+            for (var i = 0; i < obj_Lista.length; i++) {
+                // creando los marcadores
+                createMarker(obj_Lista[i], i);
+                // Fin de creando los marcadores
+                List_direcciones.push({ lat: parseFloat(obj_Lista[i]._c), lng: parseFloat(obj_Lista[i]._d), name: 'Station ' + i })
+            }
+
+            // Divide route to several List_Particionada_direcc because max List_direcciones limit is 25 (23 waypoints + 1 origin + 1 destination)
+            for (var i = 0, List_Particionada_direcc = [], max = 25 - 1; i < List_direcciones.length; i = i + max) {
+                List_Particionada_direcc.push(List_direcciones.slice(i, i + max + 1));
+            }
+
+
+            maxRecorrido2 = List_Particionada_direcc.length ;
+
+            // Service callback to process service results
+            var service_callback = function (response, status) {
+
+                console.log('status')
+                console.log(status)
+
+                if (status != 'OK') {
+                    console.log('Directions request failed due to ' + status);
+                    if (status == 'OVER_QUERY_LIMIT') {
+                        setTimeout(function () {
+                            // Google maps service la Misma Busqueda
+                            Ejecutando_Busqueda_Direccion_google(Index_Global)
+                        }, 3000);
+                    } else {
+                        // Google maps service siguiente Busqueda
+                        Ejecutando_Busqueda_Direccion_google(Index_Global + 1)
+                    }
+                } else {
+                    renderer = new google.maps.DirectionsRenderer({
+                        polylineOptions: {
+                            path: [],
+                            icons: [{
+                                icon: {
+                                    path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                                    strokeColor: '#FF0000',
+                                    fillColor: '#FF0000',
+                                    strokeWeight: 1,
+                                    fillOpacity: 1
+                                },
+                                repeat: '100px',
+                                path: []
+                            }],
+                            strokeWeight: 2,
+                            strokeColor: '#85abf2',
+                        }
+                    });
+                    //renderer = new google.maps.DirectionsRenderer;
+                    renderer.setMap($scope.map);
+                    renderer.setOptions({ suppressMarkers: true, preserveViewport: true });
+                    renderer.setDirections(response);
+
+                    // Google maps service siguiente Busqueda
+                    Ejecutando_Busqueda_Direccion_google(Index_Global + 1)
+                }
+            };
+
+            var Ejecutando_Busqueda_Direccion_google = function (index) {
+
+                Index_Global = index;
+                if (index == maxRecorrido2) {
+                    return;
+                }
+                // Waypoints does not include first station (origin) and last station (destination)
+                var waypoints = [];
+                for (var j = 1; j < List_Particionada_direcc[index].length - 1; j++) {
+                    waypoints.push({ location: List_Particionada_direcc[index][j], stopover: false });
+                }
+
+                // Service options
+                var service_options = {
+                    origin: List_Particionada_direcc[index][0],
+                    destination: List_Particionada_direcc[index][List_Particionada_direcc[index].length - 1],
+                    waypoints: waypoints,
+                    travelMode: 'WALKING'
+                };
+                // Send request
+                service.route(service_options, service_callback);
+            }
+            // Google maps service
+            Ejecutando_Busqueda_Direccion_google(0)
+        }
+
+        function MostrarUbicacionesMap_Lecturas(obj_Lista) {
+            $scope.markers = [];
+            myCoordinates = [];
+            //contiene la Latitud y Longitud de los Operarios
+
+            /////---fin de  Enfocando el recorrido
+            for (var i = 0; i < obj_Lista.length; i++) {
+                // creando los marcadores
+                createMarker_Lectura(obj_Lista[i], i);
+            }
+        }
+
+        function MostrarUbicacionesMap_Lectura_individual(obj_Lista) {
+            $scope.markers = [];
+            myCoordinates = [];
+
+            //contiene la Latitud y Longitud de los Operarios
+            var List_direcciones = [];
+            maxRecorrido = obj_Lista.length - 1; 
+ 
+            /////--- Enfocando el recorrido
+            for (var i = 0; i < obj_Lista.length; i++) {
+                if (i == 0) {
+                    if (parseFloat(obj_Lista[i]._b) != 0 && parseFloat(obj_Lista[i]._c) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._b, obj_Lista[i]._c);
+                        break;
+                    }
+                } else {
+                    if (parseFloat(obj_Lista[i]._b) != 0 && parseFloat(obj_Lista[i]._c) != 0) {
+                        funct_mover_mapa_especifico(obj_Lista[i]._b, obj_Lista[i]._c);
+                        break;
+                    }
+                }
+            }
+                       
+            /////---fin de  Enfocando el recorrido
+
+            for (var i = 0; i < obj_Lista.length; i++) {
+                // creando los marcadores
+                createMarker_Lectura(obj_Lista[i], i);
+                // Fin de creando los marcadores
+            }
+
+            $timeout(function () {
+                if (maxRecorrido == 0) {
+                    AgregarLeyendaMapa();
+                }
+            },1000);
+        }
+
+
+        var infoWindow = new google.maps.InfoWindow();
+        var geocoder = new google.maps.Geocoder();
+
+        var createMarker = function (info, posicion) {
+
+            var icono = '';
+            var titulo = ''
+            var ContenidoMarker = '';
+            ContenidoMarker += '<div id="_market" style="width:390px;height:60px;position:relative;">';
+            ContenidoMarker += '<table><tr><td><strong >Operario</strong></td><td>: ' + info._b + '</td></tr>';
+            ContenidoMarker += '<tr><td><strong>Fecha y hora</strong></td><td>: ' + info._e + '</td></tr>';
+            ContenidoMarker += '<tr><td><strong>Latitud</strong></td><td>: ' + info._c + '</td></tr>';
+            ContenidoMarker += '<tr><td><strong>Longitud</strong></td><td>: ' + info._d + '</td></tr>';
+            ContenidoMarker += '</table>';
+            ContenidoMarker += '</div>';
+
+            if (posicion == 0) { // inicio Recorrido
+
+                icono = '../Content/Imagen/operario.png',
+                titulo = 'INICIO DEL RECORRIDO';
+            }
+            else if (posicion == maxRecorrido) { // fin de recorrido
+                icono = '../Content/Imagen/supervisor_on.png';
+                titulo = 'FIN DEL RECORRIDO';
+            } else {
+                icono = '../Content/Imagen/seg_operario.png';
+                titulo = 'RECORRIDO OPERARIO';
+            }
+            var marker = new google.maps.Marker({
+                map: $scope.map,
+                position: new google.maps.LatLng(info._c, info._d),
+                title: titulo,
+                icon: icono,
+                content: ContenidoMarker,
+                id: ++id_marker,
+            });
+
+            google.maps.event.addListener(marker, 'click', function () {
+                infoWindow.setContent('<center><h4><b>' + marker.title + '</b></h4></center>' +
+                                        marker.content);
+                infoWindow.open($scope.map, marker);
+                $scope.toggleBounce(marker);
+            });
+
+            $scope.markers.push(marker);
+
+            //--Efecto de animacion--
+            if (posicion == 0) { // inicio Recorrido
+                $scope.markers[posicion].setAnimation(google.maps.Animation.BOUNCE);
+            } else if (posicion == maxRecorrido) { // fin de recorrido
+                $scope.markers[posicion].setAnimation(google.maps.Animation.BOUNCE);
+            }
+        }
+
+        var createMarker_Lectura = function (info, posicion) {
+            let chk_operario = document.getElementById('chk_operario');
+            let chk_suministro = document.getElementById('chk_suministro');
+            let chk_trazabilidad = document.getElementById('chk_trazabilidad');
+
+            var checkOperario = false;
+            var checkSuministro = false;
+            var checkTrazabilidad = false;
+
+            if (chk_operario.checked == true) {
+                checkOperario = true;
+            }
+            if (chk_suministro.checked == true) {
+                checkSuministro = true;
+            }
+            if (chk_trazabilidad.checked == true) {
+                checkTrazabilidad = true;
+            }
+
+
+
+            if (info._b == '0' || info._b == '"0"' || info._b == '0.0' || info._b == '"0.0"') {
+                if (info._o != '' || info._o != undefined) {                          
+
+                    // Llamamos a la función geodecode pasandole la dirección que hemos introducido en la caja de texto.
+                    geocoder.geocode({ 'address': info._o }, function (results, status) {
+                        if (status == 'OK') {   
+                            //----enfocando el mapa ---
+
+                            if (checkOperario == false && checkSuministro == true && checkTrazabilidad == false) {
+                                funct_mover_mapa_especifico(results[0].geometry.location.lat(), results[0].geometry.location.lng());
+                            }
+                            var icono = '';
+                            var titulo = ''
+                            var ContenidoMarker = '';
+                            ContenidoMarker += '<div id="_market" style="width:510px;height:100px;position:relative;">';
+                            ContenidoMarker += '<table><tr><td><strong >Suministro</strong></td><td>: ' + info._m + '</td></tr>';
+                            ContenidoMarker += '<tr><td><strong>Dirección</strong></td><td>: ' + info._o + '</td></tr>';
+                            ContenidoMarker += '<tr><td><strong>Operador</strong></td><td>: ' + info._f + '</td></tr>';
+                            ContenidoMarker += '<tr><td><strong>Cliente</strong></td><td>: ' + info._p + ' </td></tr>';
+                            ContenidoMarker += '<tr><td><strong>Fecha Hora</strong></td><td>: ' + info._u + ' </td></tr>';
+                            if (info._r == 'SI') {
+                                ContenidoMarker += '<tr><td colspan="2" style="text-align:center;"><strong><a onclick="galeriaFotos(' + info._l + ');" href="#">Ver Foto</a></strong></td></tr>';
+                            }
+                            ContenidoMarker += '</table>';
+                            ContenidoMarker += '</div>';
+
+                            //if (info._s != '7' && info._s != '8') {
+                            //    if (info._r == 'SI') {
+                            //        icono = '../Content/Imagen/novisita.png',
+                            //            titulo = 'SUMINISTRO CON FOTO';
+                            //    } else {
+                            //        icono = '../Content/Imagen/m_red.png',
+                            //            titulo = 'SUMINISTRO NO VISITADO';
+                            //    }
+                            //} else {
+                            //    if (info._r == 'SI') {
+                            //        icono = '../Content/Imagen/novisita.png',
+                            //            titulo = 'SUMINISTRO CON FOTO';
+                            //    } else {
+                            //        icono = '../Content/Imagen/m_blue.png',
+                            //            titulo = 'SUMINISTRO VISITADO';
+                            //    }
+                            //}
+
+                            icono = '../Content/Imagen/m_blue.png',
+                            titulo = 'SUMINISTRO';
+
+                            var marker = new google.maps.Marker({
+                                map: $scope.map,
+                                position: new google.maps.LatLng(results[0].geometry.location.lat(), results[0].geometry.location.lng()),
+                                title: titulo,
+                                icon: icono,
+                                content: ContenidoMarker,
+                                optimized: false,
+                                id: ++id_marker,
+                            });
+
+                            google.maps.event.addListener(marker, 'click', function () {
+                                infoWindow.setContent('<center><h4><b>' + marker.title + '</b></h4></center>' +
+                                    marker.content);
+                                infoWindow.open($scope.map, marker);
+                            });
+
+                            $scope.markers.push(marker);
+
+                        }
+                    });
+                }
+            } else {
+
+                var icono = '';
+                var titulo = ''
+                var ContenidoMarker = '';
+                ContenidoMarker += '<div id="_market" style="width:510px;height:100px;position:relative;">';
+                ContenidoMarker += '<table><tr><td><strong >Suministro</strong></td><td>: ' + info._m + '</td></tr>';
+                //ContenidoMarker += '<tr><td><strong>Medidor</strong></td><td>: ' + info._n + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Dirección</strong></td><td>: ' + info._o + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Operador</strong></td><td>: ' + info._f + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Cliente</strong></td><td>: ' + info._p + ' </td></tr>';
+                //ContenidoMarker += '<tr><td><strong>Lectura</strong></td><td>: ' + info._q + ' </td></tr>';
+                ContenidoMarker += '<tr><td><strong>Fecha Hora</strong></td><td>: ' + info._u + ' </td></tr>';
+                if (info._r == 'SI') {
+                    ContenidoMarker += '<tr><td colspan="2" style="text-align:center;"><strong><a onclick="galeriaFotos(' + info._l + ');" href="#">Ver Foto</a></strong></td></tr>';
+                }
+                ContenidoMarker += '</table>';
+                ContenidoMarker += '</div>';
+
+                //if (info._s != '7' && info._s != '8') {
+                //    if (info._r == 'SI') {
+                //        icono = '../Content/Imagen/novisita.png',
+                //            titulo = 'SUMINISTRO CON FOTO';
+                //    } else {
+                //        icono = '../Content/Imagen/m_red.png',
+                //            titulo = 'SUMINISTRO NO VISITADO';
+                //    }
+                //} else {
+                //    if (info._r == 'SI') {
+                //        icono = '../Content/Imagen/novisita.png',
+                //            titulo = 'SUMINISTRO CON FOTO';
+                //    } else {
+                //        icono = '../Content/Imagen/m_blue.png',
+                //            titulo = 'SUMINISTRO VISITADO';
+                //    }
+                //}
+                icono = '../Content/Imagen/m_blue.png',
+                titulo = 'SUMINISTRO';
+
+                var marker = new google.maps.Marker({
+                    map: $scope.map,
+                    position: new google.maps.LatLng(info._b, info._c),
+                    title: titulo,
+                    icon: icono,
+                    content: ContenidoMarker,
+                    optimized: false,
+                    id: ++id_marker,
+                });
+
+                google.maps.event.addListener(marker, 'click', function () {
+                    infoWindow.setContent('<center><h4><b>' + marker.title + '</b></h4></center>' +
+                        marker.content);
+                    infoWindow.open($scope.map, marker);
+                });
+
+                $scope.markers.push(marker);
+            }
+                                 
+        }
+
+        $scope.toggleBounce = function (marker) {
+            $scope.markers[0].setAnimation(google.maps.Animation.BOUNCE);
+            $scope.markers[maxRecorrido].setAnimation(google.maps.Animation.BOUNCE);
+        }
+        $scope.openInfoWindow = function (e, selectedMarker) {
+            e.preventDefault();
+            google.maps.event.trigger(selectedMarker, 'click');
+        }
+
+        function RemoveMarker(map) {
+            for (var i = 0; i < $scope.markers.length; i++) {
+                $scope.markers[i].setMap(map);
+            }
+        }
+
+        function RemoveLine(map) {
+            if (Polyline != undefined) {
+                Polyline.setMap(map);
+            }
+        }
+
+        $scope.descargar_excel = function () {
+        let _fecha = document.getElementById('_fechaAsigna').value;
+        let _servicio = document.getElementById('idservicios').value;
+        let _operario = document.getElementById('id_operador').value;
+        let _medidor = document.getElementById('id_medidor').value;
+        let _suministro = document.getElementById('id_suministro').value;
+            
+        if (_fecha == '') {
+            new PNotify({
+                title: 'Sistemas',
+                text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                type: 'error'
+            });
+            return;
+        }
+
+        if (_servicio == "-1" || _servicio == -1 || _servicio == '') {
+            new PNotify({
+                title: 'Sistemas',
+                text: 'Por favor seleccione un Servicio.',
+                type: 'error'
+            });
+            return;
+        }
+
+        if (_servicio == "0" || _servicio == 0 || _servicio == '') {
+            new PNotify({
+                title: 'Sistemas',
+                text: 'Por favor seleccione un Servicio.',
+                type: 'error'
+            });
+            return;
+        }
+
+         var variables = {
+            method: 'POST',
+            url: '../SeguimientoOperario/descargar_informacion_reparto_excel',
+            headers: {
+                'Content-Type': 'application/json; charset=utf-8'
+            },
+            data: {
+                FechaAsiga: _fecha,
+                servicio: _servicio,
+                operario: _operario,
+                suministro: _suministro,
+                medidor: _medidor
+            }
+        }
+
+        $('.sige-load').show();
+        $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+ 
+
+                console.log('descargar_excel')
+                console.log(data)
+
+                var res = data.split("|");
+                if (res[0].replace(/["]/gi, '') == "0" || res[0].replace(/["]/gi, '') == 0) {
+                    alert(res[1]);
+                } else {
+                    var url = res[1].replace(/["]/gi, '');
+                    window.open(url);
+                }
+
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });            
+        }
+    });
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro"  style="margin-top: -13px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> SEGUIMIENTO DE OPERARIOS REPARTO</h6>
+        </div>
+        <div class="panel-body">
+            <div id="Contenedor">
+                @*<form class="form-inline">
+            <div class="row" style="margin-top: -20px; margin-bottom: 2px">
+                <div class="form-group" style="padding-left: 30px;">
+                    <label for="_fechaAsigna" style="font-size:11px">Fecha de Asignación:</label>
+                    <input class="form-control" style="width: 150px;" id="_fechaAsigna" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                </div>
+
+                <div class="form-group" style="padding-left: 15px;">
+                    <label for="idservicios" style="font-size:11px">Servicio:</label>
+                    <select id="idservicios" style="width:200px !important;" ng-model="id_tipoServicio">
+                        <option value=0>--[ Seleccione ]-- </option>
+                        <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                            {{item.nombre_tiposervicio}}
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="padding-left: 15px;" >
+                    <label for="id_operador" style="font-size:11px"> Operario:</label>
+                    <select id="id_operador" style="width:400px !important;" ng-model="id_operario">
+                        <option value=0>--[ SELECCIONE ]-- </option>
+                        <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                            {{item.id_Operario}} : {{item.desc_operario}}
+                        </option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="row">
+                <div class="form-group" style="padding-left: 25px; padding-right: 5px;padding-top: 10px">
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                        <input name="suministro" id="id_suministro" class="form-control" placeholder="Suministro" >
+                    </div>
+                </div>
+                <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px" ng-show="false">
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                        <input name="medidor" id="id_medidor" class="form-control" placeholder="Medidor">
+                    </div>
+                </div>
+
+                <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="chk_operario" >
+                        <label class="form-check-label" for="chk_operario" style="color: green;"> Mostrar Operario</label>
+                    </div>
+
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="chk_suministro" checked>
+                        <label class="form-check-label" for="chk_suministro" style=" color: #3073ad;">Mostrar Suministros</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="chk_trazabilidad">
+                        <label class="form-check-label" for="chk_trazabilidad" style=" color: red;">Mostrar Trazabilidad Operario</label>
+                    </div>
+                </div>
+                <div class="form-group" style="padding-left: 15px;">
+                    <button role="button" class="btn btn-primary btn-sm" id="btnBuscar" ng-click="ActualizarInformacion();"><i class="fa fa-refresh fa-lg"></i> Mostrar</button>
+                    <button class="btn btn-success" ng-click="descargar_excel();"><span class="glyphicon glyphicon-download-alt"></span> Descargar</button>
+                    <button id="btn_nueva" type="button" class="btn btn-primary btn-sm" onclick="window.location.reload(true)" ><i class="fa fa-file-excel-o"></i> Nueva Consulta</button>
+                </div>
+            </div>
+        </form>*@
+
+                <div class="well" style="background: #314b75; color: white; margin-bottom: -9px;margin-top: -4px;">
+                    <form class="form-inline">
+
+                        <div class="row" style="margin-top: -15px; margin-bottom: 2px">
+                            <div class="form-group" style="padding-left: 30px;">
+                                <label for="_fechaAsigna" style="font-size:11px">Fecha Asignación:</label>
+                                <input class="form-control" style="width: 150px;" id="_fechaAsigna" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+
+                            <div class="form-group" style="padding-left: 15px;">
+                                <label for="idservicios" style="font-size:11px">Servicio:</label>
+                                <select id="idservicios" style="width:200px !important;" ng-model="id_tipoServicio">
+                                    <option value=0>--[ Seleccione ]-- </option>
+                                    <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                        {{item.nombre_tiposervicio}}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" style="padding-left: 15px;">
+                                <label for="id_operador" style="font-size:11px"> Operario:</label>
+                                <select id="id_operador" style="width:400px !important;" ng-model="id_operario">
+                                    <option value=0>--[ SELECCIONE ]-- </option>
+                                    <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                        {{item.id_Operario}} : {{item.desc_operario}}
+                                    </option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <div class="row" style="margin-bottom: -20px;">
+                            <div class="form-group" style="padding-left: 25px; padding-right: 5px;padding-top: 10px">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                    <input name="suministro" id="id_suministro" class="form-control" placeholder="Suministro">
+                                </div>
+                            </div>
+                            <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px" ng-show="false">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                    <input name="medidor" id="id_medidor" class="form-control" placeholder="Medidor">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="chk_operario">
+                                    <label class="form-check-label" for="chk_operario" style="color: orange;"> Mostrar Operario</label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="chk_suministro" checked>
+                                    <label class="form-check-label" for="chk_suministro" style=" color: black;">Mostrar Suministros</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="chk_trazabilidad">
+                                    <label class="form-check-label" for="chk_trazabilidad" style=" color: aquamarine;">Mostrar Trazabilidad Operario</label>
+                                </div>
+                            </div>
+                            <div class="form-group" style="padding-left: 15px;">
+                                <button role="button" class="btn btn-primary btn-sm" id="btnBuscar" ng-click="ActualizarInformacion();"><i class="fa fa-refresh fa-lg"></i> Mostrar</button>
+                                <button class="btn btn-success" ng-click="descargar_excel();"><span class="glyphicon glyphicon-download-alt"></span> Descargar</button>
+                                <button id="btn_nueva" type="button" class="btn btn-primary btn-sm" onclick="window.location.reload(true)"><i class="fa fa-file-excel-o"></i> Nueva Consulta</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <br />
+                <div class="row">
+                    <div class="form-group" style="padding-left: 30px;">
+                        <section id="ubicacion">
+                            <div style="border:1px solid">
+                                <div id="map"></div>
+                            </div>
+                            <div id="legend"><h3></h3></div>
+                            <div id="content_leyenda"><h3></h3></div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <div id="fotos" class="modal fade bd-example-modal-lg " tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="panel panel-oscuro" style="width:476px;">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <a ng-click="rotateImg();" class="pull-right rotate" style="    margin-top: -10px; font-size: 12px; padding: 3px 4px;  color: white;  margin-right: 20px;cursor:pointer"><i class="fa fa-repeat" style="Color:#337ab7; font-size: 30px" aria-hidden="true"></i>Girar</a>
+                    <h6 class="modal-title" style=" font-size: 11px;"><i class="fa fa-cogs fa-lg"></i> DETALLE DE FOTOS</h6>
+
+                </div>
+                <div class="panel-body">
+                    <fieldset>
+                        <legend></legend>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                                    <!-- Indicators -->
+                                    <!-- Wrapper for slides -->
+                                    <div class="carousel-inner" id="corre">
+                                    </div>
+
+                                    <!-- Controls -->
+                                    <a class="left carousel-control" href="#carousel-example-generic" onclick="previusPhoto()" role="button" data-slide="prev" style="background-color:black;width: 20px;">
+                                        <span class="glyphicon glyphicon-chevron-left"></span>
+                                    </a>
+                                    <a class="right carousel-control" href="#carousel-example-generic" onclick="nextPhoto()" role="button" data-slide="next" style="background-color:black;width: 20px;">
+                                        <span class="glyphicon glyphicon-chevron-right"></span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Atras</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

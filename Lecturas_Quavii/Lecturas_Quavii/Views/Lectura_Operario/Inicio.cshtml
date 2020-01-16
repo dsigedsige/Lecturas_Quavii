@@ -1,0 +1,213 @@
+﻿@{
+    ViewBag.Title = "Lecturas_Operarios";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+@section instances{
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Styles.Render("~/Content/bootstrap/css/bootstrapvalidator.min.css")
+    @Scripts.Render("~/Content/bootstrap/js/bootstrapValidator.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+}
+
+@section styles{
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalreasig {
+            width: 350px;
+        }
+
+        #modalhistorico {
+            width: 500px;
+        }
+
+        #modalpendientes {
+            width: 500px;
+        }
+
+        .datepicker {
+            width: 200px;
+            top: 200px !important;
+        }
+
+        #table-consulta_lec td {
+            color: black;
+        }
+
+        #table-consulta_reclec td {
+            color: black;
+        }
+    </style>
+}
+@section scripts{
+      
+    <script>
+
+        //inicializando fechas
+        $(function () {
+            $('#f_inicial').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        $(function () {
+            $('#f_final').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+
+        var app = angular.module('MyApp', []).directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit('ngRepeatFinished');
+                        });
+                    }
+                }
+            }
+        });
+
+        app.controller('MyController', function ($scope, $http, fileUpload) {
+
+
+            //listar Locales
+            $scope.getLocales = function () {
+                var req = {
+                    method: 'POST',
+                    url: 'JsonListarLocales',
+                    headers: {
+                        'Content-Type': undefined
+                    }
+                }
+                $http(req).then(function (result) {
+                    $scope.listaLocales = result.data;
+
+                    console.log(listaLocales)
+                }, function (error) {
+
+                });
+            }
+
+            $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+                oTable = $('#tblLista').DataTable();
+            });
+        });
+
+    
+    </script>
+
+
+     
+}
+<div ng-app="MyApp" ng-controller="MyController" ng-init="getLocales()">
+    <div>
+        <div class="panel " style="border-color:#2D353C;">
+            <div class="panel-heading" style="background:#2D353C; color:white;">
+                <h4><strong>Importar dias de Trabajo</strong></h4>
+            </div>
+            <div class="panel-body">
+                <br />
+
+                <div class="panel panel-default">
+                    <div class="panel-body  form-horizontal" style="background:#F0F3F5;">
+                        <div class="form-group-sm">
+                            <label class="col-xs-1">Local</label>
+                            <div class="col-xs-2">
+                                <select class="form-control input-sm" id="local">
+                                    <option ng-repeat="local in listaLocales" value="{{local._a}}">{{local._c}}</option>
+                                </select>
+                            </div>
+                            <label class="col-xs-1">Fecha Inicial</label>
+                            <div class="col-xs-2">
+                                <div class="form-group">
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input class="form-control" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+                            </div>
+                            <label class="col-xs-1">Fecha Final</label>
+                            <div class="col-xs-2">
+                                <div class="form-group">
+
+                                    <div class="input-group">
+                                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                        <input class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xs-1 col-xs-offset-2">
+                                <button class="btn btn-primary btn-sm btn-block" ng-click="">Consultar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group-sm">
+                    <table class="table  table-responsive table-bordered " id="tblLista">
+                        <thead style="background:#F0F3F5;">
+                            <tr>
+                                <th>Sector</th>
+                                <th>Fecha</th>
+                                <th>Estado</th>
+                                
+                             
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="" on-finish-render="ngRepeatFinished">
+                                <td></td>
+                                <td></td>
+                                <td></td>                             
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+     
+            <div class="modal fade" data-backdrop="static" data-keyboard="false" id="ModalConfirmacion">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h4 class="modal-title">Información</h4>
+                        </div>
+                        <div class="modal-body">
+                            <p></p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-success" data-dismiss="modal">ok</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

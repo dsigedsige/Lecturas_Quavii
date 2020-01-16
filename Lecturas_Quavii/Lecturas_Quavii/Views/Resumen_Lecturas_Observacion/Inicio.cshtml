@@ -1,0 +1,624 @@
+﻿@using System.Configuration
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Resumen de Lecturas por Observación ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+    @Scripts.Render("~/Content/pdf/jspdf.js")
+    @Scripts.Render("~/Content/pdf/pdfFromHTML.js")
+    @Scripts.Render("~/Content/pdf/jspdf.plugin.autotable.js")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+}
+
+
+
+@section styles{
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalLecturass {
+            width: 530px;
+        }
+
+
+        .datepicker {
+            width: 200px;
+        }
+
+
+        #Principal {
+            /*width: 98%;*/
+            height: 400px;
+        }
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+            padding-top: 4px;
+            padding-bottom: 3px;
+        }
+
+
+
+        .Julio table, th {
+            background-color: #019199 !important;
+            color: white !important;
+        }
+
+        .Julio table, td {
+            cursor: pointer;
+            text-align: right
+        }
+
+        .JulioCesar table, td {
+            cursor: pointer;
+            text-align: right
+        }
+    </style>
+}
+
+@section scripts{
+    <script type="text/javascript">
+
+        var $ruta = '@ConfigurationManager.AppSettings["servidor-foto-lectura"]';
+
+        //oculto los divs de consultas
+        $(function () {
+            //$('#lectura').hide();
+            $('#relectura').hide();
+        })
+
+        //inicializando fechas
+        $(function () {
+            $('#f_inicial').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        $(function () {
+            $('#f_final').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        //fin inicializando fechas
+
+        $(window).resize(function () {
+            $('#table-consulta_lec').bootstrapTable('resetView');
+            $('#table-consulta_reclec').bootstrapTable('resetView');
+        });
+
+        $(document).on('click', '#actualizar', function (e) {
+
+            if ($("#idservicios").val() == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return false;
+            }
+
+            var $local = $('#_local').val();
+            //if ($local === '0') {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+
+            //    $('#table-consulta_lec td').remove();
+            //    $('#table-consulta_relec td').remove();
+            //    var msg = 'No se encontraron registros...';
+            //    $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+            //    $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+            //    return;
+            //}
+            listaLecturaResumenObs();
+        });
+
+        function tabla_lectura(msg) {
+            $('#table-consulta_lec').bootstrapTable({
+                data: [
+                    {
+                        field: '_x',
+                        title: 'Item Name',
+                        sortable: true,
+                        editable: true,
+                        align: 'left'
+                    }
+                ]
+            });
+
+            $('#table-consulta_lec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+        function tabla_relectura(msg) {
+            $('#table-consulta_relec').bootstrapTable({
+                data: []
+            });
+
+            $('#table-consulta_relec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+        function listaLecturaResumenObs() {
+            var $servicio = '';
+            var list = [];
+            if ($("#idservicios").val() == 0) {
+                $("#idservicios option").each(function () {
+                    var x = parseInt($(this).attr('value'))
+                    if (x == 0 || x == -1) {
+
+                    }
+                    else {
+                        list.push($(this).attr('value'));
+                    }
+
+                });
+
+            }
+            else {
+                list.push($("#idservicios").val());
+            }
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    $('.sige-load').show();
+                },
+                url: 'JsonListaLecturasResumenObs',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: 1,
+                    __b: $servicio,
+                    __c: $('#f_inicial').val(),
+                    __d: $('#f_final').val(),
+                    lista: list.toString()
+                }),
+                success: function (response) {
+                    if (response == null) {
+                        tabla('No se encontraron registros...');
+                    } else {
+                        var servi = $('#options').prop('checked');
+                        if (servi === true) {
+                            $('#lectura').show();
+                            $('#table-consulta_lec').bootstrapTable('load', response);
+                            $('#table-consulta_lec').bootstrapTable('resetView');
+                            $('#relectura').hide();
+                        } else {
+                            $('#lectura').hide();
+                            $('#relectura').show();
+                            $('#table-consulta_relec').bootstrapTable('load', response);
+                            $('#table-consulta_relec').bootstrapTable('resetView');
+                        }
+                    }
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+        }
+
+        function fnDescargaHistorico() {
+            $ajaxJson(
+                '/Calidda/Asigna_Lectura/DescargaHistorico',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-historico').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    window.open('/Lecturas/Temp/' + __s.__a, '_blank');
+                }
+            );
+        }
+
+        //toggle button - cambio lectura - relectura
+        $(function () {
+            $('#servicio').change(function () {
+                listaLecturaResumenObs();
+            })
+        })
+
+        //toggle button - cambio lectura - relectura
+        $(function () {
+            $('#option1').change(function () {
+                listaLecturaResumenObs();
+            })
+        })
+
+        $(function () {
+            $('#option2').change(function () {
+                listaLecturaResumenObs();
+            })
+        })
+
+        $(function () {
+            $('#option3').change(function () {
+                listaLecturaResumenObs();
+            })
+        })
+
+
+        function checkFormat(__v, __r, __i) {
+            if (__r._v == 1 && __r._v == true) {
+                return {
+                    checked: true
+                };
+            }
+            return __v;
+        }
+
+        function opcionFormatter(__val, __row, __index) {
+            var $html = [];
+            $html.push('<button role="button" class="btn btn-warning" onclick="fnModalHistorico(\'' + __row._c + '\')"><i class="fa fa-list-alt fa-lg"></i> Histórico</button>');
+
+            return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">' + $html.join('') + '</div>';
+        }
+
+        function fotoFormatter(__val, __row, __index) {
+            if (__val == 'SI') {
+                return '<a onclick="galeriaFotos(' + __row._b + ');" href="#">' + __val + '</a>';
+            } else {
+                return __val;
+            }
+        }
+
+        function galeriaFotos(idLectura) {
+            $('#fotos').modal();
+
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) { },
+                url: 'FotosLectura',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    __a: idLectura
+                },
+                success: function (response) {
+                    $("div").remove("#x");
+                    $("div").remove("#y");
+                    var $DivCorre = $('#corre');
+                    var $DivOl = $('#ol');
+                    $.each(response, function (i, v) {
+                        if (i === 0) {
+                            $DivCorre.append('<div id="x" class="item active"><img src="' + $ruta + '/' + response[i]._r + '" alt="..." style="width: 320px; height: auto; text-align: center;" /></div>');
+                            //$DivOl.append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '" class="active"></li>');
+                        } else {
+                            $DivCorre.append('<div id="x" class="item"><img src="' + $ruta + '/' + response[i]._r + '" alt="..." style="width: 320px; height: auto; text-align: center;" /></div>');
+                            //$DivOl.append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
+                        }
+                    });
+                    //$('.img-foto').attr('src', $ruta + '/' + __s._h);
+                },
+                error: function (xhr) {
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        }
+
+        function fnDescargaPendientes() {
+            $ajaxJson(
+                'DescargaPendientes',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-pendientes').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    window.open('/Lecturas/Temp/' + __s.__a, '_blank');
+                }
+            );
+        }
+
+        $("form").submit(function () {
+            console.log($(this).serializeArray());
+            return false;
+        });
+
+
+        function exportToExcel(tableId) {
+            tableToExcel(tableId, 'Resumen de Lecturas por Observacion');
+
+            //   $timeout(function () { location.href = $scope.exportHref; }, 100); // trigger download
+        }
+
+
+        function tableToExcel(tableId, worksheetName) {
+
+            var uri = 'data:application/vnd.ms-excel;base64,',
+                  template = '<html lang="es" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>ResumenLecturaPorObservacion</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>',
+                  base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))); },
+                  format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+            var table = $(tableId),
+                         ctx = { worksheet: 'descar123', table: table.html() };
+
+            var link = document.createElement("a");
+            link.download = "ResumenLecturasPorObservacion.xls";
+            link.href = uri + base64(format(template, ctx));
+
+
+            link.click()
+
+        }
+
+        function getDateNow() {
+            var meses = new Array("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre");
+            var diasSemana = new Array("Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado");
+            var f = new Date()
+            return diasSemana[f.getDay()] + ", " + f.getDate() + " de " + meses[f.getMonth()] + " de " + f.getFullYear();
+        }
+
+        function getDateHour() {
+            var f = new Date()
+            return f.getHours() + ':' + f.getMinutes() + ':' + f.getSeconds();
+        }
+
+        function getPdf() {
+
+
+            var fechaini = document.getElementById('f_inicial').value;
+            var fechafin = document.getElementById('f_final').value;
+
+            var doc = new jsPDF('l', 'pt');
+
+            doc.setFontSize(15);
+            doc.setFont("helvetica");
+            doc.setFontType("bold");
+            doc.setTextColor(200, 0, 0);
+            doc.text(20, 30, 'Cobra Peru S.A')
+            doc.setFontSize(10);
+            doc.setTextColor(0);
+            doc.text(550, 30, 'Fecha de impresión : ' + getDateNow());
+            doc.text(550, 48, 'Hora de impresión : ' + getDateHour());
+            doc.setFontSize(11);
+            doc.text(320, 80, 'Resumen de Lecturas por Observación');
+            doc.text(330, 100, 'desde ' + fechaini + '  hasta  ' + fechafin);
+            var res = doc.autoTableHtmlToJson(document.getElementById("table-consulta_relec"));
+            doc.autoTable(res.columns, res.data, {
+                startY: doc.autoTableEndPosY() + 120,
+                theme: 'grid',
+                margin: { horizontal: 10 },
+                styles: { overflow: 'linebreak' },
+                bodyStyles: { valign: 'top' },
+                columnStyles: { email: { columnWidth: 'wrap' } },
+            });
+            doc.output('dataurlnewwindow');
+
+        }
+
+        $(document).ready(function () {
+            CargarServicioxUsuario();
+        });
+
+
+        function CargarServicioxUsuario() {
+
+
+            var servicio = $("#idservicios");
+
+
+            //$.support.cors = true;
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                cache: false,
+                dataType: "json",
+                CrossDomain: true,
+                success: function (response) {
+                    console.log(response);
+
+                    servicio.html("");
+                    if (parseInt(response.length) == parseInt(response[0].cantidad)) {
+
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        servicio.append('<option value="0" >Todos</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            if (response[i].id_TipoServicio == 1 || response[i].id_TipoServicio == 2 || response[i].id_TipoServicio == 3 || response[i].id_TipoServicio == 4) {
+                                servicio.append('<option value="' + response[i].id_TipoServicio +
+                                    '">' + response[i].nombre_tiposervicio + '</option>');
+                            }
+                        };
+                    } else {
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            if (response[i].id_TipoServicio == 1 || response[i].id_TipoServicio == 2 || response[i].id_TipoServicio == 3 || response[i].id_TipoServicio == 4) {
+                                servicio.append('<option value="' + response[i].id_TipoServicio +
+                                    '">' + response[i].nombre_tiposervicio + '</option>');
+                            }
+                        };
+                    }
+
+
+                },
+
+                error: function (result) {
+                    alert('ERROR.... en ' + result.status + '... ' + result.statusText);
+                }
+            });
+
+
+        }
+
+
+
+    </script>
+}
+
+<div class="panel panel-oscuro" style="margin-top: -13px;">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i>RESUMEN DE LECTURAS POR OBSERVACION</h6>
+    </div>
+    <div class="panel-body">
+
+        <div class="well" style="background: #314b75; color: white;    margin-bottom: -5px; margin-top: -5px;">
+            <div class="row" style="margin-top: -15px; margin-bottom: -15px">
+                <div class="col-sm-12">
+                    <div class="form-inline">
+                        <div class="form-group" style=" display :none; padding-left: 5px; padding-right: 10px;">
+                            <label for="_local" class="control-label">Local</label>
+                            <div class="form-group form-group-sm">
+                                <select class="form-control" id="_local">
+                                    <option value="0" selected="selected">-- Seleccione --</option>
+                                    @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                    {
+                                        <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" style="padding-left: 15px; padding-right: 5px;">
+                            <label for=" _supervisor" class="control-label">
+                                Servicios
+                            </label>
+                            <div class="form-group form-group-sm">
+                                <select class="form-control" id="idservicios" style="width: 150px">
+                                    <option value="-1">Seleccione</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group form-group-sm" style="padding-left:10px;">
+                            <label for="_fechaAsigna" class="control-label">Fecha Inicial</label>
+                        </div>
+                        <div class="form-group form-group-sm" style="padding-left:10px;">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input style="width:90px;" class="form-control" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+                        </div>
+
+                        <div class="form-group form-group-sm" style="padding-left:10px;">
+                            <label for="_fechaAsigna" class="control-label">Fecha Final</label>
+                        </div>
+                        <div class="form-group form-group-sm" style="padding-left:10px;">
+                            <div class="input-group">
+                                <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                <input style="width:90px;" class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+                        </div>
+                        <div class="form-group form-group-sm " style="float:right">
+                            <button role="button" class="btn btn-primary btn-sm" id="actualizar"><i class="fa fa-refresh fa-lg"></i> Actualizar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br />
+        <div class="row">
+            <div class="col-sm-12">
+
+                <div id="lectura">
+                    <table class="table" id="table-consulta_lec"
+                           data-toggle="table"
+                           data-height="350"
+                           data-row-style="rowStyle"
+                           data-maintain-selected="true">
+                        <thead>
+                            <tr>
+                                <th data-field="_b">Operador</th>
+                                <th data-field="_k">Observación</th>
+                                <th data-field="_c">Total</th>
+                                <th data-field="_e" data-formatter="fotoFormatter">Con Foto</th>
+                                <th data-field="_l">Sin Foto</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                <div id="relectura">
+                    <table id="table-consulta_relec"
+                           data-toggle="table"
+                           data-height="350"
+                           data-row-style="rowStyle"
+                           data-maintain-selected="true">
+                        <thead>
+                            <tr>
+                                <th data-field="_b">Operador</th>
+                                <th data-field="_k">Observación</th>
+                                <th data-field="_c">Total</th>
+                                <th data-field="_e" data-formatter="fotoFormatter">Con Foto</th>
+                                <th data-field="_l">Sin Foto</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+
+                @*<div class="panel panel-info col-sm-12" style="background-color: #F8F8F8;">
+                        <div class="panel-body" style="height: 40px;">
+                            <div class="col-sm-12" style="text-align:right;">
+
+                                <div class="col-sm-12">
+                                    <div class="form-group form-group-sm">
+                                        <button role="button" class="btn btn-danger btn-sm" onclick="getPdf();"><i class="fa fa-print fa-lg"></i> Imprimir</button>
+                                        <button role="button" class="btn btn-success btn-sm" onclick="exportToExcel('#table-consulta_relec');"><i class="fa fa-file-excel-o fa-lg"></i> Exportar a Excel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>*@
+            </div>
+        </div>
+
+    </div>
+
+</div>

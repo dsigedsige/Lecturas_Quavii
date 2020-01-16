@@ -1,0 +1,1569 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Actualizar reparto ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    <script src="~/Content/pdf/jspdf.js"></script>
+
+}
+
+@section styles{
+
+
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalLecturass {
+            width: 530px;
+        }
+
+
+        .datepicker {
+            width: 200px;
+        }
+
+
+        #Principal {
+            /*width: 98%;*/
+            height: 400px;
+        }
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+            padding-top: 4px;
+            padding-bottom: 3px;
+        }
+
+        .table tbody tr:hover td, .table tbody tr:hover th, .table tbody tr:hover th a {
+            background-color: rgba(28, 96, 177, 0.72) !important;
+            background-color: #00ACAC !important;
+            color: white !important;
+        }
+
+        .Julio table, th {
+            background-color: #019199 !important;
+            color: white !important;
+        }
+
+        .Julio table, td {
+            cursor: pointer;
+            text-align: right
+        }
+
+        .JulioCesar table, td {
+            cursor: pointer;
+            text-align: right
+        }
+
+
+
+        .colorItem {
+            background-color: #009688;
+        }
+        #tblListaDetalleX {
+            height: 400px;
+            display: -moz-groupbox;
+            margin-bottom: 60px !important;
+        }
+
+        #tblListaDetalleX tr {
+            width: 100%;
+            display: inline-table;
+            table-layout: fixed;
+        }
+
+        #tblListaDetalleX tbody {
+            overflow-y: scroll;
+            height: 400px;
+            width: 98%;
+            position: absolute;
+        }
+
+    </style>
+
+
+}
+
+@section scripts{
+    <script type="text/javascript">
+
+        $(function () {
+            $('#id_fecha_asignacion').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+            $('#_fechaMovilDetalle').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });           
+
+        });
+        $(function () {
+            $('#_fecha').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $(function () {
+            $('#_fechaEnvioMovil').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+
+        function soloNumeros(e) {
+            var key = window.Event ? e.which : e.keyCode
+            return (key >= 48 && key <= 57)
+        }
+
+        var app = angular.module('MyApp', [])
+
+        app.controller('MyController', function ($scope, $timeout, $q, $http) {
+
+            $scope.id_tipo = 'R';
+            $scope.especificacion = 'DISTRITO';
+
+            $scope.iniciandoVariables = function () {
+                setTimeout(function () {
+                    // inicializando el ComboBuscador
+                    $scope.id_tipo = 'R';
+                    //$scope.change_tipo('R')
+                    $("select").select2();
+                }, 200);
+            }
+
+
+
+
+            $scope.getPdf = function () {
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: 'GetReporteReparto',
+                    params: {
+                        fecha: $('#id_fecha_asignacion').val()
+                    },
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        //var doc = new jsPDF()
+                        //var x = 17;
+                        //var y = 5;
+
+                        //var countBucle = 0;
+
+                        //for (var i = 0; i < data.length; i++) {
+
+
+                        //countBucle++;
+                        //if (countBucle == 4) {
+                        //    x = 17;
+                        //    y = 110;
+                        //} else if (countBucle == 7) {
+                        //    x = 17;
+                        //    y = 5;
+                        //    countBucle = 1;
+                        //    doc.addPage()
+                        //}
+
+                        //doc.setFont('courier');
+                        //doc.setFontType('bold')
+                        //doc.setFontSize(10);
+
+                        //doc.text(y, x, 'Nro.Recibo ' + data[i].NRORECIBO_REPARTO)
+                        //doc.text(y + 80, x, String(i + 1))
+                        //// CAMBIAMOS DE LETRA A NORMAL
+                        //doc.setFont("helvetica");
+                        //doc.setFontType('normal')
+                        //doc.setFontSize(9);
+                        ////
+                        //doc.text(y, x + 5, 'Empresa : ' + data[i].EMPRESA);
+                        //doc.text(y, x + 10, 'Cliente : ' + data[i].CLIENTE);
+                        //doc.text(y + 80, x + 10, String(data[i].ORDEN));
+
+                        //doc.text(y, x + 15, 'Cta. Cto.: ' + String(data[i].CTA));
+                        //doc.text(y + 61, x + 15, 'F_Max : ' + data[i].FECHA_MAX);
+                        //doc.text(y, x + 20, 'Dirección : ' + data[i].DIRECCION);
+                        //x -= 3;
+
+                        //doc.text(y + 64, x + 25, 'Ciclo ' + data[i].CICLO);
+
+                        //doc.text(y, x + 28, data[i].DISTRITO);
+                        //doc.setFontSize(8);
+                        //doc.text(y, x + 32, data[i].TIPO_REPARTO);
+                        //doc.setFontSize(9);
+                        //doc.text(y + 65, x + 32, 'UL: ' + data[i].UL);
+                        //doc.line(y - 3, x + 35, y + 95, x + 35) // horizontal line
+
+                        //// CAMBIAMOS LETRA
+                        //doc.setFont('courier');
+                        //doc.setFontSize(11);
+                        //doc.text(y, x + 40, 'FECHA DE SUPERVISION');
+                        //doc.line(y + 50, x + 40, y + 90, x + 40) // horizontal line
+
+                        //doc.text(y, x + 48, 'LLEGO RECIBO');
+                        //doc.rect(y + 50, x + 43, 20, 7);
+                        //doc.text(y + 57, x + 48, 'SI');
+                        //doc.rect(y + 70, x + 43, 20, 7);
+                        //doc.text(y + 77, x + 48, 'NO');
+
+                        //doc.text(y, x + 56, 'ESTADO DEL MEDIDOR');
+                        //doc.line(y + 50, x + 56, y + 90, x + 56) // horizontal line
+
+
+                        //doc.text(y, x + 62, 'LECTURA ACTUAL');
+                        //doc.line(y + 50, x + 62, y + 90, x + 62) // horizontal line
+
+
+                        //doc.text(y, x + 68, 'NOMBRE DEL CLIENTE');
+
+                        //doc.text(y + 50, x + 68, 'FIRMA');
+
+                        //doc.line(y + 63, x + 68, y + 96, x + 68) // horizontal line
+
+                        //doc.line(y, x + 76, y + 90, x + 76) // horizontal line
+                        //doc.line(y, x + 84, y + 90, x + 84) // horizontal line
+
+                        //x += 95;
+                        //}
+
+                        //doc.save('reparto.pdf');
+
+
+                        ///----version new format julio
+
+
+                        if (data.length > 0) {
+
+                            //var doc = new jsPDF()
+                            var doc = new jsPDF('landscape');
+                            var x = 17;
+                            var y = 5;
+
+                            var altura = 2;
+                            var alturaO = 0;
+                            var alturaV = 0;
+                            var ac_V = 0;
+                            var pos = 4;
+                            var inc = 0;
+
+                            for (obj of data) {
+                                //---- 180 ancho, 100 altura
+                                //doc.rect(4, altura, 145, 68) //---dibujando un rectangulo
+
+                                inc++;
+                                if (inc == 4) {
+                                    pos = 150;
+                                    altura = 2;
+                                    alturaO = 0;
+                                    alturaV = 0;
+                                    ac_V = 0;
+                                } else if (inc == 7) {
+                                    pos = 4;
+                                    altura = 2;
+                                    alturaO = 0;
+                                    alturaV = 0;
+                                    ac_V = 0;
+                                    doc.addPage()
+                                    inc = 1;
+                                }
+                                doc.rect(pos, altura, 145, 68) //---dibujando un rectangulo
+                                altura = altura + 2.5;
+                                doc.setFontSize(7);
+                                doc.setFontType("bold");
+                                doc.text(pos + 56, altura, 'CARGO DE ENTREGA DE RECIBO '); // 60
+
+                                doc.setFontSize(7);
+                                doc.setFontType("normal");
+                                altura = altura + 3;
+                                doc.text(pos + 7, altura, 'Nro. Recibo : ' + obj.NRORECIBO_REPARTO); //11
+                                doc.text(pos + 56, altura, 'CTA. CTO : ' + obj.CTA); //60
+                                doc.text(pos + 106, altura, 'UL : ' + obj.UL);//110
+                                altura = altura + 4;
+                                doc.setFontSize(6);
+                                doc.text(pos + 4, altura, 'DIRECCIÓN : ' + obj.DIRECCION);//10
+                                doc.setFontSize(7);
+                                altura = altura + 4;
+                                doc.text(pos + 14, altura, 'TIPO :     ' + obj.TIPO_REPARTO); //18
+                                doc.text(pos + 56, altura, 'Mes :'); //56
+                                doc.text(pos + 86, altura, 'CICLO : ' + obj.CICLO); // 90
+                                doc.text(pos + 121, altura, 'AÑO :'); // 125
+                                altura = altura + 1.5;
+                                doc.rect(pos + 25, altura, 118, 23) //---dibujando un rectangulo  30
+
+                                if (ac_V == 0) {
+                                    alturaV = 20;
+                                    alturaO = 44;
+                                } else if (ac_V == 1) {
+                                    alturaV = 90;
+                                    alturaO = 114;
+                                } else if (ac_V == 2) {
+                                    alturaV = 159;
+                                    alturaO = 184;
+                                }
+
+                                doc.text(pos + 27, alturaV, 'Piso'); // 31
+                                doc.text(pos + 50, alturaV, 'Vivienda');// 54
+                                doc.text(pos + 74, alturaV, 'Color/Fachada');// 78
+                                doc.text(pos + 98, alturaV, 'Puerta');// 102
+                                doc.text(pos + 121, alturaV, 'Color puerta');// 125
+
+                                alturaV = alturaV + 1.2;
+                                doc.rect(pos + 27, alturaV, 5, 3) //---dibujando un rectangulo 31
+                                doc.rect(pos + 50, alturaV, 5, 3) //---dibujando un rectangulo 54
+                                doc.rect(pos + 74, alturaV, 5, 3) //---dibujando un rectangulo 78
+                                doc.rect(pos + 98, alturaV, 5, 3) //---dibujando un rectangulo 102
+                                doc.rect(pos + 121, alturaV, 5, 3) //---dibujando un rectangulo 125
+
+                                alturaV = alturaV + 2;
+                                doc.text(pos + 33, alturaV, 'Uno'); //37
+                                doc.text(pos + 56, alturaV, 'Casa');//60
+                                doc.text(pos + 80, alturaV, 'Crema');//84
+                                doc.text(pos + 104, alturaV, 'Madera');//108
+                                doc.text(pos + 127, alturaV, 'Plomo');//131
+
+
+                                alturaV = alturaV + 1.2;
+                                doc.rect(pos + 27, alturaV, 5, 3) //---dibujando un rectangulo 31
+                                doc.rect(pos + 50, alturaV, 5, 3) //---dibujando un rectangulo 54
+                                doc.rect(pos + 74, alturaV, 5, 3) //---dibujando un rectangulo 78
+                                doc.rect(pos + 98, alturaV, 5, 3) //---dibujando un rectangulo 102
+                                doc.rect(pos + 121, alturaV, 5, 3) //---dibujando un rectangulo 125
+
+                                alturaV = alturaV + 2;
+                                doc.text(pos + 33, alturaV, 'Dos'); // 37
+                                doc.text(pos + 56, alturaV, 'Dpto.');// 60
+                                doc.text(pos + 80, alturaV, 'Blanco');// 84
+                                doc.text(pos + 104, alturaV, 'Vidrio');// 108
+                                doc.text(pos + 127, alturaV, 'Negro');// 131
+
+
+                                alturaV = alturaV + 1.2;
+                                doc.rect(pos + 27, alturaV, 5, 3) //---dibujando un rectangulo 31
+                                doc.rect(pos + 50, alturaV, 5, 3) //---dibujando un rectangulo 54
+                                doc.rect(pos + 74, alturaV, 5, 3) //---dibujando un rectangulo 78
+                                doc.rect(pos + 98, alturaV, 5, 3) //---dibujando un rectangulo 102
+                                doc.rect(pos + 121, alturaV, 5, 3) //---dibujando un rectangulo 125
+
+                                alturaV = alturaV + 2;
+                                doc.text(pos + 33, alturaV, 'tres'); // 37
+                                doc.text(pos + 56, alturaV, 'Quinta.');// 60
+                                doc.text(pos + 80, alturaV, 'Ladrillo');// 84
+                                doc.text(pos + 104, alturaV, 'Metal');// 108
+                                doc.text(pos + 127, alturaV, 'Marron');// 131
+
+                                alturaV = alturaV + 1.2;
+                                doc.rect(pos + 27, alturaV, 5, 3) //---dibujando un rectangulo 31
+                                doc.rect(pos + 50, alturaV, 5, 3) //---dibujando un rectangulo 54
+                                doc.rect(pos + 74, alturaV, 5, 3) //---dibujando un rectangulo 78
+                                doc.rect(pos + 98, alturaV, 5, 3) //---dibujando un rectangulo 102
+                                doc.rect(pos + 121, alturaV, 5, 3) //---dibujando un rectangulo 125
+
+                                alturaV = alturaV + 2;
+                                doc.text(pos + 33, alturaV, 'Cuatro'); // 37
+                                doc.text(pos + 56, alturaV, 'Tienda.');// 60
+                                doc.text(pos + 80, alturaV, 'Tarrajeo');// 84
+                                doc.text(pos + 104, alturaV, 'Otros');// 108
+                                doc.text(pos + 127, alturaV, 'Madera');// 131
+
+
+                                alturaV = alturaV + 1.2;
+                                doc.rect(pos + 27, alturaV, 5, 3) //---dibujando un rectangulo 31
+                                doc.rect(pos + 50, alturaV, 5, 3) //---dibujando un rectangulo 54
+                                doc.rect(pos + 74, alturaV, 5, 3) //---dibujando un rectangulo 78
+                                doc.rect(pos + 98, alturaV, 5, 3) //---dibujando un rectangulo 102
+                                doc.rect(pos + 121, alturaV, 5, 3) //---dibujando un rectangulo 125
+
+                                alturaV = alturaV + 2;
+                                doc.text(pos + 33, alturaV, 'Otros: _____'); // 37
+                                doc.text(pos + 56, alturaV, 'Otros: _____');// 60
+                                doc.text(pos + 80, alturaV, 'Otros: _____');// 84
+                                doc.text(pos + 127, alturaV, 'Otros: _____');// 131
+
+                                ac_V += 1;
+
+                                altura = altura + 4;
+                                doc.setFontType("bold");
+                                doc.text(pos + 3, altura, 'Recibido por : ');//7
+                                altura = altura + 1.2;
+                                doc.setFontType("normal");
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Titular'); //12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Familiar'); //12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Empleado/a');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Vigilante');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Buzón');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Bajo Puerta');//12
+
+
+                                doc.setFontType("bold");
+                                doc.text(pos + 27, alturaO, 'Obs.');   // 31
+                                doc.setFontType("normal");
+
+                                doc.text(pos + 33, alturaO, ' ______________________________________________________________________________'); //117
+                                doc.text(pos + 33, alturaO + 5, ' ______________________________________________________________________________'); //117 + 5
+
+                                alturaO = alturaO + 9;
+                                doc.text(pos + 113, alturaO, 'Fecha Max.'); // 117
+                                alturaO = alturaO + 4;
+                                doc.text(pos + 113, alturaO, 'Fecha Entrega _________'); //117
+
+                                doc.text(pos + 51, alturaO - 3, '___________________________'); // 56
+                                alturaO = alturaO + 1;
+                                doc.text(pos + 56, alturaO, 'Cliente Titular SI   NO'); //60
+                                alturaO = alturaO + 4;
+                                doc.text(pos + 34, alturaO, 'NOMBRE : _____________________'); // 38
+                                doc.text(pos + 113, alturaO, 'Cod. Repartidor :'); // 117
+                                alturaO = alturaO + 4;
+                                doc.text(pos + 41, alturaO, 'DNI : ______________'); // 45
+                                doc.text(pos + 69, alturaO, 'Parentesco :______________________'); //73
+                                doc.text(pos + 113, alturaO, '________________'); // 117
+
+                                altura = altura + 5;
+
+                                doc.setFontType("bold");
+                                doc.text(pos + 3, altura, 'Devuelto : ');//7
+                                altura = altura + 1.2;
+                                doc.setFontType("normal");
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Se mudó'); //12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Ya no trabaja');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Dir. Incompleta');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Rechazado');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Desconocido');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Dir. No existe');//12
+                                altura = altura + 1.2;
+                                doc.rect(pos + 2, altura, 5, 3) //---dibujando un rectangulo 6
+                                altura = altura + 2;
+                                doc.text(pos + 8, altura, 'Cliente ausente');//12
+                                altura = altura + 4;
+                            }
+
+                            //var string = doc.output('datauristring');
+                            //var iframe = "<iframe width='100%' height='100%' src='" + string + "'></iframe>";
+                            //var x = window.open();
+                            //x.document.open();
+                            //x.document.write(iframe);
+                            //x.document.close();
+                            doc.save('reparto.pdf');
+
+                        } else {
+                            alert('no hay informacion disponible, verifique la fecha..')
+                        }
+                        $('.sige-load').hide();
+                    })
+
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+
+            }
+
+            $scope.getReparto = function () {
+                var id_fecha_asignacion = document.getElementById('id_fecha_asignacion');
+                if (id_fecha_asignacion.value == null || id_fecha_asignacion.value == '' || id_fecha_asignacion.value == '0' || id_fecha_asignacion.value == undefined) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha del Movil.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: 'ListadoReparto',
+                    params: {
+                        fecha: id_fecha_asignacion.value,
+                        tipo: $('#id_tipo').val(),
+                    },
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.Lista_Lecturas_Temporal = data;
+                        $('.sige-load').hide();
+                    })
+
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+            }
+
+            $scope.actualizarReparto = function (item) {
+                 
+                var cbo_tipo = document.getElementById('id_tipo').value;
+
+                if (item.id_operario_cambiar == '0' || item.id_operario_cambiar == 0 || item.id_operario_cambiar == '' || item.id_operario_cambiar == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Operario.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (item.id_operario == item.id_operario_cambiar) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Para Actualizar el Operario, debe de elegir otro Operario distinto al inicial.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                ///----desabilitando- -
+                $("#btn_actualizar").prop('disabled', true);
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: 'ActualizarReparto',
+                    params: {
+                        id_operario: item.id_operario,
+                        unidad_lectura: item.unidad_lectura,
+                        fechaAsignatura: $('#id_fecha_asignacion').val(),
+                        id_operario_cambiar: item.id_operario_cambiar,
+                        tipo: cbo_tipo
+                    },
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        $("#btn_actualizar").prop('disabled', false);
+                        if (data != "true") {
+                            new PNotify({
+                                title: 'Error',
+                                text: 'Operario ingresado no existe!',
+                                type: 'failet'
+                            });
+                            return;
+                        }
+                        new PNotify({
+                            title: 'Confirmación',
+                            text: 'Operario actualizado correctamente !',
+                            type: 'success'
+                        });
+                        $scope.getReparto();
+                    })
+                    .error(function () {
+                        $("#btn_actualizar").prop('disabled', false);
+                        $('.sige-load').hide();
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+            }
+
+
+            /////---- nuevo modificado julio cesar
+
+
+
+
+            $scope.Obj_List_Operario = [];
+            $scope.Listado_Operarios = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../Ubicacion_Lecturas/ListandoOperarios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.Obj_List_Operario = [];
+                        $scope.Obj_List_Operario = data;
+                    })
+                    .error(function () {
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+            }
+            $scope.Listado_Operarios();
+
+            var obj_reparto_Global;
+            $scope.AbrirModal_Compartir_lectura = function (obj_data) {
+                obj_reparto_Global = '';
+                obj_reparto_Global = obj_data;
+
+                $('#modal_compartir_lectura').modal({ show: 'false' });
+
+                if (obj_data.id_operario == undefined || obj_data.id_operario == null || obj_data.id_operario == 0 || obj_data.id_operario == '0') {
+                    setTimeout(function () {
+                        $('#cbo_operario').val('0').trigger('change');
+                    }, 400);
+                } else {
+                    setTimeout(function () {
+                        $('#cbo_operario').val(obj_data.id_operario).trigger('change');
+                    }, 400);
+                }
+            }
+
+            $scope.generarCompartir_lecturas = function () {
+                var id_fecha_asignacion = document.getElementById('id_fecha_asignacion').value;
+                var cbo_operario = document.getElementById('cbo_operario').value;
+                var cbo_tipo = document.getElementById('id_tipo').value;
+
+                if (cbo_operario == '0' || cbo_operario == 0 || cbo_operario == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Operario.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (obj_reparto_Global.id_operario == cbo_operario) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Para compartir el Reparto, debe de elegir otro Operario distinto al inicial.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                (new PNotify({
+                    title: 'Sistemas Confirmacion ',
+                    text: 'Esta seguro de Compartir el Reparto?, una vez cambiado no hay marcha atras..',
+                    icon: 'glyphicon glyphicon-question-sign',
+                    hide: false,
+                    confirm: {
+                        confirm: true
+                    },
+                    buttons: {
+                        closer: false,
+                        sticker: false
+                    },
+                    history: {
+                        history: false
+                    }
+                })).get().on('pnotify.confirm', function () {
+
+                    $('.sige-load').show();
+                    var variables = {
+                        method: 'POST',
+                        url: '../Actualizar_Reparto/Generando_Compartir_lecturas',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8'
+                        },
+                        data: {
+                            fecha: id_fecha_asignacion,
+                            cod_unidad: obj_reparto_Global.unidad_lectura,
+                            id_operario: cbo_operario,
+                            tipo: cbo_tipo
+                        }
+                    }
+                    $http(variables)
+                        .success(function (data) {
+                            $('.sige-load').hide();
+                            if (data == 'OK' || data == '"OK"') {
+                                new PNotify({
+                                    title: 'Sistemas',
+                                    text: 'Compartir Lecturas, realizada correctamente.',
+                                    type: 'success'
+                                });
+                                $scope.getReparto();
+                                $('#modal_compartir_lectura').modal('toggle');
+                            } else {
+                                console.log(data)
+                                alert(data)
+                            }
+                        })
+                        .error(function () {
+                            $('.sige-load').hide();
+                            alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                        });
+
+                }).on('pnotify.cancel', function () {
+
+                });
+            }
+
+            /////////////----------------------
+
+
+
+
+
+
+
+            //------METODDO DE DISTRIBUCION  PARA REPARTO DETALLADA --
+
+            $scope.changeFocusInput = function (id) {
+                var doc = document.getElementById(id);
+                doc.focus();
+            }
+
+
+            $scope.listDetalleReparto = [];
+
+            $scope.paramsSelect = {
+                cantInit: '',
+                selectInit: '0',
+                codOperario: '',
+            }
+
+            $scope.reiniciarChecks = function () {
+                $scope.listDetalleReparto.forEach(function (item) {
+                    if (item.flag_operario ==true) {
+                        item.colorItem = "";
+                        item.checkeado = false;
+                        item.flag_operario = false;
+                        item.id_operario = '';
+                    }
+                });
+                $scope.countSelect = objectSelectSend.length;
+            }
+
+            $scope.enterFocus = function (keyEvent, name) {
+                if (keyEvent.which === 13) {
+                    $('#' + name + '').focus();
+                    $('#' + name + '').select();
+                }
+            }
+
+            $scope.validarLecturista = function (keyEvent) {
+                if (keyEvent.which === 13) {
+                    validarLecturistaCodigo()
+                        .then(function (data) {
+                            $scope.changeFocusInput('btn_agregarRangos')
+                        })
+                }
+            }
+
+            var validarLecturistaCodigo = function () {
+                var id_codOperarioRango = document.getElementById('id_codOperarioRango').value;
+
+                var q = $q.defer();
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/validarOperario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        CodigoOperario: id_codOperarioRango,
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        if (data[0].CANT_REGISTROS <= 0) {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'El Código del Lecturista no existe.',
+                                type: 'error'
+                            });
+                            q.reject();
+                            return;
+                        } else {
+                            q.resolve();
+                        }
+
+                    })
+                    .error(function () {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'El Código del Lecturista no existe.',
+                            type: 'error'
+                        });
+                        q.reject();
+                    });
+                return q.promise
+            }
+            
+            $scope.AgregarRangos = function () {
+                var inicio = document.getElementById('id_filainicio').value;
+                var fin = document.getElementById('id_filafin').value;
+                var id_codOperarioRango = document.getElementById('id_codOperarioRango').value;
+                
+                var totalfilas = $scope.listDetalleReparto.length;
+                var posIni = 0;
+                var porFin = 0;
+
+                if (inicio == undefined || inicio == '0' || inicio == 0 || inicio == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Ingrese por favor, el Inicio del Rango.',
+                        type: 'error'
+                    });
+                    return;
+                }
+                if (fin == undefined || fin == '0' || fin == 0 || fin == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Ingrese por favor, el Fin del Rango.',
+                        type: 'error'
+                    });
+                    return;
+                }
+                if (parseInt(inicio) > parseInt(fin)) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'El rango Final no puede ser Mayor que el Rango Inicial, verifique',
+                        type: 'error'
+                    });
+                    return;
+                }
+                if (id_codOperarioRango == undefined || id_codOperarioRango == '0' || id_codOperarioRango == 0 || id_codOperarioRango == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Ingrese por favor, el codigo del Operario.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                posIni = (parseInt(inicio) - 1);
+
+                if (parseInt(fin) > parseInt(totalfilas)) {
+                    porFin = (parseInt(totalfilas) - 1);
+                } else {
+                    porFin = (parseInt(fin) - 1);
+                }
+
+                var ejecutarRangos = function () {
+                    var q = $q.defer();
+                    var variables = {
+                        method: 'POST',
+                        url: '../DistribuirLecturas/validarOperario',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8'
+                        },
+                        data: {
+                            CodigoOperario: id_codOperarioRango
+                        }
+                    }
+                    $http(variables)
+                        .success(function (data) {
+                            if (data[0].CANT_REGISTROS <= 0) {
+                                new PNotify({
+                                    title: 'Sistemas',
+                                    text: 'El Código del Lecturista no existe, verifique',
+                                    type: 'error'
+                                });
+                            } else {
+
+                                for (posIni; posIni <= porFin; posIni++) {
+                                    $scope.listDetalleReparto[posIni].checkeado = true;
+                                    $scope.listDetalleReparto[posIni].flag_operario = true;
+                                    $scope.listDetalleReparto[posIni].colorItem = 'colorItem';
+                                    $scope.listDetalleReparto[posIni].id_operario = id_codOperarioRango;
+                                }
+
+                                $('#id_filainicio').val('');
+                                $('#id_filafin').val('');
+                                $('#id_codOperarioRango').val('');
+
+                            }
+                        })
+                        .error(function () {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'El Código del Lecturista no existe.',
+                                type: 'error'
+                            });
+                        });
+                }
+
+                ///validando si ya se ingreso... 
+                if ($scope.listDetalleReparto[posIni].checkeado == true) {
+                    (new PNotify({
+                        title: 'Sistemas Confirmación ',
+                        text: 'El rango inicial ya se encuentra checkeada, desea continuar de todas formas ?',
+                        icon: 'glyphicon glyphicon-question-sign',
+                        hide: false,
+                        confirm: {
+                            confirm: true
+                        },
+                        buttons: {
+                            closer: false,
+                            sticker: false
+                        },
+                        history: {
+                            history: false
+                        }
+                    })).get().on('pnotify.confirm', function () {
+                        ejecutarRangos();
+                    }).on('pnotify.cancel', function () {
+
+                    });
+                } else {
+                    ejecutarRangos();
+                }
+            }
+
+
+            $scope.Flag_agrupado = true;
+            $scope.Flag_detallado = false;
+            var Flag_FormaGlobal = '';
+
+            $scope.openDetalle_general = function (item, forma) {
+
+                //--- tipo A= agrupado, D= detallado
+                Flag_FormaGlobal = forma;
+                if (forma == 'A') {
+                    $scope.Flag_agrupado = true;
+                    $scope.Flag_detallado = false;
+                } else {
+                    $scope.Flag_agrupado = false;
+                    $scope.Flag_detallado = true;
+                }
+
+                var Fecha_asignacion = document.getElementById('_fechaMovilDetalle');
+                $('#id_filainicio').val('');
+                $('#id_filafin').val('');
+                $('#id_codOperarioRango').val('');
+
+                var operador = 0;
+                Fecha_asignacion.value = '';
+
+                if (item.id_operario == 0 || item.id_operario == null || item.id_operario == '' || item.id_operario == undefined) {
+                    operador = 0;
+                } else {
+                    operador = item.id_operario;
+                }
+                
+                $scope.paramsSelect.selectInit = '0';
+                $scope.paramsSelect.codOperario = '',
+                $scope.paramsSelect.cantInit = '';
+
+                objectSelect = [];
+                objectSelectSend = [];
+                $scope.countSelect = objectSelectSend.length; 
+
+
+                $('#modalDetails').modal({ show: 'true' });
+
+         
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Actualizar_Reparto/ListadoReparto_detallado',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fechaAsignacion: id_fecha_asignacion.value, 
+                        tipo: $('#id_tipo').val(),
+                        cod_unidad: item.unidad_lectura,
+                        id_operario: operador,
+                        forma: Flag_FormaGlobal
+                    }
+                }
+                $scope.listDetalleReparto = [];
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+
+                        if (data.length > 0) {
+                            $('#modalDetails').modal({ show: 'true' });
+                            $scope.listDetalleReparto = data;
+                        } else {
+                            new PNotify({
+                                title: 'Error',
+                                text: 'No hay informacion para mostrar, verifique..',
+                                type: 'failet'
+                            });
+                            return;
+                        }
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                    });
+         
+            }
+
+            var countF = 0;
+            $scope.countSelectF = function () {
+                countF = 0;
+                if ($scope.listDetalleReparto.length > 0) {
+                    $scope.listDetalleReparto.forEach(function (item, index) {
+                        if (item.checkeado) {
+                            countF++;
+                        }
+                    })
+                } else {
+                    return 0;
+                }
+                return countF;
+            }
+
+            $scope.selectChecks = function (item, index) {
+                if (item.checkeado) {
+                    item.colorItem = "colorItem";
+                } else {
+                    item.colorItem = "";
+                }
+                console.log(objectSelectSend);
+                //$scope.countSelect = objectSelectSend.length;
+            }
+
+            $scope.KeyDown_Distribuir = function (keyEvent, obj_datos, id_enfoque) {
+                if (keyEvent.which == 13) {
+                      $scope.Distribuir_Reasignar_Trabajos_detallado(obj_datos, id_enfoque);
+                }
+            }
+
+            $scope.Distribuir_Reasignar_Trabajos_detallado = function (obj_datos, id_enfoque, val) {
+
+                if (obj_datos.id_operario == '' || obj_datos.id_operario == null | obj_datos.id_operario == undefined) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el Codigo del Lecturista',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/validarOperario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        CodigoOperario: parseInt(obj_datos.id_operario)
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        if (data[0].CANT_REGISTROS <= 0) {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'El Código del Lecturista no existe.',
+                                type: 'error'
+                            });
+                            for (var i = 0; i < $scope.listDetalleReparto.length; i++) {
+                                if (Flag_FormaGlobal =='A') {
+                                    if ($scope.listDetalleReparto[i].manzana == obj_datos.manzana) {
+                                        $scope.listDetalleReparto[i].flag_operario = false;
+                                        $scope.listDetalleReparto[i].checkeado = false;
+                                        break;
+                                    }
+                                }
+                               else if (Flag_FormaGlobal == 'D') {
+                                    if ($scope.listDetalleReparto[i].id_Reparto == obj_datos.id_Reparto) {
+                                        $scope.listDetalleReparto[i].flag_operario = false;
+                                        $scope.listDetalleReparto[i].checkeado = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            return;
+                        } else { 
+                            for (let item of $scope.listDetalleReparto) {
+                                if (Flag_FormaGlobal == 'A') {
+                                    if (item.manzana == obj_datos.manzana) {
+                                        console.log(item.manzana + '==' + obj_datos.manzana);
+                                        item.flag_operario = true;
+                                        item.checkeado = true;
+                                        break;
+                                    }
+                                }
+                                else if (Flag_FormaGlobal == 'D') {
+                                    if (item.id_Reparto == obj_datos.id_Reparto) {
+                                        console.log(item.id_Reparto + '==' + obj_datos.id_Reparto);
+                                        item.flag_operario = true;
+                                        item.checkeado = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            $scope.changeFocusInput('id_CLD_' + (parseInt(id_enfoque) + 1))                        }
+                    })
+                    .error(function () {
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                    });
+            }
+
+            $scope.GenerarEnvioMovil_Detallado = function () {
+                var id_fecha_asignacion = document.getElementById('id_fecha_asignacion');
+                var id_tipo = document.getElementById('id_tipo');
+                var _fechaMovil = document.getElementById('_fechaMovilDetalle');
+ 
+                var flag_marco = false;
+                var flag_correcto = false;
+                $scope.List_codigo = [];
+
+                flag_marco = MarcoCheck_detalle();
+                if (flag_marco == false) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione al menos un registro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                flag_correcto = MarcoCorrecto_detalle();
+                if (flag_correcto == true) {
+                    return;
+                }
+                
+                if (_fechaMovil.value == null || _fechaMovil.value == '' || _fechaMovil.value == '0' || _fechaMovil.value == undefined) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha del Movil.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                $('.sige-load').show();
+                $scope.List_codigo = ListaMarcoCheck_Detalle();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Actualizar_Reparto/Generando_EnvioMovil_Distribucion_Detallado',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        ListaRepartos: $scope.List_codigo,
+                        FechaAsigna: id_fecha_asignacion.value,
+                        FechaMovil: _fechaMovil.value,
+                        Forma: Flag_FormaGlobal,
+                        Tipo_recibo: id_tipo.value
+                    }
+                }
+
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        if (data == 'OK' || data == '"OK"') {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Envio al Movil, realizado Correctamente.',
+                                type: 'success'
+                            });
+
+                            $scope.getReparto();
+                            $('#modalDetails').modal('toggle');
+
+                        } else {
+                            alert(data)
+                        }
+                    })
+                    .error(function () {
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                    });
+
+            }
+
+            function MarcoCheck_detalle() {
+                var flag_marco = false;
+                for (var i = 0; i < $scope.listDetalleReparto.length; i++) {
+                    if ($scope.listDetalleReparto[i].checkeado == true) {
+                        flag_marco = true;
+                        break;
+                    }
+                }
+                return flag_marco;
+            }
+
+            function MarcoCorrecto_detalle() {
+                var flag_marco = false;
+                for (var i = 0; i < $scope.listDetalleReparto.length; i++) {
+                    if ($scope.listDetalleReparto[i].checkeado == true) {
+                        if ($scope.listDetalleReparto[i].id_operario == '' || $scope.listDetalleReparto[i].id_operario == null || $scope.listDetalleReparto[i].id_operario == undefined) {
+                            flag_marco = true;
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Falta completar el Dato del Operario.',
+                                type: 'error'
+                            });
+                            break;
+                        }
+                    }
+                }
+                return flag_marco;
+            }
+            
+            function ListaMarcoCheck_Detalle() {
+                $scope.ListaData = [];
+                    for (var i = 0; i < $scope.listDetalleReparto.length; i++) {
+                        if ($scope.listDetalleReparto[i].checkeado == true) {
+
+                            if (Flag_FormaGlobal == 'A') {
+                                $scope.ListaData.push({
+                                    'id_Reparto': 0,
+                                    'id_operario': $scope.listDetalleReparto[i].id_operario,
+                                    'id_operario_inicial': $scope.listDetalleReparto[i].id_operario_inicial,
+                                    'manzana': $scope.listDetalleReparto[i].manzana,
+                                    'unidad_distrito': $scope.listDetalleReparto[i].unidad_lectura,
+                                });
+                            }
+                            else if (Flag_FormaGlobal == 'D') {
+                                $scope.ListaData.push({
+                                    'id_Reparto': $scope.listDetalleReparto[i].id_Reparto,
+                                    'id_operario': $scope.listDetalleReparto[i].id_operario,
+                                    'id_operario_inicial':0,
+                                    'manzana':'',
+                                    'unidad_distrito': '',
+                                });
+                            }
+                        }
+                    }
+                return $scope.ListaData;
+            }                                                 
+
+
+                                                                              
+            var objectSelect = [];
+            var objectSelectSend = [];
+                $scope.especificacion = "";
+
+            $scope.change_tipo = function (tipo) {
+                if (tipo =='I') {
+                    $scope.especificacion = "DISTRITO";
+
+                }
+                else if (tipo == 'R') {
+                    $scope.especificacion = "UNIDAD DE LECTURA";
+                }
+                $scope.getReparto();
+            }
+
+                       
+        });
+    </script>
+}
+
+    <div ng-app="MyApp" ng-controller="MyController" ng-init="iniciandoVariables();">
+
+
+        <div class="panel panel-oscuro" style="margin-top: -14px;">
+            <div class="panel-heading">
+                <h6><i class="fa fa-table"></i> ACTUALIZAR REPARTO </h6>
+            </div>
+            <div class="panel-body">
+                <div class="well" style="background: #314b75; color: white;    margin-top: -5px;    margin-bottom: 1px;">
+                    <div class="row" style="    margin-top: -17px;  margin-bottom: -10px;">
+                        <div class="col-sm-3 col-md-3">
+                            <label for="id_tipo" class="  control-label">Tipo:</label>
+                            <br />
+                            <select id="id_tipo" style="width:95%" ng-model="id_tipo" ng-change="change_tipo(id_tipo);">
+                                <option value='R'> RESIDENCIALES </option>
+                                <option value='I'> INDUSTRIALES </option>
+                                <option value='N'> NOTA DE CREDITO </option>
+                            </select>
+                        </div>
+                        <div class="col-sm-3 col-md-3">
+                            <label for="_usuario" class="  control-label">Fecha de Asignación:</label>
+                            <input class="form-control" id="id_fecha_asignacion" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                        </div>
+                        <div class="col-sm-3 col-md-3">
+                            <br />
+                            <button id="btn_ver" type="button" class="btn btn-primary btn-sm" ng-click="getReparto()"><i class="fa fa-refresh"></i> MOSTRAR</button>
+                        </div>
+                        <div class="col-sm-3 col-md-3">
+
+                        </div>
+                    </div>
+                </div>
+                <br />
+
+                <div class="form-group">
+                    <div class="table-responsive" style="height:500px">
+                        <table id="tblLista" class="table  table-bordered table-responsive" cellspacing="0" width="100%">
+                            <thead style="background:#F0F3F5;">
+                                <tr>
+                                    <th>Nº fila</th>
+                                    <th>{{especificacion}}</th>
+                                    <th>Codigo Operario</th>
+                                    <th>Total</th>
+                                    <th style="text-align:center;color:red"> Compartir</th>
+                                    <th>Cambiar codigo Operario</th>
+                                    <th>Detalle</th>
+                                    <th>Detalle II</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="item in Lista_Lecturas_Temporal">
+                                    <td>{{$index + 1}}</td>
+                                    <td>{{item.unidad_lectura}}</td>
+                                    @*<td>{{item.nombre_UnidadLectura}}</td>*@
+                                    <td>{{item.id_operario_aux}}</td>
+                                    <td>{{item.total}}</td>
+                                    <td ng-if="'S'== item.flag_compartido" style="text-align:center;cursor: pointer;"></td>
+                                    <td ng-if="'' == item.flag_compartido" style="text-align:center;cursor: pointer;">
+                                        <button class="btn btn-xs btn-primary" ng-click="AbrirModal_Compartir_lectura(item);"><span class="glyphicon glyphicon-resize-horizontal"></span> </button>
+                                    </td>
+                                    <td style="text-align:center">
+                                        <input ng-model="item.id_operario_cambiar" style="color:green;font-weight:500;text-align:center" />
+                                        <button id="btn_actualizar" type="button" class="btn btn-primary btn-xs" ng-click="actualizarReparto(item)"><i class="fa fa-upload"></i> Actualizar</button>
+                                    </td>
+                                    <td style="cursor: pointer;text-align:center">
+                                        <a style=" text-decoration: underline;color:red !important" title="ver suministros detallados" ng-click="openDetalle_general(item,'A');">Ver  Detallado</a>
+                                    </td>
+                                    <td style="cursor: pointer;text-align:center">
+                                        <a style=" text-decoration: underline;color:red !important" title="ver suministros detallados" ng-click="openDetalle_general(item,'D');">Ver mas Detallado</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <hr />
+                <div class="form-group">
+                    <div class="col-sm-2 col-md-offset-5" style=" padding-top: 20px; ">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento">
+                            <!--<button id="btn_guardar" disabled="disabled" role="button" class="btn btn-primary" data-toggle="modal" data-target="#modal-asignacion"><i class="fa fa-save fa-lg"></i> Guardar</button>-->
+                            @*<button role="button" class="btn btn-default" ng-click="getPdf()"><i class="fa fa-download fa-lg"></i> Exportar</button>*@
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="modal_compartir_lectura" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog  modal_dsige2">
+                <div class="panel panel-oscuro">
+                    <div class="panel-heading">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h6 class="modal-title"><i class="fa fa-calendar fa-lg"></i> COMPARTIR LECTURAS.</h6>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group" style="padding-left: 15px;  margin-top: 5px;">
+                            <label for="cbo_operario" style="font-size:11px">Operario:</label>
+                            <select id="cbo_operario" style="width:250px;" ng-model="id_operario">
+                                <option value=0>--[ NINGUNO ]-- </option>
+                                <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                    {{item.id_Operario}} : {{item.desc_operario}}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" class="btn btn-primary" ng-click="generarCompartir_lecturas()"><i class="fa fa-save fa-lg"></i> Compartir Lecturas</button>
+                                    <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+        <div id="modalDetails" class="modal fade" role="dialog">
+            <div class="modal-dialog" style="width:60%;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <form class="form-inline" autocomplete="off" role="form">
+                            <div class="form-group">
+                                <button class="btn btn-primary" ng-click="reiniciarChecks();"><span class="glyphicon glyphicon-list"></span> Reiniciar</button>
+                            </div>
+
+                            <div class="form-group">
+                                <input class="form-control" id="id_filainicio" ng-keypress="enterFocus($event,'id_filafin');" style="width: 100px; border: 1px solid red;" onkeypress="return soloNumeros(event)" placeholder="Inicio Fila" />
+                            </div>
+                            <div class="form-group">
+                                <input class="form-control" id="id_filafin" ng-keypress="enterFocus($event,'id_codOperarioRango')" style="width: 100px; border: 1px solid red;" onkeypress="return soloNumeros(event)" placeholder="Fin Fila" />
+                            </div>
+                            <div class="form-group">
+                                <input class="form-control" id="id_codOperarioRango" ng-keypress="validarLecturista($event);" style="width: 200px; border: 1px solid green;" onkeypress="return soloNumeros(event)" placeholder="Codigo de Operario" />
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-success" id="btn_agregarRangos" ng-click="AgregarRangos();"><span class="glyphicon glyphicon-plus"></span> Agregar</button>
+                            </div>
+                        </form>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <p class="modal-title" style="padding: 5px">Detalle {{countSelectF()}} Marcados</p>
+                            </div>
+                            <div class="col-md-8" style="text-align:right">
+                                <form class="form-inline" role="form">
+                                    <div class="form-group">
+                                        <label for="_usuario" class="control-label">Fecha Móvil</label>
+                                        <input class="form-control" id="_fechaMovilDetalle" autocomplete="off" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                    <div class="form-group">
+                                        <button class="btn btn-primary" ng-click="GenerarEnvioMovil_Detallado();"><span class="glyphicon glyphicon-phone"></span> Enviar al Móvil</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-body">
+
+
+                        <div id="PrincipalDetalle" class="table-responsive">
+                            <table id="tblListaDetalleX" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                <thead>
+
+                                    <tr ng-if="Flag_agrupado">
+                                        <th style="width:2%;text-align: center;">#</th>
+                                        <th style="width:4%;text-align: center;">Check</th>
+                                        <th style="width:7%;text-align: center;">Manzana</th>
+                                        <th style="width:7%;text-align: center;">Cantidad</th>
+                                        <th style="width:10%;text-align: center;">COD. LECTOR</th>
+                                    </tr>
+
+                                    <tr ng-if="Flag_detallado">
+                                        <th style="width:2%;text-align: center;">#</th>
+                                        <th style="width:4%;text-align: center;">Check</th>
+                                        <th style="width:7%;text-align: center;">Cuenta Contrato</th>
+                                        <th style="width:7%;text-align: center;">Unidad Lectura</th>
+                                        <th style="width:10%;text-align: center;">COD. LECTOR</th>
+                                        <th style="width:12%;text-align: center;">Dirección</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-if="Flag_agrupado" ng-repeat="item in listDetalleReparto" ng-class="item.colorItem">
+                                        <td style="width:2%; text-align:center">{{$index+1}}</td>
+                                        <td style="width:4%;  text-align: center;">
+                                            <div class="checkbox" style="margin-top: 0px;margin-bottom: -8px; margin-left: 35%;" ng-click="selectChecks(item,$index);">
+                                                <input type="checkbox" id="checkDet{{$index}}" value="1" ng-model="item.checkeado">
+                                                <label for="checkDet{{$index}}">
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td style="width:7%; text-align:center">{{item.manzana}}</td>
+                                        <td style="width:7%; text-align:center">{{item.cantidad}}</td>
+                                        <td style="width:10%; text-align:center">
+                                            <div><input type="text" id="id_CLD_{{$index}}" class="form-control" style="height: 20px;text-align:center; background-color:green; color:white " ng-model="item.id_operario" onkeypress="return soloNumeros(event)" ng-keypress="KeyDown_Distribuir($event,item,$index)"> </div>
+                                        </td>
+                                    </tr>
+                                    <tr ng-if="Flag_detallado" ng-repeat="item in listDetalleReparto" ng-class="item.colorItem">
+                                        <td style="width:2%; text-align:center">{{$index+1}}</td>
+                                        <td style="width:4%;  text-align: center;">
+                                            <div class="checkbox" style="margin-top: 0px;margin-bottom: -8px; margin-left: 35%;" ng-click="selectChecks(item,$index);">
+                                                <input type="checkbox" id="checkDet{{$index}}" value="1" ng-model="item.checkeado">
+                                                <label for="checkDet{{$index}}">
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td style="width:7%; text-align:center">{{item.cuenta_contrato}}</td>
+                                        <td style="width:7%; text-align:center">{{item.cod_unidad}}</td>
+                                        <td style="width:10%; text-align:center">
+                                            <div><input type="text" id="id_CLD_{{$index}}" class="form-control" style="height: 20px;text-align:center; background-color:green; color:white " ng-model="item.id_operario" onkeypress="return soloNumeros(event)" ng-keypress="KeyDown_Distribuir($event,item,$index)"> </div>
+                                        </td>
+                                        <td style="width:12%; text-align:center">{{item.direccion}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <form class="form-inline" role="form">
+                            <div class="form-group">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+    </div>
+ 
+

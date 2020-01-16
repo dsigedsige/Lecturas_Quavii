@@ -1,0 +1,788 @@
+﻿@using DSIGE.Modelo
+@using DSIGE.Negocio
+@{
+    ViewBag.Title = "MantenimientoUsuarioServicio";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+<h2>MantenimientoUsuarioServicio</h2>
+
+@section instances{
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @*--paginacion tablas*@
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+
+
+
+}
+
+
+
+@section styles{
+
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+    </style>
+
+    <style>
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+
+        .nav-tabs {
+            border-bottom: 0;
+        }
+
+        #_archivo.btn-info {
+            background-image: none;
+            color: inherit;
+            background-color: inherit !important;
+        }
+
+        .modal-dialog {
+            width: 300px;
+        }
+
+        #modalreasig {
+            width: 350px;
+        }
+
+        .datepicker {
+            width: 200px;
+            top: 210px !important;
+        }
+
+
+        #table-consulta_lec td {
+            color: black;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 500px;
+        }
+
+
+
+        #table-consulta_reclec td {
+            color: black;
+        }
+    </style>
+
+}
+
+@section scripts{
+
+    <script type="text/javascript">
+        var app = angular.module('appAsignaServicioUsuario', []).directive('onFinishRender', function($timeout) {
+            return {
+                restrict: 'A',
+                link: function(scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function() {
+                            scope.$emit('ngRepeatFinished');
+                        });
+                    }
+                }
+            }
+        }).directive('fileModel', [
+            '$parse', function($parse) {
+                return {
+                    restrict: 'A',
+                    link: function(scope, element, attrs) {
+                        var model = $parse(attrs.fileModel);
+                        var modelSetter = model.assign;
+
+                        element.bind('change', function() {
+                            scope.$apply(function() {
+                                modelSetter(scope, element[0].files[0]);
+                            });
+                        });
+                    }
+                };
+            }
+        ]);
+        app.controller('AsignaServicioUsuarioCtrl', function($scope, $http) {
+
+
+            $scope.nuevoServicio = false;
+
+            $scope.tablasServicios = false;
+
+
+            oTable = null;
+
+
+            $scope.ListaLocales = [];
+            $scope.ListaServicios = [];
+            $scope.ListaUsuarios = [];
+
+            $scope.ListaEstados = [];
+            $scope.ListaTecnico = [];
+            $scope.ListaTecnicoReasignar = [];
+
+            $scope.ListaLecturasRelectura = [];
+            $scope.ListaCortes = [];
+
+            $scope.Flag_Show_LecturaRelectura = false;
+            $scope.Flag_Show_CorteReconexion = false;
+
+            $scope.InicializandoVariables = function() {
+                $scope.id_local = '0';
+                $scope.id_tipoServicio = '0';
+                $scope.ListaLecturasRelectura = [];
+                $scope.ListaCortes = [];
+                $scope.Flag_Show_LecturaRelectura = true;
+                $scope.Flag_Show_CorteReconexion = false;
+
+                setTimeout(function() {
+                    var cbo_local = document.getElementById('cbo_local');
+                    var cbo_servicio = document.getElementById('cbo_servicio');
+                    var cbo_estado = document.getElementById('cbo_estado');
+                    var txt_suministro = document.getElementById('txt_suministro');
+                    var txt_medidor = document.getElementById('txt_medidor');
+                    var cbo_tecnico = document.getElementById('cbo_tecnico');
+                    var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+
+                    cbo_local.value = '0';
+                    cbo_servicio.value = '0';
+                    cbo_estado.value = '0';
+                    txt_suministro.value = '';
+                    txt_medidor.value = '';
+                    cbo_tecnico.value = '0';
+                    dtp_fechaAsigna.value = FechaActualSistema();;
+                }, 500);
+
+            }
+
+            $scope.listando_Locales = function() {
+
+                var variables = {
+                    method: 'post',
+                    url: '../AsignaOrdenTrabajo/ListandoLocales',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function(data) {
+                        $scope.ListaLocales = data;
+                    })
+                    .error(function() {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+            $scope.listando_Servicios = function() {
+                var variables = {
+                    method: 'POST',
+                    url: '../Usuarios_Servicio/ListandoServicios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function(data) {
+                        $scope.tablasServicios = true;
+                        $scope.nuevoServicio = false;
+
+                        $scope.ListaServicios = data;
+                    })
+                    .error(function() {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+            $scope.listando_Usuarios = function() {
+                var variables = {
+                    method: 'POST',
+                    url: '../Usuarios_Servicio/ListandoUsuarios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function(data) {
+
+
+                        $scope.ListaUsuarios = data;
+                        //console.log($scope.ListaUsuarios)
+                    })
+                    .error(function() {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+            $scope.EnvParametro = function(usu_id, usu_nom) {
+                // Lecturas Relecturas
+                //console.log(usu_id);
+
+                $scope.nombresuser = usu_nom;
+                $scope.iduser = usu_id;
+
+                // console.log(usu_nom);
+            }
+
+
+            $scope.listando_ServiciosXUsuario = function(idusu, usu_nom) {
+
+
+                $scope.nombresuser = usu_nom;
+                $scope.iduser = idusu;
+
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Usuarios_Servicio/ListarUsuarioXServ',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        //Parametros de  la Funcion del Controlador                               
+                        idusuario: idusu
+                    }
+                }
+                $http(variables)
+                    .success(function(data) {
+
+
+                        //alert("dfdf");
+
+                        // console.log(data.length + "wwwww")
+                        //  console.log(data)
+                        if (data.length != 0) {
+                            //alert("sddsd");
+                            $scope.ListaServicios = data;
+                            $scope.nuevoServicio = false;
+                            $scope.tablasServicios = true;
+
+                        } else {
+                            // $scope.tablasServicios = true;
+                            $scope.nuevoServicio = true;
+                            $scope.tablasServicios = false;
+                        }
+
+
+                    })
+                    .error(function() {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+
+            $scope.banderaEstado = function(estado) {
+                // Lecturas Relecturas
+                //console.log(usu_id);
+                //console.log(estado+"aaaaaa")
+                if (estado == 1) {
+                    return false;
+                } else {
+                    return true;
+                }
+
+            }
+
+            $scope.banderaEstadored = function(estado) {
+                // Lecturas Relecturas
+                //console.log(usu_id);
+                //console.log(estado + "aaaaaa")
+                if (estado == 1) {
+                    return true;
+                } else {
+                    return false;
+                }
+
+            }
+            $scope.ShowHide = function() {
+                //If DIV is hidden it will be visible and vice versa.
+                $scope.IsHidden = $scope.IsHidden ? false : true;
+            }
+ 
+            $scope.getColor = function (color) {
+                return color;
+            }
+
+            $scope.CambiarEstado = function(id, iduser, tiposervicio, estado) {
+                var estadoFinal = 0;
+                if (estado == 0) {
+                    estadoFinal = 1;
+                } else {
+                    estadoFinal = 0;
+                }
+                var variables = {
+                    method: 'POST',
+                    url: '../Usuarios_Servicio/UpdateUsuarioServicio',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        //Parametros de  la Funcion del Controlador                               
+                        idusuario: iduser,
+                        idtiposervicio: tiposervicio,
+                        estadousuario: estadoFinal
+                    }
+                }
+
+                //$('.sige-load').show();
+
+                $http(variables)
+                    .success(function(data) {
+                        $('.sige-load').hide();
+                        new PNotify({
+                            title: 'Exito',
+                            text: 'Se Cambio de estado correctamente los servicios del usuario.',
+                            type: 'success'
+                        });
+
+                        for (var i = 0; i < $scope.ListaServicios.length; i++) {
+                            if ($scope.ListaServicios[i].idOperario_Servicio == id) {
+                                if (estado == 1) {
+                                    $scope.ListaServicios[i].descripcion = 'Deshabilitado';
+                                    $scope.ListaServicios[i].estado = '0';
+                                    $scope.ListaServicios[i].color = 'color : #e73c3c';
+                                    $scope.ListaServicios[i].icono = 'fa fa-check fa-lg';
+                                } else {
+
+                                    $scope.ListaServicios[i].descripcion = 'Habilitado';
+                                    $scope.ListaServicios[i].estado = '1';
+                                    $scope.ListaServicios[i].color = 'color : #4f8edc';
+                                    $scope.ListaServicios[i].icono = 'fa fa-times fa-lg';
+                                }
+
+                            }
+                        }
+
+
+                    })
+                    .error(function() {
+                        $('.sige-load').hide();
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            }
+
+
+            $scope.updReasignaOperador = function(est) {
+
+                var flag_marco = false;
+                var List_codigo = [];
+
+                //var TipoServicio = document.getElementById('cbo_servicio').value;
+                //var cbo_tecnicoReasignar = document.getElementById('cbo_tecnicoReasignar').value;
+                // var _fechaReasignaOperador = document.getElementById('_fechaReasignaOperador').value;
+
+                flag_marco = MarcoCheck();
+                if (flag_marco == false) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione al menos un registro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                console.log(flag_marco)
+                List_codigos = ListaMarcoCheck();
+
+                console.log(List_codigos)
+
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Usuarios_Servicio/UpdateCreateUserServicio',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        estado: est,
+                        List_cod: List_codigos
+
+                    }
+                }
+                $http(variables)
+                    .success(function(data) {
+                        var res = data.split('|');
+                        if (res[0] == 0 || res[0] == "0") {
+                            console.log(res[1])
+                        } else {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso realizado exitosamente.',
+                                type: 'success'
+                            });
+                        }
+                    }).error(function() {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            }
+
+
+            // METODO PARA CHEKED ALL
+            $scope.checkedAll = false;
+            $scope.checkedAll_OrdenTrabajo = function(checked) {
+                // Lecturas Relecturas
+                if (checked) {
+                    angular.forEach($scope.ListaUsuarios, function(child) {
+                        child.checkeado = true;
+                    })
+                } else {
+                    angular.forEach($scope.ListaUsuarios, function(child) {
+                        child.checkeado = false;
+                    })
+                }
+
+            }
+
+
+            function MarcoCheck() {
+                var flag_marco = false;
+
+
+                for (var i = 0; i < $scope.ListaUsuarios.length; i++) {
+                    if ($scope.ListaUsuarios[i].checkeado == true) {
+                        flag_marco = true;
+                        break;
+                    }
+                }
+
+                return flag_marco;
+            }
+
+
+            function ListaMarcoCheck() {
+                var List_id = [];
+
+
+                for (var i = 0; i < $scope.ListaUsuarios.length; i++) {
+                    if ($scope.ListaUsuarios[i].checkeado == true) {
+                        List_id.push($scope.ListaUsuarios[i].usu_id)
+                    }
+                }
+
+                return List_id;
+            }
+
+
+            $scope.isCheckede = function(product) {
+                var items = $scope.my.profile.items;
+                for (var i = 0; i < items.length; i++) {
+                    if (product.id == items[i].id)
+                        return true;
+                }
+
+                return false;
+            };
+
+            $scope.listando_Estados = function() {
+                var variables = {
+                    method: 'POST',
+                    url: '../AsignaOrdenTrabajo/ListandoEstados',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+
+                $http(variables)
+                    .success(function(data) {
+
+
+                        $scope.ListaEstados = data;
+                    })
+                    .error(function() {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });
+            };
+
+
+            $scope.Servicios_Change = function(id) {
+                var cbo_servicio = document.getElementById('cbo_servicio').value;
+                if (cbo_servicio == 0 || cbo_servicio == "0" || cbo_servicio == '? undefined:undefined ?') {
+                    console.log('no hay servicio')
+                    return;
+                }
+                $scope.Flag_Show_LecturaRelectura = false;
+                $scope.Flag_Show_CorteReconexion = false;
+
+                if (cbo_servicio == 1 || cbo_servicio == 2) {
+                    $scope.Flag_Show_LecturaRelectura = true;
+                }
+                if (cbo_servicio == 3 || cbo_servicio == 4) {
+                    $scope.Flag_Show_CorteReconexion = true;
+                }
+            }
+
+            function ValidacionesGenerales() {
+
+                var cbo_local = document.getElementById('cbo_local');
+                var cbo_servicio = document.getElementById('cbo_servicio');
+                var cbo_estado = document.getElementById('cbo_estado');
+                var txt_suministro = document.getElementById('txt_suministro');
+                var txt_medidor = document.getElementById('txt_medidor');
+                var cbo_tecnico = document.getElementById('cbo_tecnico');
+                var dtp_fechaAsigna = document.getElementById('dtp_fechaAsigna');
+
+                if (cbo_local.value == '0' || cbo_local.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Local. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+                if (cbo_servicio.value == '0' || cbo_servicio.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                if (cbo_estado.value == '0' || cbo_estado.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Estado. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+                if (cbo_tecnico.value == '0' || cbo_tecnico.value == "0") {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione un Técnico. Muchas gracias.',
+                        type: 'error'
+                    });
+                    return false;
+                }
+
+                //if (dtp_fechaAsigna.value == '' ) {
+                //    new PNotify({
+                //        title: 'Sistemas',
+                //        text: 'Por favor ingrese o seleccione una Fecha se Asignación. Muchas gracias.',
+                //        type: 'error'
+                //    });
+                //    return false ;
+                //}
+                return true;
+            }
+
+
+            //$scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            //    oTable = $('#table_historico_Lectura_Relectura').DataTable();
+            //});
+
+            //$scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            //    oTable = $('#table_historico_CortesReconexiones').DataTable();
+            //});
+
+
+            // FIN DE ORDEN TRABAJO CALIDA
+
+
+        })
+
+
+    </script>
+
+
+}
+
+<div class="panel panel-oscuro" ng-app="appAsignaServicioUsuario" ng-controller="AsignaServicioUsuarioCtrl" ng-init="listando_Usuarios(); ">
+    <div class=" panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i> ASIGNACION DE SERVICIOS A OPERARIOS</h6>
+    </div>
+    <div class="panel-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-oscuro">
+                    <div class="panel-body" style=" border-top: 1px solid; ">
+                        <div id="toolbar">
+                            <select id="_local" class="form-control input-sm" style="width: 250px;" onchange="fnCargaOperario($(this))">
+                                <option value="0" selected="selected">-- Local --</option>
+                                @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                {
+                                    <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                                }
+                            </select>
+                        </div>
+
+
+                        <table id="table-operario"
+                               data-toggle="table"
+                               data-height="450"
+                               data-search="true"
+                               data-toolbar="#toolbar"
+                               data-maintain-selected="true"
+                               data-url="../Operario/JsonOperarioLocal?__a=0" class="table  table-responsive table-bordered  table-condensed">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">
+                                        <div class="checkbox clip-check check-danger checkbox-inline">
+                                            <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedAll" ng-click="checkedAll_OrdenTrabajo(checkedAll)">
+                                            <label for="checkboxAll">
+                                            </label>
+                                        </div>
+                                    </th>
+
+                                   <th data-field="_g" data-formatter="nombreOperarioFormat">
+                                        <i class="fa fa-users fa-lg"></i> Operario
+                                    </th>
+                                    <th data-field="_opcion" data-width="140" data-formatter="opcionOperarioFormat">
+                                        <button role="button" class="btn btn-default" ng-click="updReasignaOperador(0);"><i style="color: #e73c3c;" class="fa fa-times fa-lg"></i></button>
+                                        <button role="button" class="btn btn-default" ng-click="updReasignaOperador(1);"><i style="color: #4f8edc;" class="fa fa-check fa-lg"></i></button>
+
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody ng-repeat="item in ListaUsuarios">
+
+                                <tr>
+                                    <td style="width: 10%;">
+                                        <div class="checkbox clip-check check-primary checkbox-inline">
+                                            <input type="checkbox" id="checkbox{{$index}}" value="true" ng-model="item.checkeado" ng-change="addIdChecked(item.Numero_OrdImport,item.checked)">
+                                            <label for="checkbox{{$index}}" >
+                                            </label>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 8px; line-height: 24px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" ng-model="nombre">
+                                        <i class="fa fa-user fa-lg"></i>
+                                        {{item.usu_nom}}
+                                    </td>
+                                    <td style="width: 20%;">
+                                        <div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento"><button role="button" class="btn btn-default" ng-click="listando_ServiciosXUsuario(item.usu_id,item.usu_nom)"><i class="fa fa-edit fa-lg"></i> Detalle Servicios</button></div>
+                                    </td>
+                                </tr>
+                            <tbody>
+                        </table>
+                        @*<table
+                                id="table-operario"
+                                data-toggle="table"
+                                data-height="450"
+                                data-search="true"
+                                data-toolbar="#toolbar"
+                                data-url="../Operario/JsonOperarioLocal?__a=0">
+                                <thead>
+                                    <tr>
+
+                                        <th data-field="_g" data-formatter="nombreOperarioFormat"><i class="fa fa-users fa-lg"></i> Operario</th>
+                                        <th data-width="140" data-formatter="opcionOperarioFormat">
+                                            <span class="class-masivo-operario btn-group btn-group-xs" role="group" aria-label="Mantenimiento" style=" display: none; ">
+                                                <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio(0,'0','2')"><i style=" color: #e73c3c; " class="fa fa-times fa-lg"></i></button>
+                                                <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio(0,'0','1')"><i style=" color: #4f8edc; " class="fa fa-check fa-lg"></i> Servicio</button>
+                                            </span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                            </table>*@
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+
+
+
+                <div class="panel panel-oscuro">
+                    <div class="panel-body" style="border-top: 1px solid;">
+                        <div id="toolbar-servicio"></div>
+
+                        <div>
+
+
+                            <div class="bars pull-left" style="padding-bottom: 15px;">
+                                <div id="toolbar-servicio">
+                                    <h5 style="margin-top: 8px;" ng-model="nombre"><input type="hidden" id="idusuario" value="{{iduser}}"><i class="fa fa-user fa-lg"></i>Usuario: {{nombresuser}}</h5>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+
+
+                        <div ng-show="tablasServicios;">
+                            <table id="table-servicio"
+                                   data-toggle="table"
+                                   data-height="450"
+                                   data-search="true"
+                                   data-row-style="filaEstilo"
+                                   data-toolbar="#toolbar-servicio"
+                                   data-url="../Servicio/JsonServicioOperario?__a=0" class="table  table-responsive table-bordered  table-condensed">
+                                <thead>
+                                <tr>
+                                    <th data-field="_b">Servicio</th>
+                                    <th data-width="90" data-formatter="opcionServicioFormat">
+                                        <span class="class-masivo btn-group btn-group-xs" role="group" aria-label="Mantenimiento">
+                                                <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio('0', '2')"><i style="color: #e73c3c;" class="fa fa-times fa-lg"></i></button>
+                                                <button role="button" class="btn btn-default" onclick="fnAgregaQuitaServicio('0', '1')"><i style="color: #4f8edc;" class="fa fa-check fa-lg"></i></button>
+                                            </span>
+                                    </th>
+
+
+
+                                </tr>
+                                </thead>
+                                <tbody ng-repeat="item in ListaServicios">
+ 
+                                    <tr>
+                                        <td style="padding: 8px; line-height: 24px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 80%;">{{item.nombre_tiposervicio}}</td>
+                                        <td style="width: 10%;">
+                                            <div>
+                                                <span class="class-masivo btn-group btn-group-xs" role="group" aria-label="Mantenimiento">
+                                                    <button id={{item.id_Operario_Servicio}} role="button" class="btn btn-default" ng-click="CambiarEstado(item.idOperario_Servicio, iduser,item.id_TipoServicio,item.estado);">
+                                                        {{item.descripcion}}<i style="{{getColor(item.color)}}" class={{item.icono}}></i>
+                                                    </button>
+                                                </span>
+                                            </div>
+                                            </td>
+                                    </tr>
+                                <tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div ng-show="nuevoServicio;" style="margin: 15px;">
+                        <div id="toolbar" role="group" class="btn-group btn-group-sm">
+                            <button role="button" class="btn btn-success" ng-click="listando_Servicios();"><i class="fa fa-plus fa-lg"></i>AGREGAR SERVICIOS</button>
+
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

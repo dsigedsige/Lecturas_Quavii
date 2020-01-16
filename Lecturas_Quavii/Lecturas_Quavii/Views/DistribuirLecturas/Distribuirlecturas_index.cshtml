@@ -1,0 +1,2511 @@
+﻿ @{
+    ViewBag.Title = "Distribucion - Reasignacion de Ordenes";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+<style>
+    #tblListaDetalleX {
+        height: 400px;
+        display: -moz-groupbox;
+        margin-bottom: 60px !important;
+    }
+
+    #tblListaDetalleX tr {
+        width: 100%;
+        display: inline-table;
+        table-layout: fixed;
+    }
+    #tblListaDetalleX tbody {
+        overflow-y: scroll;
+        height: 400px;
+        width: 98%;
+        position: absolute;
+    }
+
+    .modal_dsige {
+        width: 300px;
+    }
+
+    .modal_dsige2 {
+        width: 600px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    #Principal {
+        width: 700px;
+        height: 500px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .colorItem {
+        background-color: #009688;
+    }
+
+
+    #Contenedor {
+        width: 100%;
+            margin-top: -25px;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+    .checkbox input[type=checkbox], .checkbox-inline input[type=checkbox], .radio input[type=radio], .radio-inline input[type=radio] {
+        margin-left: -9px;
+    }
+
+    table td:nth-child(1) {
+        width: 10px;
+    }
+
+    table td:nth-child(2) {
+        width: 100px;
+    }
+
+    table td:nth-child(3) {
+        width: 100px;
+    }
+
+    table td:nth-child(4) {
+        width: 100px;
+    }
+
+    table td:nth-child(5) {
+        width: 100px;
+    }
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+.disabledContent {
+    pointer-events: none !important;
+    opacity: 0.7 !important;
+}
+    .checkbox-inline, .radio-inline {
+        padding-left: 25px;
+    }
+
+    .resaltado {
+        color: green;
+    }
+
+    .menuBoton, .ul .li {
+        list-style-type: none;
+        padding: 10px;
+        /*display: inline-table;*/
+        width: 200px !important;
+    }
+    .Julio table, th {
+        background-color: #019199 !important;
+        color: white !important;
+    }
+
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+    var app = angular.module('myApp', []).directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit('ngRepeatFinished');
+                    });
+                }
+            }
+        }
+    }).directive('fileModel', ['$parse', function ($parse) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var model = $parse(attrs.fileModel);
+                var modelSetter = model.assign;
+
+                element.bind('change', function () {
+                    scope.$apply(function () {
+                        modelSetter(scope, element[0].files[0]);
+                    });
+                });
+            }
+        };
+    }])
+    app.service('fileUpload', ['$http', function ($http) {
+        this.uploadFileToUrl = function (idlocal, file, uploadUrl) {
+
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('idlocal', idlocal);
+            $http.post(uploadUrl, fd, {
+                transformRequest: angular.identity,
+                headers: { 'Content-Type': undefined }
+            })
+            .success(function (data) {
+
+            })
+            .error(function () {
+
+            });
+        }
+    }]);
+
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q, fileUpload) {
+
+
+        $(function () {
+            $('#id_fecha_asignacion').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+            $('#dtp_fechaRecepcion').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+            
+        });
+
+        $(function () {
+            $('#_fechaMovil,#_fechaMovilDetalle, #fecha_relectura').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        var oTable = null;
+        $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+            oTable = $('#tbl_detalle').DataTable();
+        });
+
+        function MostrandoFechaSistemaActual() {
+            var fecha = new Date();
+            var ano = fecha.getFullYear();
+            var mes = fecha.getMonth();
+            var mesFormato = '';
+
+            if (mes <= 9) {
+                mesFormato = '0' + (mes + 1);
+            } else {
+                mesFormato = (mes + 1);
+            }
+
+            $scope.id_anio = String(ano);
+            $scope.id_mes = String(mesFormato);
+        }
+
+        $scope.Obj_List_Locales = [];
+        $scope.Listado_Locales = function () {
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/ListandoLocal',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Locales = [];
+                $scope.Obj_List_Locales = data;
+                $scope.Listado_Servicios();
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                $scope.Obj_List_Servicios = data;
+
+                setTimeout(function () {
+                    $('#id_local').val(1).trigger('change');
+                    $('#id_servicio').val(1).trigger('change');
+
+                }, 300);
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.InicializandoVariables = function () {
+            $scope.Listado_Locales();
+            $scope.id_tipoServicio = '1';
+            $scope.id_local = '0';
+            $scope.id_anio = '0';
+            $scope.id_mes = '0';
+            $("#checkboxAll").attr("disabled", true);
+        }
+
+        // METODO PARA CHEKED ALL
+        $scope.checkedAll = false;
+        $scope.checkedAll_OrdenTrabajo = function (checked) {
+            if (checked) {
+                angular.forEach($scope.Obj_List_Lecturas, function (child) {
+                    child.checkeado = true;
+                })
+            } else {
+                angular.forEach($scope.Obj_List_Lecturas, function (child) {
+                    child.checkeado = false;
+                })
+            }
+        }
+
+        function MarcoCorrecto() {
+            var flag_marco = false;
+            for (var i = 0; i < $scope.Obj_List_Lecturas.length; i++) {
+                if ($scope.Obj_List_Lecturas[i].checkeado == true) {
+                    if ($scope.Obj_List_Lecturas[i].Codigo_operario == '' || $scope.Obj_List_Lecturas[i].Codigo_operario == null || $scope.Obj_List_Lecturas[i].Codigo_operario == undefined) {
+                        flag_marco = true;
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Falta completar el Dato del Operario.',
+                            type: 'error'
+                        });
+                        break;
+                    }
+                }
+            }
+            return flag_marco;
+        }
+
+        function MarcoCorrecto_detalle() {
+            var flag_marco = false;
+            for (var i = 0; i < $scope.listDetalleLectura.length; i++) {
+                if ($scope.listDetalleLectura[i].check == true) {
+                    if ($scope.listDetalleLectura[i].Codigo_operario == '' || $scope.listDetalleLectura[i].Codigo_operario == null || $scope.listDetalleLectura[i].Codigo_operario == undefined) {
+                        flag_marco = true;
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Falta completar el Dato del Operario.',
+                            type: 'error'
+                        });
+                        break;
+                    }
+                }
+            }
+            return flag_marco;
+        }
+
+
+
+        function MarcoCheck() {
+            var flag_marco = false;
+            for (var i = 0; i < $scope.Obj_List_Lecturas.length; i++) {
+                if ($scope.Obj_List_Lecturas[i].checkeado == true) {
+                    flag_marco = true;
+                    break;
+                }
+            }
+            return flag_marco;
+        }
+
+        function MarcoCheck_detalle() {
+            var flag_marco = false;
+            for (var i = 0; i < $scope.listDetalleLectura.length; i++) {
+                if ($scope.listDetalleLectura[i].check == true) {
+                    flag_marco = true;
+                    break;
+                }
+            }
+            return flag_marco;
+        }
+
+
+        function MarcoCheckDetalle() {
+            var flag_marco = false;
+            for (var i = 0; i < $scope.listDetalleLectura.length; i++) {
+                if ($scope.listDetalleLectura[i].check == true) {
+                    flag_marco = true;
+                    break;
+                }
+            }
+            return flag_marco;
+        }
+
+        function ListaMarcoCheck() {
+            $scope.ListaData = [];
+            for (var i = 0; i < $scope.Obj_List_Lecturas.length; i++) {
+                if ($scope.Obj_List_Lecturas[i].checkeado == true) {
+                    $scope.ListaData.push({
+                        'Unidad_Lecturas' : $scope.Obj_List_Lecturas[i].Unidad_Lecturas, 
+                        'Codigo_operario': $scope.Obj_List_Lecturas[i].Codigo_operario,
+                        'opcion': ProcesoElegido_Global
+                    });
+                }
+            }
+            return $scope.ListaData;
+        }
+
+        function ListaMarcoCheck_Correo() {
+            $scope.ListaData = [];
+            for (var i = 0; i < $scope.Obj_List_Lecturas.length; i++) {
+                if ($scope.Obj_List_Lecturas[i].checkeado == true) {
+                    $scope.ListaData.push($scope.Obj_List_Lecturas[i].Codigo_operario);
+                }
+            }
+            return $scope.ListaData;
+        }
+
+        
+        function ListaMarcoCheck_Detalle(flag_detallado) {
+            $scope.ListaData = [];
+
+            if (flag_detallado == 'S') {
+                for (var i = 0; i < $scope.listDetalleLectura.length; i++) {
+                    if ($scope.listDetalleLectura[i].check == true) {
+                        $scope.ListaData.push({
+                            'id_Lectura': $scope.listDetalleLectura[i].id_Lectura,
+                            'Unidad_Lecturas': $scope.listDetalleLectura[i].Unidad_Lecturas,
+                            'Codigo_operario': $scope.listDetalleLectura[i].Codigo_operario,
+                            'Manzana': $scope.listDetalleLectura[i].Manzana,
+                            'opcion': ProcesoElegido_Global,
+                            'flag_detallado': 'S'
+                        });
+                    }
+                }
+            } else {
+                for (var i = 0; i < $scope.listDetalleLectura.length; i++) {
+                    if ($scope.listDetalleLectura[i].check == true) {
+                        $scope.ListaData.push({
+                            'id_Lectura': 0,
+                            'Unidad_Lecturas': $scope.listDetalleLectura[i].Unidad_Lecturas,
+                            'Codigo_operario': $scope.listDetalleLectura[i].Codigo_operario,
+                            'Manzana': $scope.listDetalleLectura[i].Manzana,
+                            'opcion': ProcesoElegido_Global,
+                            'flag_detallado': 'N'
+                        });
+                    }
+                }
+            }
+
+
+            return $scope.ListaData;
+        }
+
+
+        $scope.AbrirModalEnvioMovil = function () {
+
+            if (ProcesoElegido_Global =='') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor presione el boton de Distribucion o de Reasignacion para Continuar.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var Fecha_asignacion = document.getElementById('_fechaMovil');
+            Fecha_asignacion.value = "";
+
+            var flag_marco = false;
+            flag_marco = MarcoCheck();
+            
+            if (flag_marco == false) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione al menos un registro.',
+                    type: 'error'
+                });
+                return;
+            }
+            $('#modal_EnvioMovil').modal({ show: 'false' });
+        }
+        
+        $scope.AbrirModalEnvioMovilDetalle = function () {
+
+            var Fecha_asignacion = document.getElementById('_fechaMovilDetalle');
+            var _servicio = document.getElementById('id_servicio').value;
+
+            var flag_marco = false;
+            flag_marco = MarcoCheckDetalle();
+
+            if (flag_marco == false) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione al menos un registro.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var Fecha_asignacion = document.getElementById('_fechaMovilDetalle');
+
+            if (Fecha_asignacion.value == null || Fecha_asignacion.value == undefined || Fecha_asignacion.value == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha Movil.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var List_codigo_Detalle = [];
+            $('.sige-load').show();
+
+            $scope.listDetalleLectura.forEach(function (item) {
+                if (item.check) {
+                    var dataPost = item.RT + '|' + item.S1 + '|' + item.CL + '|' + item.SECTOR + '|' + item.ZONA + '|' + item.FECHA + '|' + item.id_Local + '|' + item.id_Lectura;
+                    List_codigo_Detalle.push(dataPost);
+                }
+            });
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/GenerandoReasignacionTrabajosDetalle',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    ListaTrabajos: List_codigo_Detalle,
+                    FechaMovil: Fecha_asignacion.value,
+                    servicio: _servicio
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    $scope.ActualizarInformacion();
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Reasignacion, realizado Correctamente.',
+                        type: 'success'
+                    });
+                    //$('#modal_EnvioMovil').modal('toggle');
+
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+
+        }
+        $scope.disabledChek = 'false';
+        var ProcesoElegido_Global = '';
+        var Flag_detallado_Global = '';
+
+        $scope.Obj_List_Lecturas = [];
+        $scope.ActualizarInformacion = function () {
+            var _local = document.getElementById('id_local').value;
+            var _fecha = document.getElementById('id_fecha_asignacion').value;
+            var _servicio = document.getElementById('id_servicio').value;
+            var _cbo_tipoCliente = document.getElementById('cbo_tipoCliente').value;
+
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+                       
+            $("#checkboxAll").attr("disabled", true);
+
+            //if (_local == '' || _local == 0) {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+
+            if (_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (_servicio == '' || _servicio == 0 || _servicio == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (_cbo_tipoCliente == '' || _cbo_tipoCliente == 0 || _cbo_tipoCliente == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Tipo de Cliente',
+                    type: 'error'
+                });
+                return;
+            }
+
+
+            if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un supervisor',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+            $scope.checkedAll = false;
+            $scope.disabledChek = 'true';
+
+            ProcesoElegido_Global = '';
+            ProcesoElegido_Global = 'D';
+            Flag_detallado_Global = 'N';
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/ListandoInformacionLecturas',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    local: _local,
+                    fechaAsigna: _fecha,
+                    servicio: _servicio,
+                    opcion: ProcesoElegido_Global,
+                    id_supervisor: cbo_supervisor,
+                    id_operario_supervisor: 0,
+                    tipoCliente: _cbo_tipoCliente
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.Obj_List_Lecturas = [];
+                $scope.Obj_List_Lecturas = data;
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+                
+        $scope.ActualizarInformacion_Reasignacion = function () {
+            var _local = document.getElementById('id_local').value;
+            var _fecha = document.getElementById('id_fecha_asignacion').value;
+            var _servicio = document.getElementById('id_servicio').value;
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            var _cbo_tipoCliente = document.getElementById('cbo_tipoCliente').value;
+
+            $("#checkboxAll").removeAttr("disabled");
+
+            //if (_local == '' || _local == 0) {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+
+            if (_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (_servicio == '' || _servicio == 0 || _servicio == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un supervisor',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+            $scope.checkedAll = false;
+            $scope.disabledChek = 'false';
+
+            ProcesoElegido_Global = '';
+            ProcesoElegido_Global = 'R';
+            Flag_detallado_Global = 'N';
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/ListandoInformacionLecturas',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    local: _local,
+                    fechaAsigna: _fecha,
+                    servicio: _servicio,
+                    opcion: ProcesoElegido_Global,
+                    id_supervisor: cbo_supervisor,
+                    id_operario_supervisor: 0,
+                    tipoCliente: _cbo_tipoCliente
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.Obj_List_Lecturas = [];
+                $scope.Obj_List_Lecturas = data;
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.KeyDown_DistribucionLectura = function (keyEvent, obj_datos, id_enfoque, val) {
+            if (keyEvent.which == 13) {                
+                if (val == 1) {
+                    $scope.Distribuir_Reasignar_Trabajos(obj_datos, id_enfoque, val);
+                } else {
+                    $scope.Distribuir_Reasignar_Trabajos_detallado(obj_datos, id_enfoque, val);
+                }           
+            }
+        }
+
+        $scope.Distribuir_Reasignar_Trabajos = function (obj_datos, id_enfoque, val) {                                 
+
+            if (ProcesoElegido_Global == 'D') {
+                if (obj_datos.Codigo_operario == '' || obj_datos.Codigo_operario == null | obj_datos.Codigo_operario == undefined) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el Codigo del Lecturista',
+                        type: 'error'
+                    });
+                    return;
+                }  
+                var CodigoOperario = 0;
+                CodigoOperario = parseInt(obj_datos.Codigo_operario);
+
+                var GeneracionDistribucionLecturas = function (obj_lecturas, idEnfoque) {
+                    var variables = {
+                        method: 'POST',
+                        url: '../DistribuirLecturas/DistribuirOrdenes',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8'
+                        },
+                        data: {
+                            id_local: obj_lecturas.id_Local,
+                            fechaAsignacion: obj_lecturas.fechaAsignacion_Lectura,
+                            id_servicio: obj_lecturas.id_TipoServicio,
+                            unidad_lectura: obj_lecturas.Unidad_Lecturas,
+                            id_operario: obj_lecturas.Codigo_operario,
+                        }
+                    }
+                    $('.sige-load').show();
+                    $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        if (data == 'OK' || data == '"OK"') {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso de Distribucion, Realizado Correctamente.',
+                                type: 'success'
+                            });
+
+                            if (Flag_detallado_Global == 'S') {
+                                for (item of $scope.listDetalleLectura) {
+                                    if (item.id_Lectura == obj_datos.id_Lectura) {
+                                        item.flag_operario = true;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                for (var i = 0; i < $scope.Obj_List_Lecturas.length; i++) {
+                                    if ($scope.Obj_List_Lecturas[i].Unidad_Lecturas == obj_lecturas.Unidad_Lecturas && $scope.Obj_List_Lecturas[i].Manzana == obj_lecturas.Manzana) {
+                                        $scope.Obj_List_Lecturas[i].checkeado = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            $scope.changeFocusInput('id_CL_' + (parseInt(idEnfoque) + 1))
+
+                        } else {
+                            alert(data)
+                        }
+                    })
+                    .error(function () {
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                    });
+
+                }
+                 
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/validarOperario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        CodigoOperario: CodigoOperario
+                    }
+                }
+
+                console.log('CodigoOperario')
+                console.log('variables')
+
+                console.log(CodigoOperario)
+                console.log(variables)
+
+                $http(variables)
+                .success(function (data) {
+                    if (data[0].CANT_REGISTROS <= 0) {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'El Código del Lecturista no existe.',
+                            type: 'error'
+                        });
+                        return;
+                    } else {
+                            GeneracionDistribucionLecturas(obj_datos, id_enfoque);
+                    }
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+            
+            if (ProcesoElegido_Global == 'R') {
+                if (obj_datos.Codigo_operario == '' || obj_datos.Codigo_operario == null | obj_datos.Codigo_operario == undefined) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese el Codigo del Lecturista',
+                        type: 'error'
+                    });
+                    return;
+                }              
+
+                var CodigoOperario = 0;
+                CodigoOperario = parseInt(obj_datos.Codigo_operario);
+
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/validarOperario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        CodigoOperario: CodigoOperario
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    if (data[0].CANT_REGISTROS <= 0) {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'El Código del Lecturista no existe.',
+                            type: 'error'
+                        });
+                        for (var i = 0; i < $scope.Obj_List_Lecturas.length; i++) {
+                            if ($scope.Obj_List_Lecturas[i].Unidad_Lecturas == obj_datos.Unidad_Lecturas) {
+                                $scope.Obj_List_Lecturas[i].checkeado = false;
+                                break;
+                            }
+                        }
+                        return;
+                    } else {                      
+                        for (var i = 0; i < $scope.Obj_List_Lecturas.length; i++) {
+                            if ($scope.Obj_List_Lecturas[i].Unidad_Lecturas == obj_datos.Unidad_Lecturas) {
+                                $scope.Obj_List_Lecturas[i].checkeado = true;
+                                break;
+                            }
+                        }
+
+                        $scope.changeFocusInput('id_CL_' + (parseInt(id_enfoque) + 1))
+
+                    }
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+        }
+
+
+        $scope.Distribuir_Reasignar_Trabajos_detallado = function (obj_datos, id_enfoque, val) {
+            if (obj_datos.Codigo_operario == '' || obj_datos.Codigo_operario == null | obj_datos.Codigo_operario == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese el Codigo del Lecturista',
+                    type: 'error'
+                });
+                return;
+            }
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/validarOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    CodigoOperario: parseInt(obj_datos.Codigo_operario)
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                if (data[0].CANT_REGISTROS <= 0) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'El Código del Lecturista no existe.',
+                        type: 'error'
+                    });
+                    for (var i = 0; i < $scope.listDetalleLectura.length; i++) {
+                        if ($scope.listDetalleLectura[i].Unidad_Lecturas == obj_datos.Unidad_Lecturas && $scope.listDetalleLectura[i].Manzana == obj_datos.Manzana) {
+                            $scope.listDetalleLectura[i].flag_operario = false;
+                            $scope.listDetalleLectura[i].check = true;
+                            break;
+                        }
+                    }
+                    return;
+                } else {
+                    if (Flag_detallado_Global == 'S') {
+                        for (item of $scope.listDetalleLectura) {
+                            if (item.id_Lectura == obj_datos.id_Lectura) {
+                                item.flag_operario = true;
+                                item.check = true;
+                                break;
+                            }
+                        }
+                     } else {
+                        for (var i = 0; i < $scope.listDetalleLectura.length; i++) {
+                            if ($scope.listDetalleLectura[i].Unidad_Lecturas == obj_datos.Unidad_Lecturas && $scope.listDetalleLectura[i].Manzana == obj_datos.Manzana) {
+                                $scope.listDetalleLectura[i].flag_operario = true;
+                                $scope.listDetalleLectura[i].check = true;
+                                break;
+                            }
+                        }
+                    }
+                    ///-----enfocando el siguiente registro....
+                    $scope.changeFocusInput('id_CLD_' + (parseInt(id_enfoque) + 1))
+                }
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+
+
+        var validarLecturistaCod = function () {
+            var q = $q.defer();
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/validarOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    CodigoOperario: $scope.paramsSelect.codOperario,
+                }
+            }
+            $http(variables)
+          .success(function (data) {
+              if (data[0].CANT_REGISTROS <= 0) {
+                  new PNotify({
+                      title: 'Sistemas',
+                      text: 'El Código del Lecturista no existe.',
+                      type: 'error'
+                  });
+                  q.reject();
+                  return;
+              } else {
+                  q.resolve();
+              }
+
+          })
+          .error(function () {
+              new PNotify({
+                  title: 'Sistemas',
+                  text: 'El Código del Lecturista no existe.',
+                  type: 'error'
+              });              
+              q.reject();              
+          });
+            return q.promise
+        }
+
+        $scope.validarLecturista = function (keyEvent) {
+            if (keyEvent.which === 13) { 
+                validarLecturistaCodigo()
+                .then(function (data) {
+                    $scope.changeFocusInput('btn_agregarRangos')
+                })
+            }        
+        }
+
+
+        var validarLecturistaCodigo = function () {
+            var id_codOperarioRango = document.getElementById('id_codOperarioRango').value;
+
+            var q = $q.defer();
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/validarOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    CodigoOperario: id_codOperarioRango,
+                }
+            }
+            $http(variables)
+          .success(function (data) {
+              if (data[0].CANT_REGISTROS <= 0) {
+                  new PNotify({
+                      title: 'Sistemas',
+                      text: 'El Código del Lecturista no existe.',
+                      type: 'error'
+                  });
+                  q.reject();
+                  return;
+              } else {
+                  q.resolve();
+              }
+
+          })
+          .error(function () {
+              new PNotify({
+                  title: 'Sistemas',
+                  text: 'El Código del Lecturista no existe.',
+                  type: 'error'
+              });
+              q.reject();
+          });
+            return q.promise
+        }
+
+        function FechaActualSistema() {
+            var today = new Date();
+            var dd = today.getDate();
+            var mm = today.getMonth() + 1;
+
+            var yyyy = today.getFullYear();
+            if (dd < 10) {
+                dd = '0' + dd
+            }
+            if (mm < 10) {
+                mm = '0' + mm
+            }
+            var today = dd + '/' + mm + '/' + yyyy;
+
+            return today;
+        }
+
+        $scope.Lista_HistoricoPlantilla = [];
+
+        $scope.EnterTab_RT = function (keyEvent, id_enfoque) {
+            if (keyEvent.which === 13) {
+                $scope.changeFocusInput('id_S1_' + id_enfoque)
+            }
+        }
+
+        $scope.changeFocusInput = function (id) {
+            var doc = document.getElementById(id);
+            doc.focus();
+        }
+
+        $scope.reiniviarChecks = function () {
+            objectSelect = [];
+            objectSelectSend = [];
+            $scope.listDetalleLectura.forEach(function (item) {
+                item.colorItem = "";
+                item.check = false;
+                item.flag_operario = false;
+                item.Codigo_operario = '';
+
+            });
+            $scope.countSelect = objectSelectSend.length;
+        }
+
+        $scope.disabledDetalle = 'disabledContent';
+        $scope.DeshacerChecks = function () {
+            objectSelect = [];
+            objectSelectSend = [];
+            $scope.listDetalleLectura.forEach(function (item) {
+                item.colorItem = "";
+                item.check = false;
+                item.flag_operario = false;
+                item.Codigo_operario = '';
+
+            });
+            $scope.countSelect = objectSelectSend.length;
+        }
+
+        var objectSelect = [];
+        var objectSelectSend = [];
+
+        $scope.openDetalle = function (item) {
+ 
+            var Fecha_asignacion = document.getElementById('_fechaMovilDetalle');
+            $('#id_filainicio').val('');
+            $('#id_filafin').val('');
+            $('#id_codOperarioRango').val('');
+
+            var operador = 0;
+
+            Fecha_asignacion.value = '';
+
+            if (item.Codigo_operario == 0 || item.Codigo_operario == null || item.Codigo_operario == '' || item.Codigo_operario == undefined) {
+                operador = 0;
+            } else {
+                operador = item.Codigo_operario;
+            }
+
+            Flag_detallado_Global = 'N';
+
+            $scope.paramsSelect.selectInit = '0';
+            $scope.paramsSelect.codOperario = '',
+            $scope.paramsSelect.cantInit = '';
+
+            objectSelect = [];
+            objectSelectSend = [];
+            $scope.countSelect = objectSelectSend.length;
+            
+            $('#modalDetails').modal({ show: 'true' });                    
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/ListandoInformacionLecturasDetalle',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: item.id_Local,
+                    fechaAsigna: item.fechaAsignacion_Lectura,
+                    id_servicio: item.id_TipoServicio,
+                    unidad_Lectura: item.Unidad_Lecturas,
+                    id_operario: operador,
+                    opcion: ProcesoElegido_Global
+                }
+            }
+            $scope.listDetalleLectura = [];
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.listDetalleLectura = data;
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+        
+        $scope.openDetalle_general = function (item) {
+
+            var Fecha_asignacion = document.getElementById('_fechaMovilDetalle');
+            $('#id_filainicio').val('');
+            $('#id_filafin').val('');
+            $('#id_codOperarioRango').val('');
+
+            var operador = 0;
+
+            Fecha_asignacion.value = '';
+
+            if (item.Codigo_operario == 0 || item.Codigo_operario == null || item.Codigo_operario == '' || item.Codigo_operario == undefined) {
+                operador = 0;
+            } else {
+                operador = item.Codigo_operario;
+            }
+
+            Flag_detallado_Global = 'S';
+
+            $scope.paramsSelect.selectInit = '0';
+            $scope.paramsSelect.codOperario = '',
+            $scope.paramsSelect.cantInit = '';
+
+            objectSelect = [];
+            objectSelectSend = [];
+            $scope.countSelect = objectSelectSend.length;
+
+            $('#modalDetails').modal({ show: 'true' });
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/ListandoInformacionLecturasDetalle_general',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_local: item.id_Local,
+                    fechaAsigna: item.fechaAsignacion_Lectura,
+                    id_servicio: item.id_TipoServicio,
+                    unidad_Lectura: item.Unidad_Lecturas,
+                    id_operario: operador,
+                    opcion: ProcesoElegido_Global
+                }
+            }
+            $scope.listDetalleLectura = [];
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.listDetalleLectura = data;
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                });
+        }
+
+
+        var doubleClick = 0;
+        $scope.selectRangeChecks = function (item, index) {
+
+
+            item.colorItem = 'colorItem';
+            //item.check = true;
+            objectSelect.push({
+                index: index
+            })
+            doubleClick++;
+            // SELECCIONAMOS CHECKS ENTRE LOS RANGOS
+            if (doubleClick == 2) {
+                var indexInicio = objectSelect[0].index;
+                var indexFinal = objectSelect[1].index;
+                var idInicio = $scope.listDetalleLectura[indexInicio].id_Lectura;
+                var idFinal = $scope.listDetalleLectura[indexFinal].id_Lectura;
+
+                // AGREGAMOS EL INICIO Y EL FINAL.
+
+                for (var i = (indexInicio) ; i <= indexFinal; i++) {
+
+                    if ($scope.listDetalleLectura[i].check == false) {
+                        $scope.listDetalleLectura[i].check = true;
+                        $scope.listDetalleLectura[i].colorItem = 'colorItem';
+                        var dataPost = $scope.listDetalleLectura[i].RT + '|' + $scope.listDetalleLectura[i].S1 + '|' + $scope.listDetalleLectura[i].CL + '|' + $scope.listDetalleLectura[i].SECTOR + '|' + $scope.listDetalleLectura[i].ZONA + '|' + $scope.listDetalleLectura[i].FECHA + '|' + $scope.listDetalleLectura[i].id_Local + '|' + $scope.listDetalleLectura[i].id_Lectura;
+                        objectSelectSend.push({
+                            index: i,
+                            id_lectura: $scope.listDetalleLectura[i].id_Lectura,
+                            suministro_lectura: $scope.listDetalleLectura[i].suministro_lectura,
+                            zona: $scope.listDetalleLectura[i].ZONA,
+                            sector: $scope.listDetalleLectura[i].SECTOR,
+                            dataPost: dataPost
+                        })
+
+                    }
+                }
+                console.log('ok', objectSelectSend);
+
+                doubleClick = 0;
+                objectSelect = [];
+            }
+
+            $scope.countSelect = objectSelectSend.length;
+        }
+
+        $scope.selectChecks = function (item, index) {
+
+
+            if (item.check) {
+                var dataPost = item.RT + '|' + item.S1 + '|' + item.CL + '|' + item.SECTOR + '|' + item.ZONA + '|' + item.FECHA + '|' + item.id_Local + '|' + item.id_Lectura;
+                objectSelectSend.push({
+                    index: index,
+                    id_lectura: item.id_Lectura,
+                    suministro_lectura: item.suministro_lectura,
+                    zona: item.ZONA,
+                    sector: item.SECTOR,
+                    dataPost: dataPost
+                });
+                item.colorItem = "colorItem";
+            } else {
+                var params = {
+                    index: index,
+                    numero_suministro: ''
+                }
+                var indexR;
+                objectSelectSend.forEach(function (item, indexS) {
+                    if (item.index == index) {
+                        indexR = indexS
+                    }
+                })
+                objectSelectSend.splice(indexR, 1);
+                item.colorItem = "";
+            }
+
+            console.log(objectSelectSend);
+            $scope.countSelect = objectSelectSend.length;
+        }
+
+
+        $scope.paramsSelect = {
+            cantInit: '',
+            selectInit: '0',
+            codOperario: '',
+        }
+
+        $scope.selectCheck = function () {
+            validarLecturistaCod().then(function () {
+
+                var cantInit = $scope.paramsSelect.cantInit;
+                var codOperario = $scope.paramsSelect.codOperario;
+                var count = 0;
+                if ($scope.paramsSelect.selectInit == 0) {
+
+                    $scope.listDetalleLectura.forEach(function (item, index) {
+                        if (cantInit == count) {
+                            return;
+                        }
+                        if (item.check == false) {
+                            item.check = true;
+                            item.colorItem = "colorItem";
+                            item.Codigo_operario = codOperario;
+                            count++;
+                        }
+                    })
+                } else {
+
+                    var list = $scope.listDetalleLectura;
+
+                    for (var i = list.length - 1; i >= 0; i--) {
+                        console.log(list[i]);
+                        if (cantInit == count) {
+                            return;
+                        }
+                        if (list[i].check == false) {
+                            list[i].check = true;
+                            list[i].colorItem = "colorItem";
+                            list[i].Codigo_operario = codOperario;
+                            count++;
+                        }
+
+                    }
+                }
+            })   
+        }
+
+        $scope.listDetalleLectura = [];
+        var countF = 0;
+        $scope.countSelectF = function () {
+            countF = 0;
+            if ($scope.listDetalleLectura.length > 0) {
+                $scope.listDetalleLectura.forEach(function (item, index) {
+                    if (item.check) {
+                        countF++;
+                    }
+                })
+            } else {
+                return 0;
+            }
+            return countF;
+
+        }
+        
+        $scope.GenerarEnvioMovil = function () {
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro de Enviar al móvil ?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+
+            var id_local = document.getElementById('id_local').value;
+            var id_fecha_asignacion = document.getElementById('id_fecha_asignacion');
+            var _fechaMovil = document.getElementById('_fechaMovil');
+            var _servicio = document.getElementById('id_servicio').value;
+
+            var flag_marco = false;
+            var flag_correcto = false;
+            $scope.List_codigo = [];
+
+            if (ProcesoElegido_Global == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor presione el boton de Distribucion o de Reasignacion para Continuar.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            flag_marco = MarcoCheck();
+            if (flag_marco == false) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione al menos un registro.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            flag_correcto = MarcoCorrecto();
+            if (flag_correcto == true) {
+                return;
+            }
+
+
+            if (_fechaMovil.value == null || _fechaMovil.value == '' || _fechaMovil.value == '0' || _fechaMovil.value == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha del Movil.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+            $scope.List_codigo = ListaMarcoCheck();
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/Generando_EnvioMovil_Distribucion_Reasignacion',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    ListaOrdenes: $scope.List_codigo,
+                    id_local: id_local,
+                    FechaAsigna: id_fecha_asignacion.value,
+                    servicio: _servicio,
+                    FechaMovil: _fechaMovil.value,
+                    opcion: ProcesoElegido_Global
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Envio al Movil, realizado Correctamente.',
+                        type: 'success'
+                    });
+                    
+                    if (ProcesoElegido_Global =='D') {
+                        $scope.ActualizarInformacion();
+                    }
+                    if (ProcesoElegido_Global == 'R') {
+                        $scope.ActualizarInformacion_Reasignacion();
+                    }     
+
+                    $('#modal_EnvioMovil').modal('toggle');
+
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+
+            }).on('pnotify.cancel', function () {
+
+            });
+
+        }
+        
+        $scope.GenerarEnvioMovil_Detallado = function () {
+
+            var id_local = document.getElementById('id_local').value;
+            var id_fecha_asignacion = document.getElementById('id_fecha_asignacion');
+            var _fechaMovil = document.getElementById('_fechaMovilDetalle');
+            var _servicio = document.getElementById('id_servicio').value;
+
+            var flag_marco = false;
+            var flag_correcto = false;
+            $scope.List_codigo = [];
+
+            if (ProcesoElegido_Global == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor presione el boton de Distribucion o de Reasignacion para Continuar.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            flag_marco = MarcoCheck_detalle();
+            if (flag_marco == false) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione al menos un registro.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            flag_correcto = MarcoCorrecto_detalle();
+            if (flag_correcto == true) {
+                return;
+            }
+
+
+            if (_fechaMovil.value == null || _fechaMovil.value == '' || _fechaMovil.value == '0' || _fechaMovil.value == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha del Movil.',
+                    type: 'error'
+                });
+                return;
+            }
+            
+            $('.sige-load').show();
+            $scope.List_codigo = ListaMarcoCheck_Detalle(Flag_detallado_Global);
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/Generando_EnvioMovil_Distribucion_Reasignacion_Detallado',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    ListaOrdenes: $scope.List_codigo,
+                    id_local: id_local,
+                    FechaAsigna: id_fecha_asignacion.value,
+                    servicio: _servicio,
+                    FechaMovil: _fechaMovil.value,
+                    opcion: ProcesoElegido_Global,
+                    Flag_detallado: Flag_detallado_Global
+                }
+            }
+            
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Envio al Movil, realizado Correctamente.',
+                        type: 'success'
+                    });
+
+                    if (ProcesoElegido_Global == 'D') {
+                        $scope.ActualizarInformacion();
+                    }
+                    if (ProcesoElegido_Global == 'R') {
+                        $scope.ActualizarInformacion_Reasignacion();
+                    }
+                    $('#modalDetails').modal('toggle');
+
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+
+        }
+
+        $scope.ProcesarConsumos = function () {
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro de Procesar los Consumos ?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+                
+            var _fecha = document.getElementById('id_fecha_asignacion').value;
+            var id_servicio = document.getElementById('id_servicio').value;
+
+            if (_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (id_servicio == '0' || id_servicio == 0 || id_servicio == undefined || id_servicio == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione un Servicio.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../DistribuirLecturas/ProcesandoConsumos',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fechaAsigna: _fecha,
+                    id_servicio: id_servicio
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Cálculo de Consumos mínimos y máximos, realizado Correctamente.',
+                        type: 'success'
+                    });
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+
+            }).on('pnotify.cancel', function () {
+
+            });
+
+        }
+
+        $scope.ProcesarConsumos_New = function () {
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro de Procesar los Consumos Del Nuevo Formato ?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                var _fecha = document.getElementById('id_fecha_asignacion').value;
+                var id_servicio = document.getElementById('id_servicio').value;
+
+                if (_fecha == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (id_servicio == '0' || id_servicio == 0 || id_servicio == undefined || id_servicio == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione un Servicio.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/ProcesandoConsumos_new',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fechaAsigna: _fecha,
+                        id_servicio: id_servicio
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        if (data == 'OK' || data == '"OK"') {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Cálculo de Consumos mínimos y máximos, realizado Correctamente.',
+                                type: 'success'
+                            });
+                        } else {
+                            alert(data)
+                        }
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+
+            }).on('pnotify.cancel', function () {
+
+            });
+
+        }
+
+        $scope.EnviarCorreo = function () {
+
+            if (ProcesoElegido_Global == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor presione el boton de Distribucion o de Reasignacion para Continuar.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (ProcesoElegido_Global == 'D') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor presione el boton de ( Reasignar - Email ) para poder Enviar el Correo.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro de Enviar el Correo,Si es asi, primero configure el correos del Técnico ?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+                
+                var id_local = document.getElementById('id_local').value;
+                var _fecha = document.getElementById('id_fecha_asignacion').value;
+                var id_servicio = document.getElementById('id_servicio').value;
+                var flag_marco = false;
+
+                flag_marco = MarcoCheck();
+
+                if (flag_marco == false) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione al menos un registro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                $scope.List_codigo = ListaMarcoCheck_Correo();
+
+
+                if (_fecha == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                if (id_servicio == '0' || id_servicio == 0 || id_servicio == undefined || id_servicio == null) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione un Servicio.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/Generando_Enviar_Correo',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        ListaOrdenes: $scope.List_codigo,
+                        id_local: id_local,
+                        FechaAsigna: id_fecha_asignacion.value,
+                        servicio: id_servicio,
+                        opcion: ProcesoElegido_Global
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data == 'OK' || data == '"OK"') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Envio de Correo, realizado Correctamente.',
+                            type: 'success'
+                        });
+                    } else {
+                        alert(data)
+                    }
+                })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+
+
+            }).on('pnotify.cancel', function () {
+
+            });
+
+        }
+
+        $scope.enterFocus = function (keyEvent, name) {
+            if (keyEvent.which === 13) {
+                    $('#' + name + '').focus();
+                    $('#' + name + '').select();         
+            }
+        }
+        
+        $scope.AgregarRangos = function () {
+            var inicio = document.getElementById('id_filainicio').value;
+            var fin = document.getElementById('id_filafin').value;
+            var id_codOperarioRango = document.getElementById('id_codOperarioRango').value;
+
+
+            var totalfilas = $scope.listDetalleLectura.length;
+            var posIni = 0;
+            var porFin = 0;
+
+            if (inicio == undefined || inicio == '0' || inicio == 0 || inicio ==null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Ingrese por favor, el Inicio del Rango.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (fin == undefined || fin == '0' || fin == 0 || fin == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Ingrese por favor, el Fin del Rango.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (parseInt(inicio) > parseInt(fin)) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'El rango Final no puede ser Mayor que el Rango Inicial, verifique',
+                    type: 'error'
+                });
+                return;
+            }
+
+
+            if (id_codOperarioRango == undefined || id_codOperarioRango == '0' || id_codOperarioRango == 0 || id_codOperarioRango == null) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Ingrese por favor, el codigo del Operario.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            posIni = (parseInt(inicio) - 1);        
+ 
+            if (parseInt(fin) > parseInt(totalfilas)) {
+                porFin = (parseInt(totalfilas) - 1);
+            } else {
+                porFin = (parseInt(fin) - 1);
+            }
+
+
+            var ejecutarRangos = function () {
+                var q = $q.defer();
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/validarOperario',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        CodigoOperario: id_codOperarioRango
+                    }
+                }
+                $http(variables)
+              .success(function (data) {
+                  if (data[0].CANT_REGISTROS <= 0) {
+                      new PNotify({
+                          title: 'Sistemas',
+                          text: 'El Código del Lecturista no existe, verifique',
+                          type: 'error'
+                      });
+                  } else {
+
+                      for (posIni; posIni <= porFin; posIni++) {
+                          $scope.listDetalleLectura[posIni].check = true;
+                          $scope.listDetalleLectura[posIni].colorItem = 'colorItem';
+                          $scope.listDetalleLectura[posIni].Codigo_operario = id_codOperarioRango;
+                      }
+
+                      $('#id_filainicio').val('');
+                      $('#id_filafin').val('');
+                      $('#id_codOperarioRango').val('');
+
+                  }
+              })
+              .error(function () {
+                  new PNotify({
+                      title: 'Sistemas',
+                      text: 'El Código del Lecturista no existe.',
+                      type: 'error'
+                  });
+              });
+            }
+            
+            ///validando si ya se ingreso... 
+            if ($scope.listDetalleLectura[posIni].check == true) {
+                (new PNotify({
+                    title: 'Sistemas Confirmación ',
+                    text: 'El rango inicial ya se encuentra checkeada, desea continuar de todas formas ?',
+                    icon: 'glyphicon glyphicon-question-sign',
+                    hide: false,
+                    confirm: {
+                        confirm: true
+                    },
+                    buttons: {
+                        closer: false,
+                        sticker: false
+                    },
+                    history: {
+                        history: false
+                    }
+                })).get().on('pnotify.confirm', function () {
+                    ejecutarRangos();
+                }).on('pnotify.cancel', function () {
+
+                });
+            } else {
+                ejecutarRangos();
+            }
+        }
+
+        $scope.ListaSupervisor = [];
+        $scope.listando_Supervisor = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoSupervisor_usuario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.ListaSupervisor = data;
+                    let cant = $scope.ListaSupervisor.length;
+
+                    setTimeout(function () {
+                        if (cant > 1) {
+                            $scope.id_supervisor = $scope.ListaSupervisor[1].id_Usuario;
+                            $('#cbo_supervisor').val($scope.id_supervisor).trigger('change');
+                        } else {
+                            $scope.id_supervisor = '0';
+                            $('#cbo_supervisor').val(0).trigger('change');
+                        }
+                    }, 200);
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        $scope.listando_Supervisor();
+        
+        $scope.Generar_Relectura = function () {
+
+            var _fecha = document.getElementById('id_fecha_asignacion').value;
+            var fecha_relectura = document.getElementById('fecha_relectura').value;
+
+            if (fecha_relectura == undefined || fecha_relectura == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione la fecha de asignacion de la relectura..',
+                    type: 'error'
+                });
+                return;
+            }
+
+            (new PNotify({
+                type: 'info',
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro generar el Proceso de relectura, una vez realizada no hay marcha atras.. ?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../DistribuirLecturas/Proceso_lectura_pendiente',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fechaAsigna: _fecha,
+                        fecha_relectura: fecha_relectura
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $('.sige-load').hide();
+                        if (data == 'OK' || data == '"OK"') {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso de generacion de Relectura, realizado Correctamente.',
+                                type: 'success'
+                            });
+
+                            $('#modal_Relectura').modal('toggle');
+
+                        } else {
+                            alert(data)
+                        }
+                    })
+                    .error(function () {
+                        $('.sige-load').hide();
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                    });
+
+            }).on('pnotify.cancel', function () {
+
+            });                                                                        
+        }
+               
+        $scope.AbrirModal_relectura = function () {
+           var _fecha = document.getElementById('id_fecha_asignacion').value;
+
+            (new PNotify({
+                type: 'info',
+                title: 'Sistemas Confirmación ',
+                text: 'Para Generar la relectura, debe de seleccionar la fecha de asignacion de la lectura Origen, esta es la correcta : ' + _fecha,
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+                var fecha_relectura = document.getElementById('fecha_relectura');
+                $('#modal_Relectura').modal({ show: 'false' });
+                setTimeout(function () {
+                    fecha_relectura.value = "";
+                }, 300);
+
+            }).on('pnotify.cancel', function () {
+
+            });
+        }
+
+
+    });
+
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro" style="margin-top: -13px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> DISTRIBUCION Y REASIGNACION DE ORDENES </h6>
+        </div>
+        <div class="panel-body">
+            <br />
+            <div id="Contenedor">
+                <div class="well" style="background: #314b75; color: white;">
+
+                    <div class="row" style="margin-top: -15px; margin-bottom: -30px;">
+
+                        <div class="col-xs-12 col-sm-12 col-md-8  col-lg-8 ">
+
+                            <div class="col-xs-6 col-sm-3 col-md-3  col-lg-3">
+                                <label for="id_local" style="font-size:11px">Local:</label>
+                                <select id="id_local" class="form-control" ng-model="id_local">
+                                    <option value=0>--[ Seleccione ]-- </option>
+                                    <option ng-repeat="item in Obj_List_Locales" value="{{item.id_Local}}">
+                                        {{item.nombre_local}}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="col-xs-6 col-sm-3 col-md-3  col-lg-3">
+                                <label for="id_fecha_asignacion" style="font-size:11px">Fecha de Asignación:</label>
+                                <input class="form-control julio" id="id_fecha_asignacion" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                            </div>
+
+                            <div class="col-xs-6 col-sm-3 col-md-3  col-lg-3">
+                                <label for="id_servicio" style="font-size:11px">Servicio:</label>
+                                <select id="id_servicio" class="form-control" ng-model="id_tipoServicio">
+                                    <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                        {{item.nombre_tiposervicio}}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-xs-6 col-sm-3 col-md-3  col-lg-3">
+                                <label for="cbo_tipoCliente" style="font-size:11px">Tipo Cliente:</label>
+                                <select id="cbo_tipoCliente" class="form-control">
+                                    <option value='Residencial'> RESIDENCIAL </option>
+                                    <option value='Comercial'> COMERCIAL </option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+                            <div class="col-xs-6 col-sm-6 col-md-6  col-lg-6 ">
+                                <label for="_supervisor" class="control-label">Supervisor</label>
+                                <select id="cbo_supervisor" class="form-control" ng-model="id_supervisor" ng-change="Change_listando_Usuario_Operarios(id_supervisor); ">
+
+                                    <option ng-repeat="item in ListaSupervisor" value="{{item.id_Usuario}}">
+                                        {{item.supervisor}}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-xs-6 col-sm-6 col-md-6  col-lg-6 ">
+                                <br />
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-primary"> Acciones</button>
+                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown"> <span class="caret"></span> </button>
+                                    <ul class="dropdown-menu menuBoton" role="menu">
+                                        <li>
+                                            <button class="btn btn-block" style="background-color: yellow; color: red;" id="btn_procesarConsumos" ng-click="ProcesarConsumos_New();"><span class="glyphicon glyphicon-refresh"></span> Procesar Consumos</button>
+                                            <button class="btn btn-primary btn-block" ng-click="ActualizarInformacion();"><span class="glyphicon glyphicon-plus"></span> Mostrar para Distribuir </button>
+                                            <button class="btn btn-success btn-block" ng_click="ActualizarInformacion_Reasignacion()"><span class="glyphicon glyphicon-random"></span> Mostrar Reasignar - Email </button>
+                                            <button class="btn btn-info btn-block" ng-click="AbrirModal_relectura()"><span class="glyphicon glyphicon-align-justify"></span> Generar Relectura</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <br />
+                </div>
+
+                <div class="row">
+                    <div class="form-group" style="margin-top: -17px; margin-left: 16px;">
+                        <span class="label label-danger" style="font-size: 11px;"> Después que ingrese el Código de Técnico pulsar la Tecla Enter</span>  <span class="label label-success" style="font-size: 11px;"> Registros de Relectura..</span>
+                    </div>
+
+                </div>
+
+                <div id="Principal" class="table-responsive" style=" margin-top: 8px;">
+                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div class="checkbox clip-check check-danger checkbox-inline" style=" margin-bottom: -5px;">
+                                        <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedAll" ng-click="checkedAll_OrdenTrabajo(checkedAll,1)">
+                                        <label for="checkboxAll">
+                                        </label>
+                                    </div>
+                                </th>
+
+                                <th>UNID. LECTURA</th>
+                                <th>CANT. MANZANA</th>
+                                <th style="text-align:center">CANTIDAD</th>
+                                <th style="text-align:center">LECTURISTA</th>
+                                <th style="text-align:center">DETALLE</th>
+                                <th style="text-align:center;color:red">DETALLE II</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="item in Obj_List_Lecturas" ng-class="{'resaltado': item.flag_relectura == 'S' }">
+                                <td>
+                                    {{$index+1}}
+                                    <div class="checkbox clip-check check-primary checkbox-inline" style="margin-bottom: -13px !important;   margin-top: -19px;">
+                                        <input type="checkbox" id="checkbox{{$index}}" value="true" ng-disabled={{item.disabled}} ng-model="item.checkeado">
+                                        <label for="checkbox{{$index}}">
+                                        </label>
+                                    </div>
+                                </td>
+                                <td style="text-align:center">{{item.Unidad_Lecturas}}</td>
+                                <td style="text-align:center">{{item.Cantidad_Manzana}}</td>
+                                <td style="text-align:right">{{item.Cantidad}}</td>
+                                <td>
+                                    <div style="width : 100px"><input type="text" id="id_CL_{{$index}}" class="form-control" style="height: 20px;text-align:center; background-color:green; color:white " ng-model="item.Codigo_operario" onkeypress="return soloNumeros(event)" ng-keypress="KeyDown_DistribucionLectura($event,item,$index,1)"> </div>
+                                </td>
+                                <td style="cursor: pointer;text-align:center">
+                                    <a style=" text-decoration: underline;color:black !important" title="ver suministros agrupados por manzana y unidad de lectura" ng-click="openDetalle(item);">Ver Detalle</a>
+                                </td>
+                                <td style="cursor: pointer;text-align:center">
+                                    <a style=" text-decoration: underline;color:black !important" title="ver suministros detallados" ng-click="openDetalle_general(item);">Ver mas Detallado</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <hr />
+                <div class="form-group" style="text-align:center">
+                    <button class="btn btn-primary" ng-click="AbrirModalEnvioMovil();"><span class="glyphicon glyphicon-phone"></span> Enviar al Móvil</button>
+                    <button class="btn btn-success" ng-click="EnviarCorreo();"><span class="glyphicon glyphicon-envelope"></span> Enviar - Email</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal_EnvioMovil" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog  modal_dsige">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-calendar fa-lg"></i> INGRESE LA FECHA DE ENVIO A MÓVIL</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="form-horizontal">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group form-group-sm">
+                                    <label for="_usuario" class="col-sm-4 control-label">Fecha Móvil</label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="_fechaMovil" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+
+                                <button role="button" class="btn btn-primary" ng-click="GenerarEnvioMovil()"><i class="fa fa-save fa-lg"></i> Enviar</button>
+                                <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modalDetails" class="modal fade" role="dialog">
+        <div class="modal-dialog" style="width:60%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    @*<form class="form-inline" role="form">
+                <div class="form-group">
+
+                </div>
+
+                <div class="form-group">
+                    <input class="form-control" id="id_filainicio" ng-keypress="enterFocus($event,'id_filafin');" style="width: 100px;" onkeypress="return soloNumeros(event)" placeholder="Inicio Fila" />
+                </div>
+                <div class="form-group">
+                    <input class="form-control" id="id_filafin" ng-keypress="enterFocus($event,'id_codOperarioRango')" style="width: 100px;" onkeypress="return soloNumeros(event)" placeholder="Fin Fila" />
+                </div>
+                <div class="form-group">
+                    <input class="form-control" id="id_codOperarioRango" ng-keypress="validarLecturista($event);" style="width: 200px;" onkeypress="return soloNumeros(event)" placeholder="Codigo de Operario" />
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-success" id="btn_agregarRangos" ng-click="AgregarRangos();"><span class="glyphicon glyphicon-plus"></span> Agregar</button>
+                </div>
+            </form>
+
+            <h5 class="modal-title">Detalle {{countSelectF()}} Marcados</h5>*@
+
+
+                    <form class="form-inline" autocomplete="off" role="form">
+                        <div class="form-group">
+                            <button class="btn btn-primary" ng-click="reiniviarChecks();"><span class="glyphicon glyphicon-list"></span> Reiniciar</button>
+                        </div>
+
+                        <div class="form-group">
+                            <input class="form-control" id="id_filainicio" ng-keypress="enterFocus($event,'id_filafin');" style="width: 100px; border: 1px solid red;" onkeypress="return soloNumeros(event)" placeholder="Inicio Fila" />
+                        </div>
+                        <div class="form-group">
+                            <input class="form-control" id="id_filafin" ng-keypress="enterFocus($event,'id_codOperarioRango')" style="width: 100px; border: 1px solid red;" onkeypress="return soloNumeros(event)" placeholder="Fin Fila" />
+                        </div>
+                        <div class="form-group">
+                            <input class="form-control" id="id_codOperarioRango" ng-keypress="validarLecturista($event);" style="width: 200px; border: 1px solid green;" onkeypress="return soloNumeros(event)" placeholder="Codigo de Operario" />
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-success" id="btn_agregarRangos" ng-click="AgregarRangos();"><span class="glyphicon glyphicon-plus"></span> Agregar</button>
+                        </div>
+                    </form>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <p class="modal-title" style="padding: 5px">Detalle {{countSelectF()}} Marcados</p>
+                        </div>
+                        <div class="col-md-8" style="text-align:right">
+                            <form class="form-inline" role="form">
+                                <div class="form-group">
+                                    <label for="_usuario" class="control-label">Fecha Móvil</label>
+                                    <input class="form-control" id="_fechaMovilDetalle" autocomplete="off" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                </div>
+                                <div class="form-group">
+                                    <button class="btn btn-primary" ng-click="GenerarEnvioMovil_Detallado();"><span class="glyphicon glyphicon-phone"></span> Enviar al Móvil</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+
+
+
+                </div>
+                <div class="modal-body">
+
+                    <div id="PrincipalDetalle" class="table-responsive">
+                        <table id="tblListaDetalleX" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                            <thead>
+                                <tr>
+                                    <th style="width:3%;text-align: center;">#</th>
+                                    <th style="width:6%;text-align: center;">Check</th>
+                                    <th style="width:11%;text-align: center;">Unidad Lectura</th>
+                                    <th style="width:15%;text-align: center;">COD. LECTOR</th>
+                                    <th style="width:8%;text-align: center;">MANZANA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="item in listDetalleLectura" ng-class="item.colorItem">
+                                    <td style="width:3%; text-align:center">{{item.index}}</td>
+                                    <td style="width:6%;  text-align: center;">
+                                        <div class="checkbox" style="margin-top: 5px; margin-bottom: -8px;" ng-click="selectChecks(item,$index);">
+                                            <input type="checkbox" id="checkDet{{$index}}" value="1" ng-model="item.check">
+                                            <label for="checkDet{{$index}}">
+                                            </label>
+                                        </div>
+                                    </td>
+                                    <td style="width:11%; text-align:center">{{item.Unidad_Lecturas}}</td>
+                                    <td style="width:15%; text-align:center">
+                                        <div><input type="text" id="id_CLD_{{$index}}" class="form-control" style="height: 20px;text-align:center; background-color:green; color:white " ng-model="item.Codigo_operario" onkeypress="return soloNumeros(event)" ng-keypress="KeyDown_DistribucionLectura($event,item,$index,2)"> </div>
+                                    </td>
+                                    <td style="width:8%; text-align:center">{{item.Manzana}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+                @*<div class="modal-footer">
+            <form class="form-inline" role="form">
+                <div class="form-group">
+                    <label for="_usuario" class="col-sm-4 control-label">Fecha Móvil</label>
+                    <div class="col-sm-8">
+                        <input class="form-control" id="_fechaMovilDetalle" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-primary" ng-click="GenerarEnvioMovil_Detallado();"><span class="glyphicon glyphicon-phone"></span> Enviar al Móvil</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </form>
+
+        </div>*@
+
+                <div class="modal-footer">
+                    <form class="form-inline" role="form">
+                        <div class="form-group">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal_importacion" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog  modal_dsige " style="width:60%;">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-calendar fa-lg"></i> Importacion Trabajos Manuales</h6>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="form-group" style="padding-left: 15px;">
+                            <label for="dtp_fechaRecepcion" style="font-size:11px">Fecha de Recepcion:</label>
+                            <input class="form-control" style="width: 150px;" id="dtp_fechaRecepcion" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                        </div>
+                    </div>
+
+                    <hr style="margin-top: -1px;margin-bottom: 7px;" />
+                    <div class="row">
+                        <div class="col-sm-8 col-md-8">
+                            <input id="id_seleccionFile" type="file" class="filestyle" file-model="myFile" data-placeholder="Ningun Archivo Seleccionado" data-buttonname="btn-primary" data-size="sm" data-buttonbefore="true" data-buttontext="  Seleccionar Archivo..">
+
+                        </div>
+                        <div class="col-sm-4 col-md-4">
+                            <button id="btn_ver" type="button" class="btn btn-primary btn-sm" ng-click="uploadFile()"><i class="fa fa-upload"></i> Guardar Información</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modal_Relectura" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog  modal_dsige">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-calendar fa-lg"></i> Fecha Asignacion de Relectura</h6>
+                </div>
+                <div class="panel-body"> 
+                        <div class="row">
+                            <div class="col-md-12"> 
+                                <label for="_usuario" class="control-label">Indique Fecha Asignacion que tendra la relectura</label>
+                                <br />             
+                                <input class="form-control" id="fecha_relectura" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />                
+                            </div>
+                        </div>    
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+
+                                <button role="button" class="btn btn-primary" ng-click="Generar_Relectura()"><i class="fa fa-save fa-lg"></i> Enviar</button>
+                                <button id="btn_cancel" role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+</body>
+</html>

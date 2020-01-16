@@ -1,0 +1,845 @@
+﻿@{
+    ViewBag.Title = "Control Preventivo";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    <script src="~/Content/pdf/html2canvas.js"></script>
+
+    @Scripts.Render("~/Content/pdf/jspdf.js")
+    @Scripts.Render("~/Content/pdf/pdfFromHTML.js")
+    @Scripts.Render("~/Content/pdf/jspdf.plugin.autotable.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+}
+
+<style>
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+
+<script type="text/javascript">
+    var app = angular.module('appControlPreventivo', []);
+
+    app.directive('onFinishRender', function ($timeout) {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                if (scope.$last === true) {
+                    $timeout(function () {
+                        scope.$emit(attr.onFinishRender);
+                    });
+                }
+            }
+        }
+    });
+
+    app.controller('ctrlControl', function ($scope, $http, $timeout, $q) {
+        $(function () {
+            $('#id_fecha').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../GeneracionActas/Servicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                $scope.Obj_List_Servicios = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+
+        $scope.Obj_List_Operario = [];
+        $scope.Listado_Operarios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Operario = [];
+                $scope.Obj_List_Operario = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+        ;
+
+        var oTable_cabecera = null;
+        $scope.$on('ngRepeatFinished_cabecera', function (ngRepeatFinishedEvent) {
+            oTable_cabecera = $('#tblLista').DataTable(
+                 {
+                     scrollY: "400px",
+                     paging: false,
+                 });
+        });
+
+
+        $scope.inicializando_variables = function () {
+            $scope.id_tipoServicio = '0';
+            $scope.id_operario = '0';
+            $scope.tipo_reporte = '1';            
+            $scope.Listado_Servicios();
+            $scope.Listado_Operarios()
+        }
+
+
+        $scope.Obj_List_Cabecera = [];
+        $scope.Listado_Cabecera_Inspecciones = function () {
+
+            var cbo_servicio = document.getElementById('cbo_servicio').value;
+            var cbo_operario = document.getElementById('cbo_operario').value;
+            var id_fecha = document.getElementById('id_fecha').value;
+            var cbo_tipoReporte = document.getElementById('cbo_tipoReporte').value;
+
+            if (cbo_servicio == '' || cbo_servicio == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (id_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha Inicial.',
+                    type: 'error'
+                });
+                return;
+            }
+            if (cbo_tipoReporte == '' || cbo_tipoReporte == 0 || cbo_tipoReporte == ''  ) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Tipo de Reporte.',
+                    type: 'error'
+                });
+                return;
+            }
+
+
+            $('.sige-load').show();
+
+            var variables = {
+                method: 'POST',
+                url: '../GeneracionActas/Mostrando_informacion_Inspecciones',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    servicio: cbo_servicio,
+                    operario: cbo_operario,
+                    fecha: id_fecha,
+                    tipoReporte: cbo_tipoReporte
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                $scope.Obj_List_Cabecera = [];
+                $timeout(function () {
+                    if (oTable_cabecera == null) {
+                        $scope.Obj_List_Cabecera = data;
+                    } else {
+                        oTable_cabecera.clear();
+                        oTable_cabecera.destroy();
+                        oTable_cabecera = null;
+                        $scope.Obj_List_Cabecera = data;
+                    }
+                }, 100);
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.progress = 0;
+        function descargarFoto(item) {
+            var q = $q.defer();
+            $timeout(function () {
+                $scope.crear_pdf_inspecciones(item).then(function () {
+                    $scope.progress += (100 / (parseFloat($scope.Obj_List_Cabecera.length)));
+                    q.resolve('k');
+                });
+            }, 1000)
+            return q.promise;
+        }
+
+        $scope.descargarMasivo = function () {
+            var q = $q.defer();
+            $scope.progress = 0;
+            $scope.Obj_List_Cabecera.reduce(function (p, val) {
+                return p.then(function () {
+                    return descargarFoto(val);
+                });
+            }, $q.when(true)).then(function (finalResult) {
+                q.resolve('success');
+            }, function (err) {
+                q.reject(err);
+            });
+
+            return q.promise;
+
+        }
+
+        var getCodUniq = function () {
+            // CAPTURANDO FECHA ACTUAL
+            var hoy = new Date();
+            var dd = hoy.getDate();
+            var mm = hoy.getMonth() + 1;
+            var yyyy = hoy.getFullYear();
+            var hour = hoy.getHours();
+            var minuts = hoy.getMinutes();
+            var second = hoy.getSeconds();
+            if (dd < 10) {
+                dd = '0' + dd
+            }
+
+            if (mm < 10) {
+                mm = '0' + mm
+            }
+            hoy = yyyy + '' + mm + '' + dd + '' + hour + '' + minuts + '' + second;
+            // GENERANDO CODIGO ALEATORIO
+            var codigoAle = Math.floor(Math.random() * 1000000);
+
+            return codigoAle + '_' + hoy;
+        }
+  
+
+        $scope.crear_pdf_inspecciones = function (obj_data) {
+            var q = $q.defer();
+            if ($scope.tipo_reporte == '1' && $scope.tipo_reporte == 1) {
+                $scope.getPdf_3(obj_data).then(function () {
+                    q.resolve('ok');
+                }, function (err) {
+                    q.reject(err);
+                }); 
+            } else {
+                $scope.getPdf_4(obj_data).then(function () {
+                    q.resolve('ok');
+                }, function (err) {
+                    q.reject(err);
+                }); 
+            }
+            return q.promise;
+        }
+
+        $scope.getPdf_3 = function (data) {
+            var q = $q.defer();
+
+            $('.sige-load').show(); 
+            var variables = {
+                method: 'POST',
+                url: '../GeneracionActas/get_generacionPdf_inspecciones',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_inspeccion: data.id_Inspeccion,
+                }
+            }
+            $http(variables)
+                .success(function (obj_data) {
+                    $('.sige-load').hide();
+                    if (obj_data.length > 0) {
+
+                        var doc = new jsPDF();
+                        var altura = 12;
+                        var imgLogo = '';
+                        //doc.addImage(imgLogo, 'JPEG', 10, 4, 60, 25)
+
+                        doc.setFontSize(13);
+                        doc.setFont("courier");
+                        doc.setFontType("bold");
+                        doc.text(80, altura, 'CONTROL PREVENTIVO');
+                        doc.setFontType("normal");
+                        doc.setFontSize(6);
+                        doc.text(165, altura, 'Código: CO-FO-9122-SSOMA-021');
+                        altura = altura + 3;
+                        doc.setFontType("normal");
+                        doc.setFontSize(7);
+                        doc.text(90, altura, 'Lista de autochequeo'); doc.setFontSize(6); doc.text(165, altura, 'Rev.: 00');
+                        altura = altura + 3;
+                        doc.setFontSize(7);
+                        doc.text(90, altura, 'Servicios Auxiliares'); doc.setFontSize(6); doc.text(165, altura, 'Fecha: Mayo 2019');
+                        altura = altura + 4;
+                        doc.setFontSize(7);
+                        doc.setFontType("bold");
+                        doc.text(6, altura, 'OPERARIO :'); doc.text(90, altura, 'AREA :');
+                        altura = altura + 4;
+                        doc.text(6, altura, 'EMPRESA :'); doc.text(90, altura, 'FECHA :'); doc.text(150, altura, 'HORA :');
+                        altura = altura + 4;
+                        doc.setFontSize(9);
+                        doc.text(60, altura, 'Campo a verificar al inicio de la jornada (en la base)');
+                        altura = altura + 6;
+                        doc.setFontSize(6);
+
+                        //-----lado izquierdo---------------------
+                        doc.setDrawColor(0)
+                        doc.setFillColor(220, 220, 220)
+
+                        doc.rect(5, altura - 3, 59, 8, 'FD');
+                        doc.setDrawColor(0)
+                        doc.setFillColor(220, 220, 220)
+                        doc.rect(64, altura - 3, 30, 4, 'FD');
+                        doc.text(65, altura, 'Disponible     ESTADO');
+                        //-----lado Derecho---------------------
+                        doc.setDrawColor(0)
+                        doc.setFillColor(220, 220, 220)
+                        doc.rect(98, altura - 3, 75, 8, 'FD');
+
+                        doc.setDrawColor(0)
+                        doc.setFillColor(220, 220, 220)
+                        doc.rect(173, altura - 3, 30, 4, 'FD');
+                        doc.text(174, altura, 'Disponible     ESTADO');
+
+                        doc.setFontSize(8);
+                        doc.text(12, altura, 'PROTECCIONES INDIVIDUALES Y');
+                        altura = altura + 2;
+                        doc.text(120, altura, 'MEDIOS DE TRABAJO');
+                        altura = altura + 2;
+                        doc.text(25, altura, 'ESPECIFICAS');
+                        //-----lado izquierdo---------------------
+                        doc.text(65, altura, 'SI'); doc.rect(64, altura - 3, 5, 4);
+                        doc.text(70, altura, 'NO'); doc.rect(69, altura - 3, 5, 4);
+                        doc.text(75, altura, 'NA'); doc.rect(74, altura - 3, 5, 4);
+                        doc.text(80, altura, 'B'); doc.rect(79, altura - 3, 5, 4);
+                        doc.text(85, altura, 'M'); doc.rect(84, altura - 3, 5, 4);
+                        doc.text(90, altura, 'NA'); doc.rect(89, altura - 3, 5, 4);
+                        //-----lado Derecho---------------------
+                        doc.text(174, altura, 'SI'); doc.rect(173, altura - 3, 5, 4);
+                        doc.text(179, altura, 'NO'); doc.rect(178, altura - 3, 5, 4);
+                        doc.text(184, altura, 'NA'); doc.rect(183, altura - 3, 5, 4);
+                        doc.text(189, altura, 'B'); doc.rect(188, altura - 3, 5, 4);
+                        doc.text(194, altura, 'M'); doc.rect(193, altura - 3, 5, 4);
+                        doc.text(199, altura, 'NA'); doc.rect(198, altura - 3, 5, 4);
+                        doc.setFontSize(7);
+                        doc.setFontType("normal");
+
+                        for (item of obj_data) {
+                            if (item.Lado == 1) {
+                                if (item.id_CheckList > 1) {
+                                    altura = altura + 4;
+                                    doc.text(6, altura, item.descripcion); doc.rect(5, altura - 3, 59, 4);
+                                    doc.text(65, altura, item.valor_SI); doc.rect(64, altura - 3, 5, 4);
+                                    doc.text(70, altura, item.valor_NO); doc.rect(69, altura - 3, 5, 4);
+                                    doc.text(75, altura, item.valor_NA); doc.rect(74, altura - 3, 5, 4);
+                                    doc.text(80, altura, item.valor_B); doc.rect(79, altura - 3, 5, 4);
+                                    doc.text(85, altura, item.valor_M); doc.rect(84, altura - 3, 5, 4);
+                                    doc.text(90, altura, item.valor_NA2); doc.rect(89, altura - 3, 5, 4);
+                                }
+                            }
+                        }
+
+                        altura = 40;
+                        for (row of obj_data) {
+                            if (row.Lado == 2) {
+                                if (row.id_CheckList > 31) {
+                                    altura = altura + 4;
+                                    doc.text(100, altura, row.descripcion); doc.rect(98, altura - 3, 75, 4);
+                                    doc.text(174, altura, row.valor_SI); doc.rect(173, altura - 3, 5, 4);
+                                    doc.text(179, altura, row.valor_NO); doc.rect(178, altura - 3, 5, 4);
+                                    doc.text(184, altura, row.valor_NA); doc.rect(183, altura - 3, 5, 4);
+                                    doc.text(189, altura, row.valor_B); doc.rect(188, altura - 3, 5, 4);
+                                    doc.text(194, altura, row.valor_M); doc.rect(193, altura - 3, 5, 4);
+                                    doc.text(199, altura, row.valor_NA2); doc.rect(198, altura - 3, 5, 4);
+                                }
+                            }
+                        }
+
+                        var generarPDF = function () {
+
+                            doc.setFontType("bold");
+                            doc.setFontSize(10);
+                            doc.text(60, altura, 'Verificar antes del inicio de la jornada.');
+                            altura = altura + 6;
+                            doc.setFontType("normal");
+                            doc.setFontSize(7);
+                            doc.setFontType("bold");
+                            doc.text(6, altura, '1. Condiciones de Zona de Trabajo (Evaluación y verificación de la zona de trabajo, Interferencia con terceros, clima del ambiente, etc.)');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("bold");
+                            doc.text(6, altura, '2. Comprobación de entorno de suministro');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("normal");
+                            doc.text(6, altura, '- Identificación visual  (Medidor de Suministro con objetos suspendidos sobre éste, Medidor de suministros sin acceso o acceso ');
+                            altura = altura + 4;
+                            doc.text(6, altura, '  inseguro Medidor de Suministro Inteno; Medidor de suminsitro ubicado en Altura)');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.text(6, altura, '- En caso de medidores de suministros ubicados en azoteas o altura con accesos no estandarizados, reportar el suministro ');
+                            altura = altura + 4;
+                            doc.text(6, altura, '  con el responsable del área, para que éste asigne el trabajo a la cuadrilla correspondiente.');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("bold");
+                            doc.text(6, altura, '3. Trabajo en Altura:');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("normal");
+                            doc.text(6, altura, '-  Escaleras (revisión  de  estado de peldaños, zapatas, largueros, atado correcto de la escalera al poste…)');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.text(6, altura, '-  Sistema anticaída (arnés anticaídas, cuerda semiestatica, estrobo, grip, línea de vida….)');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.text(6, altura, '-  Trabajo a medio tramo/vano: carro porta-escaleras, coordinar con Supervisor de Obra.');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.text(6, altura, '-  Trabajo en armario (revisión del estado de la plataforma, barandas, soportes, abrazaderas y tuercas libres de corrosión,');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.text(6, altura, '   deterioro y/o ausencias de estas)');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("bold");
+                            doc.text(6, altura, '4. Trabajos en Azotea ');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("normal");
+                            doc.text(6, altura, '- Verificación de techo (material noble, Presencia de animales, Estructura)');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("bold");
+                            doc.text(6, altura, '5. Trabajos en Fachada');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("normal");
+                            doc.text(6, altura, '- Verificación de las fachadas.');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.text(6, altura, '- Verificación del tipo de anclaje.');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.text(6, altura, '- Verificación de la ausencia de instalaciones eléctricas "hechizas"');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            altura = altura + 4;
+                            doc.setFontType("bold");
+                            doc.text(6, altura, '6. Trabajo con desplazamiento en vehículos menores  ');
+                            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+                            doc.setFontType("normal");
+                            altura = altura + 8;
+
+                            doc.text(20, altura + 2, 'MEDIOS DE TRABAJO');
+                            doc.rect(5, altura - 3, 65, 8);
+                            doc.text(77, altura, 'Ejecucion'); doc.rect(70, altura - 3, 30, 4);
+                            altura = altura + 4;
+                            doc.text(80, altura, 'Si/No'); doc.rect(70, altura - 3, 30, 4);
+
+                            for (items of obj_data) {
+                                if (items.Lado == 3) {
+                                    if (items.id_CheckList > 62) {
+                                        altura = altura + 4;
+                                        doc.text(6, altura, items.descripcion);
+                                        doc.rect(5, altura - 3, 65, 4);
+                                        doc.rect(70, altura - 3, 30, 4);
+                                        doc.text(80, altura, items.valor_SI);
+                                    }
+                                }
+                            }
+
+                            var string = doc.output('datauristring');
+                            var iframe = "<iframe width='100%' height='100%' src='" + string + "'></iframe>";
+                            var x = window.open();
+                            x.document.open();
+                            x.document.write(iframe);
+                            x.document.close();
+                            q.resolve('success');
+                        }
+
+                        var generarImagen_2 = function () {
+                            //var imgData2 = String(obj_data.ruta_foto_2)
+                            var imgData2 = String('../content/foto/foto/1000127_1_08012019_1452452900.jpg');
+                            var img2 = new Image;
+                            img2.onload = function () {
+                                doc.addImage(this, 'JPEG', 150, 275, 28, 15);
+                                generarPDF();
+                            };
+                            img2.crossOrigin = "";  // for demo as we are at different origin than image
+                            img2.src = imgData2;  // some random imgur image
+                            doc.setFontType("bold");
+                            doc.text(150, 293, 'Firma de trabajador');
+                            doc.setFontType("normal");
+                        }
+
+                        altura = 156;
+                        doc.setFontSize(9);
+                        doc.setFontType("bold");
+                        doc.text(6, 175, 'Nombre y apellidos: LANGUASCO BARRON JULIO CESAR ');
+                        doc.text(137, 175, 'Firma:');
+                        doc.line(6, 176.5, 148, 176.5) // horizontal line
+
+                        doc.setFontSize(7);
+                        doc.setFontType("normal");
+
+                        var imgData = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+                        var img = new Image;
+                        img.onload = function () {
+                            doc.addImage(this, 'JPEG', 150, 168, 28, 15);
+                            generarImagen_2();
+                        };
+                        img.crossOrigin = "";
+                        img.src = imgData;  // some random imgur image
+                        altura = altura + 29;
+
+                    } else {
+                        q.resolve('success');
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                });
+            return q.promise;
+
+        }
+
+        $scope.getPdf_4 = function (obj_data) {
+            var q = $q.defer();
+
+            var doc = new jsPDF();
+            var altura = 12;
+            var lados = 0;
+            var imgLogo = '';
+
+            //doc.addImage(imgLogo, 'JPEG', 10, 4, 60, 25)
+            doc.setFontSize(13);
+            doc.setFont("courier");
+            doc.setFontType("bold");
+            doc.text(80, altura, 'CONTROL PREVENTIVO');
+            doc.setFontType("normal");
+            doc.setFontSize(6);
+            doc.text(165, altura, 'Código: CO-FO-9122-SSOMA-021');
+            altura = altura + 3;
+            doc.setFontType("normal");
+            doc.setFontSize(7);
+            doc.text(90, altura, 'CHARLA PREOPERACIONAL'); doc.setFontSize(6); doc.text(165, altura, 'Rev.: 00');
+            altura = altura + 3;
+            doc.setFontSize(7);
+            doc.text(90, altura, 'Servicios Auxiliares'); doc.setFontSize(6); doc.text(165, altura, 'Fecha: Mayo 2019');
+            altura = altura + 8;
+            doc.setFontSize(8);
+            doc.setFontType("bold");
+            doc.text(6, altura, 'NOMBRE EMPRESA: ');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.text(6, altura, 'RESPONSABLE DE TRABAJO: ');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.text(6, altura, 'TÍTULO DEL TRABAJO: ');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.text(6, altura, 'LUGAR: '); doc.text(90, altura, 'FECHA :'); doc.text(150, altura, 'HORA :');
+            doc.line(6, altura + 1.5, 200, altura + 1.5) // horizontal line
+
+            altura = altura + 10;
+            doc.text(35, altura, 'ANTES DE REALIZAR LOS TRABAJOS ASIGNADOS VERIFICAR Y REALIZAR LO SIGUIENTE: ');
+            doc.line(35, altura + 1.5, 160, altura + 1.5) // horizontal line
+            altura = altura + 6;
+            doc.setFontSize(7);
+            doc.text(6, altura, '¤ Charla Pre Operacional, reconociendo previamente su zona de trabajo. Identificar los peligros y evaluar los riesgos, ');
+            altura = altura + 3;
+            doc.text(6, altura, '  estableciendo las medidas de control vinculadas.');
+            altura = altura + 4;
+            doc.text(6, altura, '¤ Revisar que los EPP, herramientas y otros medios de trabajos se encuentren en buen estado de conservación.');
+
+            altura = altura + 4;
+            doc.setFontType("normal");
+            doc.text(6, altura, '* Luego de la evaluación del entorno de trabajo, marcar con una X los peligros y riesgos identificados. Anotar en el apartado');
+            altura = altura + 3;
+            doc.text(6, altura, '*  de Medidas de control, los controles correspondientes referenciando el item del riesgo identificado');
+            altura = altura + 6;
+
+            doc.setFontSize(9);
+
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(10, altura - 3, 90, 8, 'FD');
+            doc.text(32, altura + 2, 'PELIGROS IDENTIFICADOS');
+
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(110, altura - 3, 91, 8, 'FD');
+            doc.text(137, altura + 2, 'RIESGOS IDENTIFICADOS');
+            altura = altura + 4;
+
+            //------LADO IZQUIERDO ---
+            lados = altura;
+            altura = lados;
+
+            for (var i = 0; i < 12; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(18, altura, 'X'); doc.rect(10, altura - 3, 20, 4);
+                doc.text(38, altura, String(i + 1)); doc.rect(30, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(55, altura, 'Trasporte manual de cargas'); doc.rect(50, altura - 3, 50, 4);
+            }
+            altura = 84;
+            for (var i = 0; i < 12; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(118, altura, 'A'); doc.rect(110, altura - 3, 20, 4);
+                doc.text(138, altura, String(i + 1)); doc.rect(130, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(151, altura, 'Sobreexposición a radiación solar'); doc.rect(150, altura - 3, 51, 4);
+            }
+            //------LADO DERECHO ---
+            altura = altura + 8;
+            doc.setFontSize(8);
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(10, altura - 3, 90, 4, 'FD'); doc.text(10, altura, 'Otros peligros y riesgos');
+
+            lados = 0;
+            lados = altura;
+            altura = lados;
+
+            for (var i = 0; i < 3; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(18, altura, ''); doc.rect(10, altura - 3, 20, 4);
+                doc.text(38, altura, ''); doc.rect(30, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(55, altura, ''); doc.rect(50, altura - 3, 50, 4);
+            }
+
+            altura = lados;
+            for (var i = 0; i < 3; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(118, altura, ''); doc.rect(110, altura - 3, 20, 4);
+                doc.text(138, altura, ''); doc.rect(130, altura - 3, 20, 4);
+                doc.setFontSize(7); doc.text(151, altura, ''); doc.rect(150, altura - 3, 51, 4);
+            }
+
+            altura = altura + 8;
+            doc.setFontSize(8);
+
+            doc.setDrawColor(0)
+            doc.setFillColor(220, 220, 220)
+            doc.rect(10, altura - 3, 191, 4, 'FD');
+            doc.text(10, altura, 'Item del Riesgo'); doc.text(80, altura, 'Medidas de Control del Riesgo');
+
+            lados = 0;
+            lados = altura;
+
+            for (var i = 0; i < 11; i++) {
+                altura = altura + 4;
+                doc.setFontSize(11);
+                doc.text(21, altura, 'A'); doc.rect(10, altura - 3, 25, 4);
+                doc.setFontSize(8);
+                doc.text(38, altura, 'x--------x'); doc.rect(35, altura - 3, 166, 4);
+            }
+            //----
+            altura = altura + 8;
+
+            var generarPDF = function () {
+                var string = doc.output('datauristring');
+                var iframe = "<iframe width='100%' height='100%' src='" + string + "'></iframe>";
+                var x = window.open();
+                x.document.open();
+                x.document.write(iframe);
+                x.document.close();
+            }
+
+            //var imgData = String(obj_data.ruta_foto_1)
+            var imgData = String('../content/foto/foto/10109278_04092018_1441302710.jpg');
+            var img = new Image;
+
+            img.onload = function () {
+                doc.addImage(this, 'JPEG', 125, 226, 40, 30);
+                generarPDF();
+            };
+            img.crossOrigin = "";
+            img.src = imgData;  // some random imgur image
+
+            altura = altura + 32;
+            doc.text(127, 260, 'Firma del trabajador.');
+
+            return q.promise;
+
+        }
+        
+        function getDateNow() {
+            var meses = new Array("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre");
+            var diasSemana = new Array("Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado");
+            var f = new Date()
+            return diasSemana[f.getDay()] + ", " + f.getDate() + " de " + meses[f.getMonth()] + " de " + f.getFullYear();
+        };
+
+        function getDateHour() {
+            var f = new Date()
+            return f.getHours() + ':' + f.getMinutes() + ':' + f.getSeconds();
+        }
+    });
+
+</script>
+
+
+<div class="panel panel-oscuro" ng-app="appControlPreventivo" ng-controller="ctrlControl" ng-init="inicializando_variables();">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i> REPORTES CONTROL PREVENTIVO </h6>
+
+    </div>
+    <div class="panel-body">
+        <div id="Contenedor">
+            <form class="form-inline">
+                <div class="row" style=" margin-top: -10px;">
+                    <div class="col-lg-12">
+                        <div class="well" style="background: #314b75; color: white;">
+                            <center>
+
+                                <div class="form-group" style="padding-left: 15px;">
+                                    <label for="cbo_servicio" style="font-size:11px; margin-top: 5px;">Servicio:</label>
+                                    <select id="cbo_servicio" class="form-control" ng-model="id_tipoServicio">
+                                        <option value=0>--[ Seleccione ]-- </option>
+                                        <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                            {{item.nombre_tiposervicio}}
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="padding-left: 15px;">
+                                    <label for="id_fecha" style="font-size:11px">Fecha: </label>
+                                    <input class="form-control" style="width: 150px;" id="id_fecha" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                </div>
+
+                                <div class="form-group" style="padding-left: 15px;  margin-top: 5px;">
+                                    <label for="cbo_operario" style="font-size:11px">Operario:</label>
+                                    <select id="cbo_operario" class="form-control" ng-model="id_operario">
+                                        <option value=0>--[ Todos ]-- </option>
+                                        <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                            {{item.id_Operario}} : {{item.desc_operario}}
+                                        </option>
+                                    </select>
+                                </div>
+
+
+                                <div class="form-group" style="padding-left: 15px;  margin-top: 5px;">
+                                    <label for="cbo_tipoReporte" style="font-size:11px">Tipo Reporte:</label>
+                                    <select id="cbo_tipoReporte" class="form-control" ng-model="tipo_reporte">
+                                        <option value=1>Formato Nro. 1 </option>
+                                        <option value=2>Formato Nro. 2 </option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                    <button class="btn btn-success" style=" font-size: 14px;" ng-click="Listado_Cabecera_Inspecciones();"><span class="glyphicon glyphicon-refresh"></span> Mostrar</button>
+                                    <button class="btn btn-primary " ng-click="descargarMasivo();"><span class="glyphicon glyphicon-download-alt"></span> PDF</button>
+                                    @*<button class="btn btn-primary " ng-click="getPdf_4();"><span class="glyphicon glyphicon-download-alt"></span> pruebas</button>*@
+                                </div>
+                            </center>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" style="width: {{progress}}%;" aria-valuenow="{{progress}}" aria-valuemin="0" aria-valuemax="100">{{progress | number : 2}}%</div>
+        </div>
+
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div id="Principal" class="table-responsive">
+                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                        <thead style="color:#7991a5;">
+                            <tr>
+                                <th style="text-align:center">#</th>
+                                <th style="text-align:center">Nro_Inspección</th>
+                                <th style="text-align:center">Fecha Inspección</th>
+                                <th style="text-align:center">Operario</th>
+                                <th style="text-align:center"> Descargar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="item in Obj_List_Cabecera" on-finish-render="ngRepeatFinished_cabecera">
+                                <td>{{$index + 1}}</td>
+                                <td style="text-align:center">{{item.nro_Inspeccion}}</td>
+                                <td style="text-align:center">{{item.fecha_inspeccion}}</td>
+                                <td>{{item.operario}}</td>
+                                <td style="text-align:center"> <button class="btn btn-xs btn-primary" ng-click="crear_pdf_inspecciones(item);"><span class="glyphicon glyphicon-download-alt"></span> </button> </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+

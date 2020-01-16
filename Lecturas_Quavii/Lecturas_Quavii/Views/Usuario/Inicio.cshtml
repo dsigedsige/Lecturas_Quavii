@@ -1,0 +1,706 @@
+﻿@using System.Configuration
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+@{
+    ViewBag.Title = "Inicio";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+
+
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+    @Styles.Render("~/Content/bootstrap/css/bootstrapValidator.min.css")
+    @Scripts.Render("~/Content/bootstrap/js/bootstrapValidator.min.js")
+
+    @Styles.Render("~/Content/TreeView/css/style.min.css")
+    @Styles.Render("~/Content/TreeView/css/style.min(1).css")
+
+
+
+
+    @Scripts.Render("~/Content/TreeView/js/jquery-ui.min.js")
+    @Scripts.Render("~/Content/TreeView/js/jstree.min.js")
+    @Scripts.Render("~/Content/TreeView/js/ui-tree.demo.min.js")
+    @Scripts.Render("~/Content/TreeView/js/apps.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+
+    }
+
+@section scripts{
+
+
+
+    <script>
+
+        $(document).ready(function () {
+            
+
+            $('#FormUsuario').bootstrapValidator({
+                excluded: [':disabled'],
+                feedbackIcons: {
+                    valid: 'glyphicon glyphicon-ok',
+                    invalid: 'glyphicon glyphicon-remove',
+                    validating: 'glyphicon glyphicon-refresh'
+                },
+                fields: {
+                    nomUsu: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere el nombre completo y no puede estar vacío'
+                            }
+                        }
+                    },
+                    apeUsu: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere el apellido completo y no puede estar vacío'
+                            }
+                        }
+                    },                
+                    DocUsu: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere el Nro de documento y no puede estar vacío'
+                            },
+                            numeric: {
+                                message: 'El Nro de documento debe ser solo Numeros',
+                                // The default separators
+                                thousandsSeparator: '',
+                                decimalSeparator: '.'
+                            },
+                            stringLength: {
+                                min:8,
+                                max:8,
+                                message: 'El Numero de documento debe tener 8 Digitos'
+                            }
+                        }
+                    },
+                    EmailUsu: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere la dirección de correo electrónico y no puede estar vacío'
+                            },
+                            emailAddress: {
+                                message: 'La dirección de correo electrónico no es válida'
+                            }
+                        }
+                    },
+                    nickUsu: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere el Usuario y no puede estar vacío'
+                            }                          
+                        }
+                    },
+                    pass1Usu: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere la contraseña y no puede estar vacío'
+                            },
+                            identical: {
+                                field: 'pass2Usu',
+                                message: 'La contraseña y su confirmación no son los mismos'
+                            }
+                        }
+                    },
+                    pass2Usu: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere confirmacion de la contraseña y no puede estar vacío'
+                            },
+                            identical: {
+                                field: 'pass1Usu',
+                                message: 'La contraseña y su confirmación no son los mismos'
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        var app = angular.module('myapp', [])
+           .directive('onFinishRender', function ($timeout) {
+               return {
+                   restrict: 'A',
+                   link: function (scope, element, attr) {
+                       if (scope.$last === true) {
+                           $timeout(function () {
+                               scope.$emit('ngRepeatFinished');
+                           });
+                       }
+                   }
+               }
+           });
+
+
+
+        app.controller('CargoCtrl', function ($scope, $http) {
+            var oTable = null;
+            // Variables Globales
+            $scope.listaUsuarios = [];
+            $scope.registroUsuario = [];
+            $scope.idUsuario = [];
+            $scope.estilo = [];
+
+            $scope.estad = [];
+            $scope.valor = "";
+            $scope.mensaje = "";
+
+            //
+            //listar cargo
+            $scope.getCargo = function () {
+                var req = {
+                    method: 'POST',
+                    url: 'JsonCargo',
+                    headers: {
+                        'Content-Type': undefined
+                    }
+                }
+
+                $http(req).then(function (result) {
+                    $scope.listaCargo = result.data;
+                }, function (error) {
+
+                });
+            }
+
+            // listar Perfil
+
+            $scope.getPerfil = function () {
+                var req = {
+                    method: 'POST',
+                    url: 'JsonPerfil',
+                    headers: {
+                        'Content-Type': undefined
+                    }
+                }
+
+                $http(req).then(function (result) {
+
+                    $scope.listaPerfil = result.data;
+
+                }, function (error) {
+
+                });
+            }
+
+            $scope.NuevoRegistro = function () {
+
+                $scope.valor = "Guardar"
+                $scope.mensaje="Registro Agregado Correctamente"
+
+                $scope.documento = ""
+                $scope.apellidos = ""
+                $scope.nombres = ""
+                $scope.email = ""
+                $scope.cargo = "1"
+                $scope.Tipousu = "C"
+                $scope.usuario = ""
+                $scope.clave = ""
+                $scope.clave2 = ""
+                $scope.perfil = "1"
+                $scope.Estado = "1"
+
+
+
+            }
+
+
+            //registrar Usuario
+
+            $scope.RegistrarUsuario = function () {
+
+                if ($scope.valor == "Guardar") {
+
+                            
+                    if ($scope.Validar() == true) {
+
+                        for (var i = 0; i < $scope.listaUsuarios.length; i++) {
+
+
+                            if ($scope.listaUsuarios[i].usu_usuario == $scope.usuario) {
+
+                                $scope.texto = "Usuario";
+                                document.getElementById('alerta').style.display = "block";
+                                setTimeout(function () { document.getElementById('alerta').style.display = "none" }, 5000);
+                                return false;
+                            } else if ($scope.listaUsuarios[i].usu_nrodoc == $scope.documento) {
+
+                                $scope.texto = "Nro de documento";
+                                document.getElementById('alerta').style.display = "block";
+                                setTimeout(function () { document.getElementById('alerta').style.display = "none" }, 5000);
+                                return false;
+                            }
+
+                        }
+
+                      
+                        var params = {
+                            nroDoc: $scope.documento,
+                            apellidos: $scope.apellidos,
+                            nombres: $scope.nombres,
+                            email: $scope.email,
+                            cargoUsu: $scope.cargo,
+                            tipoUsu: $scope.Tipousu,
+                            Usuario: $scope.usuario,
+                            clave: $scope.clave,
+                            idPerfil: $scope.perfil,
+                            estado: $scope.Estado,
+                        }
+
+                        $http({
+
+                            method: 'GET',
+                            url: 'JsonRegistrarUsu',
+                            params: params,
+                            headers: {
+                                'Content-Type': undefined
+                            }
+
+                        }).success(function (data) {
+
+
+                            $("#myModal").modal('hide');
+
+                            $("#ModalConfirmacion").modal('show');
+
+                            $scope.ListarUsuarios();
+
+                        }).error(function () {
+
+                            alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                        });
+                    }
+
+                
+                }
+
+                else {
+
+                    if ($scope.Validar() == true) {
+
+                        $scope.ActualizarUsuario();
+                    }
+               
+
+                }
+
+            }
+
+            $scope.ActualizarUsuario = function () {
+
+                var params = {
+                    nroDoc: $scope.documento,
+                    apellidos: $scope.apellidos,
+                    nombres: $scope.nombres,
+                    email: $scope.email,
+                    cargoUsu: $scope.cargo,
+                    tipoUsu: $scope.Tipousu,
+                    Usuario: $scope.usuario,
+                    clave: $scope.clave,
+                    idPerfil: $scope.perfil,
+                    estado: $scope.Estado,
+                    idUsu: $scope.idusua,
+                }
+
+                $http({
+
+                    method: 'GET',
+                    url: 'JsonActualizarUsu',
+                    params: params,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+
+                }).success(function (data) {
+
+                    $("#myModal").modal('hide');
+
+
+
+                    $scope.ListarUsuarios();
+
+                }).error(function () {
+
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+
+            }
+
+            $scope.AnularUsuario = function () {
+                var params = {
+                    idUsu: $scope.idUsuario,
+                }
+
+                console.log(params)
+                $http({
+
+                    method: 'GET',
+                    url: 'JsonAnularUsu',
+                    params: params,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+
+                }).success(function (data) {
+
+                    //alert('Se anulo Usuario Satisfactoriamente')
+                    $scope.ListarUsuarios();
+                }).error(function () {
+
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }
+
+            //lista Usuarios
+            $scope.ListarUsuarios = function () {
+                var req = {
+                    method: 'POST',
+                    url: 'JsonListarUsuario',
+                    headers: {
+                        'Content-Type': undefined
+                    }
+                }
+
+                $http(req).then(function (result) {
+
+                    $scope.listaUsuarios = result.data;
+
+
+                }, function (error) {
+
+                });
+            }
+
+
+
+            $scope.getUsuario = function (idUsu) {
+
+                $scope.valor = "Actualizar Datos";
+                $scope.mensaje = "Registro Actualizado Correctamente"
+                $scope.registroUsuario = [];
+
+                console.log($scope.listaUsuarios)
+                for (var i = 0; i < $scope.listaUsuarios.length; i++) {
+                    if ($scope.listaUsuarios[i].usu_id == idUsu) {
+                        $scope.idusua = $scope.listaUsuarios[i].usu_id
+                        $scope.documento = $scope.listaUsuarios[i].usu_nrodoc
+                        $scope.apellidos = $scope.listaUsuarios[i].usu_apellidos
+                        $scope.nombres = $scope.listaUsuarios[i].usu_nom
+                        $scope.email = $scope.listaUsuarios[i].usu_email
+                        $scope.cargo = $scope.listaUsuarios[i].usu_cargo
+                        $scope.Tipousu = $scope.listaUsuarios[i].usu_tipo
+                        $scope.usuario = $scope.listaUsuarios[i].usu_usuario
+                        $scope.clave = $scope.listaUsuarios[i].usu_clave
+                        $scope.clave2 = $scope.listaUsuarios[i].usu_clave
+                        $scope.perfil = $scope.listaUsuarios[i].usu_idperfil
+                        if ($scope.listaUsuarios[i].usu_estado == 'Activo') {
+                            $scope.Estado = '1'
+                        }
+                        else if ($scope.listaUsuarios[i].usu_estado == 'Anulado') {
+                            $scope.Estado = '2'
+                        }
+                    }
+                }
+            }
+
+            $scope.Validar = function () {
+
+
+                                  
+
+                if ($scope.nombres.length == 0) {
+                  
+                    return false;
+                } else if ($scope.apellidos.length == 0) {
+                   
+                    return false;
+                } else if ($scope.documento.length == 0) {
+                 
+                    return false;
+                } else if (isNaN($scope.documento)) {                  
+                    return false;
+                } else if ($scope.documento > 99999999 || $scope.documento < 9999999) {
+                   
+                    return false;
+                } else if ($scope.email.length == 0) {
+                   
+                    return false;
+                } else if ($scope.usuario.length == 0) {
+                   
+                    return false;
+                } else if ($scope.clave.length == 0) {
+                 
+                    return false;
+                } else if ($scope.clave2.length == 0) {
+                   
+                    return false;
+                } else if ($scope.clave2 != $scope.clave) {
+                   
+                    return false;
+                }
+            
+            
+
+                return true;
+            }
+
+
+            $scope.getIdUsu = function (idUsu) {
+                $scope.idUsuario = idUsu
+            }
+
+
+
+            //$scope.alert = function () {
+            //alert('entro')
+            //    //document.getElementById('#alerta').style.display = 'block';
+
+            //document.getElementById('alerta').style.display = "block";
+
+            //    setTimeout(function () { document.getElementById('alerta').style.display = "none" }, 5000);
+            //}
+
+
+
+
+            $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+                oTable = $('#tblLista').DataTable();
+            });
+        });
+
+
+
+       
+
+
+    </script>
+
+}
+
+<div ng-app="myapp" ng-controller="CargoCtrl" ng-init="getCargo();getPerfil();ListarUsuarios()">
+     <div class="panel panel-oscuro">
+                    <div class="panel-heading" style="color:white;">
+                     <h6><i class="fa fa-table fa-lg"></i> MANTENIMIENTO DE USUARIOS</h6>
+                    </div>
+                        <div class="panel-body">
+                     
+                                <div  class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-success" style=" background-color: #3e8f3e;" data-toggle="modal" data-target="#myModal" ng-click="NuevoRegistro()"><i class="fa fa-plus fa-lg"></i> Nuevo</button>
+                                </div>   
+                                <br />               
+                            <br />    
+                                <table class="table  table-responsive table-bordered table-condensed" id="tblLista">
+                                    <thead style="background:#F0F3F5;">
+                                        <tr>
+                                            <th>Id</th>
+                                            <th>Nombres</th>
+                                            <th>Apellidos</th>
+                                            <th>Nro Doc.</th>
+                                            <th>Email</th>
+                                            <th>Usuario</th>
+                                            <th>Estado</th>
+                                            <th></th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="lista in listaUsuarios" ng-style="lista.usu_estado  == 'Anulado' && {'background': 'rgba(202, 35, 35, 0.55)', 'color': 'white'}" on-finish-render="ngRepeatFinished">
+                                            <td>{{lista.usu_id}}</td>
+                                            <td>{{lista.usu_nom}}</td>
+                                            <td>{{lista.usu_apellidos}}</td>
+                                            <td>{{lista.usu_nrodoc}}</td>
+                                            <td>{{lista.usu_email}}</td>
+                                            <td>{{lista.usu_usuario}}</td>
+                                            <td ng-model="estado">{{lista.usu_estado }}</td>
+                                            <td><input type="image" src="~/Content/Imagen/edit-property-16.png" data-toggle="modal" data-placement="right" title="Editar" data-target="#myModal" ng-click="getUsuario(lista.usu_id)" /></td>
+                                            <td><input ng-disabled="lista.usu_estado  == 'Anulado'" type="image" src="~/Content/Imagen/delete-16.png" data-toggle="modal" data-placement="right" title="Anular" data-target="#ModalAnular" ng-click="getIdUsu(lista.usu_id)" /></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                </div>
+                </div>
+
+        <!-- Modal -->
+        <div class="modal fade" data-backdrop="static" data-keyboard="false" id="ModalAnular">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h4 class="modal-title">Estas Seguro?</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>Este registro será anulado. Estas seguro de continuar ?  </p>
+                        <input type="text" ng-model="idUsuario" ng-show="false" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" ng-click="AnularUsuario()" data-dismiss="modal">Anular</button>
+                        <button type="button" class="btn btn-danger" data-dismiss="modal">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" data-backdrop="static" data-keyboard="false" id="ModalConfirmacion">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h4 class="modal-title">Informacion</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>{{mensaje}}</p>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" data-dismiss="modal">ok</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="myModal" class="modal fade" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+                
+                <!-- Modal content-->
+                <div class="modal-content">
+
+                    <div class="panel panel-oscuro">
+                        <div class="panel-heading">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> REGISTRO DE USUARIO</h6>
+                        </div>                        
+                        <form class="form-horizontal" id="FormUsuario">
+                            <div class="modal-body bg-silver">
+                                <div class="panel panel-default">
+                                    <div class="panel-heading"><label><strong> Identificación de Usuario</strong></label></div>
+                                    <div class="panel-body ">
+
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Nombre(s)</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <input type="text" class="form-control input-group-sm" ng-model="nombres" name="nomUsu" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Apellidos</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <input type="text" class="form-control input-group-sm" ng-model="idusua" ng-show="false" />
+                                                <input type="text" class="form-control input-group-sm" ng-model="apellidos" name="apeUsu" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">N° Documento</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <input type="text" class="form-control input-group-sm" ng-model="documento" name="DocUsu" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Email</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <input type="text" class="form-control input-group-sm" ng-model="email" name="EmailUsu" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Cargo</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <select class="form-control input-sm" ng-model="cargo" name="CargoUsu">
+                                                    <option ng-repeat="cargo in listaCargo" value="{{cargo._a}}">{{cargo._b}}</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Tipo Usuario</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <select class="form-control input-sm" ng-model="Tipousu" name="TipUsu">
+                                                    <option value="C">Colaborador</option>
+                                                    <option value="P">Propio</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="panel panel-default">
+                                    <div class="panel-heading"><label><strong>Ingreso al Sistema</strong></label></div>
+                                    <div class="panel-body form-horizontal">
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Usuario</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <input type="text" class="form-control input-group-sm" ng-model="usuario" name="nickUsu" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Contraseña</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <input type="password" class="form-control input-group-sm " ng-model="clave" name="pass1Usu" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Confirme Contraseña</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <input type="password" ng-model="clave2" class="form-control input-group-sm" name="pass2Usu" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Perfil</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <select class="form-control input-sm" ng-model="perfil" name="PerfilUsu">
+                                                    <option ng-repeat="perfil in listaPerfil" value="{{perfil._a}}">{{perfil._b}}</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-xs-4">Estado</label>
+                                            <div class="col-xs-8 input-group-sm">
+                                                <select class="form-control input-sm" ng-model="Estado" name="EstadoUsu">
+                                                    <option value="1">Activo</option>
+                                                    <option value="2">Anulado</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="alert alert-danger" role="alert" id="alerta" style="display:none;">
+                                    <strong>Alerta!</strong> El {{texto}} ya esta registrado.
+                                </div>
+                            </div>
+
+                            <div class="panel-footer">
+                                <div class="row">
+                                    <div class="col-sm-12">
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                            <button role="button" class="btn btn-primary" ng-click="RegistrarUsuario()"><i class="fa fa-save fa-lg"></i>{{valor}}</button>
+                                            <button role="button" id="btnCancelar" class="btn btn-default"   data-dismiss="modal"><i class="fa fa-close fa-lg"></i>Cancelar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            @*<div class="modal-footer">
+                                <button class="btn btn-success" ng-click="RegistrarUsuario()">{{valor}}</button>
+                                <button class="btn btn-danger" data-dismiss="modal">Cerrar</button>
+                            </div>*@
+
+
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+

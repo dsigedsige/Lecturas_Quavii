@@ -1,0 +1,291 @@
+﻿@{
+    ViewBag.Title = "Perfil";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap/css/bootstrapValidator.min.css")
+@Scripts.Render("~/Content/bootstrap/js/bootstrapValidator.min.js")
+
+@Styles.Render("~/Content/TreeView/css/style.min.css")
+@Styles.Render("~/Content/TreeView/css/style.min(1).css")
+
+
+
+
+@Scripts.Render("~/Content/TreeView/js/jquery-ui.min.js")
+@Scripts.Render("~/Content/TreeView/js/jstree.min.js")
+@Scripts.Render("~/Content/TreeView/js/ui-tree.demo.min.js")
+@Scripts.Render("~/Content/TreeView/js/apps.min.js")
+@Scripts.Render("~/Content/angular/angular.js")
+}
+
+
+
+@section scripts{
+    <script>
+
+        $(document).ready(function () {
+
+          
+
+            $('#FormUsuario').bootstrapValidator({
+               
+                feedbackIcons: {
+                    valid: 'glyphicon glyphicon-ok',
+                    invalid: 'glyphicon glyphicon-remove',
+                    validating: 'glyphicon glyphicon-refresh'
+                },
+                fields: {
+                    ContActual: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere la Contraseña Actual y no puede estar vacío'
+                            },
+                            identical: {
+                                field: 'clave',
+                                message: 'La contraseña es Incorrecta'
+                            }
+                        }
+                    },               
+                    ContNueva: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere la Nueva contraseña y no puede estar vacío'
+                            },
+                            identical: {
+                                field: 'ContNueva2',
+                                message: 'La contraseña Nueva y su confirmación no son los mismos'
+                            }
+                        }
+                    },
+                    ContNueva2: {
+                        validators: {
+                            notEmpty: {
+                                message: 'Se requiere confirmación de la Nueva contraseña y no puede estar vacío'
+                            },
+                            identical: {
+                                field: 'ContNueva',
+                                message: 'La contraseña Nueva y su confirmación no son los mismos'
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        var app = angular.module('myapp', [])
+        app.controller('CargoCtrl', function ($scope, $http) {
+
+            $scope.getDatosUsuario = function () {
+               
+                var req = {
+                    method: 'POST',
+                    url: 'JsonGetDatosUsuario',
+                    headers: {
+                        'Content-Type': undefined
+                    }
+                }
+                $http(req).then(function (result) {
+
+                    $scope.datoUsuario = result.data;
+
+                    console.log($scope.datoUsuario)
+
+                    for (var i = 0; i < $scope.datoUsuario.length; i++) {
+                      
+                        document.getElementsByName("nombre")[0].value = $scope.datoUsuario[i].usu_nom
+                        document.getElementsByName("apellido")[0].value = $scope.datoUsuario[i].usu_apellidos
+                        document.getElementsByName("cargo")[0].value = $scope.datoUsuario[i].usu_cargo
+                        document.getElementsByName("perfil")[0].value = $scope.datoUsuario[i].usu_perfil
+                        document.getElementsByName("usuario")[0].value = $scope.datoUsuario[i].usu_usuario
+                        document.getElementsByName("clave")[0].value = $scope.datoUsuario[i].usu_clave
+                        document.getElementsByName("estado")[0].value = $scope.datoUsuario[i].usu_estado
+                    }
+                 
+                }, function (error) {
+
+                });
+            }
+
+            $scope.Cancelar = function () {
+                document.getElementById('pnlCambiarContraseña').style.display = "none";              
+            }
+
+            $scope.Editar = function () {
+                document.getElementsByName("ContActual")[0].value ="";
+                document.getElementsByName("ContNueva")[0].value = "";
+                document.getElementsByName("ContNueva2")[0].value = "";
+                document.getElementById('pnlCambiarContraseña').style.display = "block";             
+            }
+
+
+            $scope.CambiarContraseña = function () {
+
+                var params = {
+                    pass: document.getElementsByName("ContNueva")[0].value,
+
+                }
+
+                $http({
+                    method: 'GET',
+                    url: 'JsonCambiarPassUsuario',
+                    params: params,
+                    headers: {
+                        'Content-Type': undefined
+                    }
+                }).success(function (data) {
+              
+                    $("#ModalConfirmacion").modal('show');
+                    $scope.getDatosUsuario();
+
+                }).error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+
+            }
+
+            $scope.Validar = function () {
+             
+                if (document.getElementsByName("ContActual")[0].value.length == 0) {                  
+                    return false;
+                } else if (document.getElementsByName("ContActual")[0].value != document.getElementsByName("clave")[0].value) {                  
+                    return false;
+                } else if (document.getElementsByName("ContNueva")[0].value.length == 0) {               
+                    return false;
+                } else if (document.getElementsByName("ContNueva2")[0].value.length == 0) {                  
+                    return false;              
+                } else if (document.getElementsByName("ContNueva")[0].value != document.getElementsByName("ContNueva2")[0].value) {                  
+                    return false;
+                }
+                return true;
+            }
+
+            $scope.GuardarCambios = function () {
+             
+                if ($scope.Validar() == true) {
+                    $scope.CambiarContraseña();                 
+                }
+            }
+
+        });
+    </script>
+}
+
+<br />
+<div ng-app="myapp" ng-controller="CargoCtrl" class=" col-md-6 col-md-offset-3" ng-init="getDatosUsuario()">
+    <div class="panel panel-default">
+        <div class="panel-heading" style="background:#F0F3F5;">
+            <h2 class="panel-title">My Perfil</h2>
+        </div>
+        <div class="panel-body">
+            <form class="form-horizontal" id="FormUsuario" >
+                <div class="form-group">
+                    <label class="col-md-2 control-label">Nombre(s)</label>
+                    <div class="col-md-10">
+                        <input type="text" class="form-control" disabled name="nombre" >
+                        <input type="text" class="form-control" ng-show="false" name="id" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-md-2 control-label">Apellidos</label>
+                    <div class="col-md-10">
+                        <input type="text" class="form-control" disabled name="apellido" >
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-md-2 control-label">Cargo</label>
+                    <div class="col-md-10">
+                        <input type="text" class="form-control" disabled name="cargo" >
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-md-2 control-label">Perfil</label>
+                    <div class="col-md-10">
+                        <input type="text" class="form-control" disabled name="perfil" >
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-md-2 control-label">Usuario</label>
+                    <div class="col-md-10">
+                        <input type="text" class="form-control" disabled name="usuario" >
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-md-2 control-label">Contraseña</label>
+                    <div class="col-md-10">
+                        <div class="input-group">
+                            <input type="password" class="form-control" disabled name="clave" >
+                            <span class="input-group-btn">
+                                <button class="btn btn-success" name="btnEditar" ng-click="Editar()">Editar</button>
+                            </span>
+                        </div>
+
+                    </div>
+
+                </div>
+                <div class="form-group">
+                    <label class="col-md-2 control-label">Estado</label>
+                    <div class="col-md-10">
+                        <input type="text" class="form-control" disabled name="estado" >
+                    </div>
+                </div>
+                <br />
+                <div class="panel" id="pnlCambiarContraseña" style="display:none;">
+                    <div class="panel-heading">
+                        <h1 class="panel-title"> <strong>Cambiar Contraseña</strong> </h1>
+                    </div>
+                    <div class="panel-body">
+                        <div class="form-group">
+                            <label class="col-md-2 control-label">Actual</label>
+                            <div class="col-md-10">
+                                <input type="text" class="form-control" name="ContActual" value="">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-2 control-label">Nueva</label>
+                            <div class="col-md-10">
+                                <input type="password" class="form-control" name="ContNueva" value="">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-md-2 control-label">Repita Nueva Contraseña</label>
+                            <div class="col-md-10">
+                                <input type="password" class="form-control" name="ContNueva2" value="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel-footer">
+                        <button class="btn btn-primary" type="button" name="btnGuardar" ng-click="GuardarCambios()">Guardar Cambios</button>
+                        <button class="btn btn-danger" type="button" name="btnCancelar" ng-click="Cancelar()">Cancelar</button>
+                    </div>
+
+                </div>
+
+            </form>
+        </div>     
+    </div>
+    <div class="modal fade" data-backdrop="static" data-keyboard="false" id="ModalConfirmacion">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Información</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Cambio de Contraseña realizado Correctamente</p>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-dismiss="modal">ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+

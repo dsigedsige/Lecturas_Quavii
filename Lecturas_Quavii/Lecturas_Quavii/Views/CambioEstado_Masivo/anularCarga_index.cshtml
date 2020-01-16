@@ -1,0 +1,402 @@
+﻿
+
+@{
+    ViewBag.Title = "Anular Carga";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/angular/angular.js")
+
+<style>
+    hr {
+        display: block;
+        height: 1px;
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 1em 0;
+        padding: 0;
+    }
+
+
+    .modal-dialog {
+        width: 300px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+    table td:nth-child(1) {
+        width: 100px;
+    }
+
+    table td:nth-child(2) {
+        width: 100px;
+    }
+
+    table td:nth-child(3) {
+        width: 100px;
+    }
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+    .colorItem {
+        background-color: #009688;
+    }
+
+    #tblListaDetalleX {
+        height: 400px;
+        display: -moz-groupbox;
+        margin-bottom: 60px !important;
+    }
+
+    #tblListaDetalleX tr {
+        width: 100%;
+        display: inline-table;
+        table-layout: fixed;
+    }
+
+    #tblListaDetalleX tbody {
+        overflow-y: scroll;
+        height: 400px;
+        width: 98%;
+        position: absolute;
+    }
+
+    .julio .table, th {
+        background-color: #333 !important;
+        color: white !important;
+    }
+
+    .AnchoCombo {
+        width: 98%;
+    }
+
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+    var app = angular.module('myApp', []);
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $(function () {
+            $('#id_fecha_asignacion').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+        $scope.InicializandoVariables = function () {
+            $scope.id_tipoServicio = '0';
+            $scope.id_operario = '0';
+            $scope.id_local = '0';
+            $scope.Listado_Servicios()
+            $scope.listando_Estados();
+
+            setTimeout(function () {
+                var cbo_servicio = document.getElementById('id_servicio');
+                var cbo_operario = document.getElementById('cbo_operario');
+                cbo_servicio.value = '0';
+                cbo_operario.value = '0';
+                $("select").select2();
+            }, 300);
+        }
+
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../CambioEstado_Masivo/ListandoServicios_usuarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.Obj_List_Servicios = [];
+                    $scope.Obj_List_Servicios = data;
+               })
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                });
+        }
+
+        $scope.ListaEstados = [];
+        $scope.listando_Estados = function () {
+            var variables = {
+                method: 'POST',
+                url: '../LecturaEnviarCliente/ListandoEstadosAll',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    //$scope.ListaEstados = data;
+                    $scope.ListaEstados = [];
+                    for (obj of data) {
+                        if (obj.id_Estado == 3 || obj.id_Estado == 5 ) {
+                            $scope.ListaEstados.push(obj);
+                        }
+                    }
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        
+        $scope.GenerarCambioEstado = function () { 
+            var id_servicio = document.getElementById('id_servicio').value;
+            var id_fecha_asignacion = document.getElementById('id_fecha_asignacion').value;
+            var cbo_estado = document.getElementById('cbo_estado').value;
+            var cbo_operario = document.getElementById('cbo_operario').value;
+
+
+            if (id_servicio == '0' || id_servicio == '0' || id_servicio == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+            if (id_fecha_asignacion == '' || id_fecha_asignacion == '' || id_fecha_asignacion == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione una Fecha',
+                    type: 'error'
+                });
+                return;
+            }
+            if (cbo_estado == '0' || cbo_estado == '0' || cbo_estado == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Estado',
+                    type: 'error'
+                });
+                return;
+            }
+
+            (new PNotify({
+                title: 'Sistemas Confirmacion ',
+                text: 'Esta seguro de Anular?, una vez cambiado no hay marcha atras..',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../CambioEstado_Masivo/GenerarAnular_Masivo',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        servicio: id_servicio,
+                        fecha_Asigna: id_fecha_asignacion,
+                        estado: cbo_estado,
+                        operario: cbo_operario,
+    
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data == 'OK' || data == '"OK"') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Proceso de Cambio de Estado, Realizado Correctamente.',
+                            type: 'success'
+                        });
+                    } else {
+                        alert(data)
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }).on('pnotify.cancel', function () {
+
+            });
+        }
+
+        $scope.Obj_List_Operario = [];
+        $scope.Listado_Operarios = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.Obj_List_Operario = [];
+                    $scope.Obj_List_Operario = data;
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+        }
+        $scope.Listado_Operarios();
+
+    });
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h5><i class="fa fa-table fa-lg"></i> DAR DE BAJA</h5>
+        </div>
+        <div class="panel-body">
+            <div class="container">
+                <div class="row">
+                    <div class=" col-sm-3 col-lg-4">
+
+                    </div>
+                    <div class=" col-sm-6 col-lg-4">
+                        <div class="well" style="background: #314b75; color: white;">
+                            <div class="row">
+                                <div class="col-md-6" style="padding: 10px; margin-top: 1px;">
+                                    <label for="id_servicio" style="font-size:11px"> SERVICIO</label>
+                                    <select id="id_servicio" class="AnchoCombo" ng-model="id_tipoServicio">
+                                        <option value=0>--[ SELECCIONE ]-- </option>
+                                        <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                            {{item.nombre_tiposervicio}}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6"  style="padding: 10px; margin-top: 1px;">
+                                    <label for="id_fecha_asignacion" style="font-size:11px">FECHA DE ASIGNACION</label>
+                                    <input class="form-control"   id="id_fecha_asignacion" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                </div>
+                            </div>
+                                                       
+                            <div class="row">
+                                <div  class="col-md-6"  style="padding: 10px; margin-top: 1px;">
+                                    <label class="control-label"> ESTADOS </label>
+                                    <select id="cbo_estado" class="AnchoCombo">
+                                        <option value=0>--[ SELECCIONE ]-- </option>
+                                        <option ng-repeat="item in ListaEstados" value="{{item.id_Estado}}">
+                                            {{item.descripcion_estado}}
+                                        </option>
+                                    </select>
+
+                                </div>
+                            </div>
+                                                                                 
+                            <div class="row">
+                                <div  style="padding: 10px; margin-top: 1px;">
+                                    <label for="cbo_operario" style="font-size:11px"> OPERARIO</label>
+                                    <select id="cbo_operario" class="AnchoCombo" ng-model="id_operario">
+                                        <option value=0>--[ TODOS ]-- </option>
+                                        <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                            {{item.id_Operario}} : {{item.desc_operario}}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                                                       
+                            <hr size="1" color="#EEBF31">
+                            <p style="font-family: tahoma;  color: red; font-size: 14px; text-align: center;text-decoration: underline red;"> Es muy importante antes de dar de baja, recepcionar los trabajos realizados por el Operario</p>
+                            <br />
+                            <div class="row">
+                                <div class="form-group text-center" style="padding: 5px; margin-top: 1px;">
+                                    @*<button class="btn btn-danger" style=" font-size: 14px;" ng-click="GenerarCambioEstado();"><span class="glyphicon glyphicon-refresh"></span> Cambiar Estado</button>*@
+                                    <button class="btn btn-danger" ng-click="GenerarCambioEstado();" title="Anular carga"><span class="glyphicon glyphicon-record"></span> DAR DE BAJA</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class=" col-sm-3 col-lg-4">
+
+                </div>
+            </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
+

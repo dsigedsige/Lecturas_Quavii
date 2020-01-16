@@ -1,0 +1,348 @@
+﻿@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@model List<Servicio>
+
+@{
+    ViewBag.Title = "Inicio";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @*@Scripts.Render("~/Content/bootstrap-table/extensions/filter/bootstrap-table-filter.js")*@
+    @*@Scripts.Render("~/Content/bootstrap-table/extensions/filter-control/bootstrap-table-filter-control.js")*@
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+
+}
+
+@section styles{
+    <style type="text/css">
+        .fixed-table-toolbar .search {
+            line-height: 0;
+        }
+    </style>
+}
+
+@section scripts{
+    <script type="text/javascript">
+    function fnModal(__a) {
+        if (__a == 0) {
+            $('#_id').val('0');
+            $('#_descripcion').val('');
+            $('#_estado').prop("checked", true);
+
+            $('#modal-servicio').modal('show');
+        } else {
+            $.ajax({
+                beforeSend: function (__b) {
+
+                },
+                url: 'Busca',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    __a: __a
+                },
+                success: function (__s) {
+                    console.log(__s);
+
+                    $('#_id').val(__s._a);
+                    $('#_descripcion').val(__s._b);
+
+                    if (__s._c == 1) {
+
+                        $('#_estado').prop("checked", true);
+                    } else {
+                        $('#_estado').prop("checked", false);
+                    }
+
+                    $('#modal-servicio').modal('show');
+                },
+                complete: function (__c) {
+
+                },
+                error: function (__e) {
+                    console.error(__e);
+
+                    new PNotify({
+                        title: 'Error',
+                        text: 'Comuniquese con el administrador.',
+                        type: 'error'
+                    });
+                }
+            });
+        }
+    }
+
+    function fnGuardar() {
+        var $_id = $('#_id').val(),
+            $_descripcion = $('#_descripcion').val(),
+            $_estado = ($('#_estado').is(":checked") ? 1 : 2);
+
+        if ($_descripcion.length == 0) {
+            alert('Descripcion tiene que tener datos.');
+            return;
+        }
+
+        $ajaxJson(
+            ($_id == 0 ? 'Inserta' : 'Actualiza'),
+            function () {
+                var $parametro;
+
+                if ($_id == 0) {
+                    $parametro = {
+                        __a: $_descripcion,
+                        __b: $_estado
+                    };
+                } else {
+                    $parametro = {
+                        __a: $_id,
+                        __b: $_descripcion,
+                        __c: $_estado
+                    };
+                }
+
+                return $parametro;
+            },
+            function (__s) {
+                if (__s.__a > 0) {
+                    new PNotify({
+                        title: 'Exito',
+                        text: 'Se grabo correctamente el registro.',
+                        type: 'success'
+                    });
+
+                    $('#modal-servicio').modal('hide');
+                }
+
+                $('#table-registro').bootstrapTable('refresh');
+            }
+        );
+    }
+
+    function fnAnular(__a) {
+        $ajaxJson(
+            'Anula',
+            function () {
+                return {
+                    __a: __a.__a,
+                    __b: __a.__b
+                };
+            },
+            function (__s) {
+                if (__s.__a > 0) {
+                    new PNotify({
+                        title: 'Anulacion',
+                        text: 'Se anulo correctamente el registro.',
+                        type: 'success'
+                    });
+                }
+
+                $('#table-registro').bootstrapTable('refresh');
+            }
+        );
+    }
+
+    function fnAuditoria(__a) {
+        $ajaxJson(
+            'Auditoria',
+            function () {
+                return {
+                    __a: __a
+                };
+            },
+            function (__s) {
+                console.log(__s);
+
+                new PNotify({
+                    title: 'Auditoria: registro',
+                    text: '<b>Registrado por</b>: ' + __s.crea_nombre
+                        + '<br /><b>Fecha de registro</b>: ' + __s.crea_fecha
+                        + '<br /><b>Modificado por</b>: ' + __s.modifica_nombre
+                        + '<br /><b>Fecha de modificacion</b>: ' + __s.modifica_fecha,
+                    type: 'info'
+                });
+            }
+        );
+    }
+
+    function rowStyle(__row, __index) {
+        if (__row._c == 2) {
+            return {
+                classes: 'danger'
+            };
+        }
+
+        return {};
+    }
+
+    function estadoFormatter(__val) {
+        var $html;
+
+        if (__val == 2) {
+            $html = '<i style=\" color: #e73c3c; \" class=\"fa fa-times fa-lg .inactivo\"></i>';
+        } else {
+            $html = '<i style=\" color: #4f8edc; \" class=\"fa fa-check fa-lg .activo\"></i>';
+        }
+
+        return $html;
+    }
+
+    function opcionFormatter(__val, __row, __index) {
+        var $html = [];
+
+        $html.push('<button class="btn btn-xs btn-primary" onclick="fnModal(\'' + __row._a + '\')"><span class="glyphicon glyphicon-pencil"></span> Editar</button>');
+        if (__row._c != 2) {
+            $html.push('<button class="btn btn-xs btn-danger" onclick="fnModal(\'' + __row._a + '\')"><span class="glyphicon glyphicon-trash"></span> Anular</button>');
+        }
+        $html.push('<button class="btn btn-xs btn-info" onclick="fnModal(\'' + __row._a + '\')"><span class="glyphicon glyphicon-edit"></span> Auditoria</button>');
+
+        return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">' + $html.join('') + '</div>';
+    }
+
+
+    function fnDescarga() {
+        $.ajax({
+            async: true, beforeSend: function (xhr) { $('.sige-load').show(); },
+            url: '@Url.Action("Descarga", "Servicio")',
+            type: 'POST',
+            dataType: 'Json',
+            data: {
+                __a: JSON.stringify($('#table-registro').bootstrapTable('getData'))
+            },
+            success: function (response) {
+                if (response.Archivo == "") {
+                    alert("Sin datos disponibles para la descarga...");
+                } else {
+                    $.fileDownload('/Temp/' + response.Archivo);
+                }
+            },
+            complete: function () {
+                $('.sige-load').hide();
+            },
+            error: function (xhr, textStatus, errorThrown) {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema al descargar el archivo.');
+            }
+        });
+    }
+
+ 
+
+        function fnParametros() {
+            return {
+                type: 'owner',
+                sort: 'updated',
+                direction: 'desc',
+                per_page: 100,
+                page: 1
+            };
+        }
+
+        $(function () {
+            $('.fixed-table-toolbar > .search').css('width','170px');
+            $('.fixed-table-toolbar > .search').addClass('input-group');
+            $('.fixed-table-toolbar > .search').append('<div class="input-group-btn"><button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" onclick="fnBusca(\'\')">Estado <span class="caret"></span></button><ul class="dropdown-menu"><li onclick="fnBusca(\'.Activo\')"><a href="javascript:">Activo</a></li><li onclick="fnBusca(\'.Inactivo\')"><a href="javascript:">Inactivo</a></li></ul></div>');
+        })
+
+        $(window).resize(function () {
+            $('#table-registro').bootstrapTable('resetView');
+        });
+
+        function fnBusca(__a) {
+            $('.fixed-table-toolbar > .search > input').val(__a);
+            $('.fixed-table-toolbar > .search > input').trigger('keyup');
+        }
+    </script>
+}
+
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> MAESTRO TIPOS DE SERVICIO</h6>
+        </div>
+ 
+
+        <div class="panel-body">
+            <div id="toolbar" role="group" class="btn-group btn-group-sm">
+                <button role="button" class="btn btn-success" onclick="fnModal('0')"><i class="fa fa-plus fa-lg"></i> Nuevo</button>
+                @*<button role="button" class="btn btn-success" onclick="fnDescarga()"><i class="fa fa-file-excel-o fa-lg"></i> Descarga</button>*@
+                <a href="@Url.Action("Descarga", "Servicio")" name="ExportData" class="btn btn-success">Descarga <i class="fa fa-file-excel-o fa-lg"></i></a>
+            </div>
+            <table id="table-registro"
+                   data-toggle="table"
+                   data-height="450"
+                   data-search="true"
+                   data-url="JsonServicio"
+                   data-row-style="rowStyle"
+                   data-toolbar="#toolbar"
+                   data-pagination="true"
+                   data-query-params="fnParametros">
+                <thead>
+                    <tr>
+                        <th data-field="_a" data-width="40">Id</th>
+                        <th data-field="_b">Descripcion</th>
+                        <th data-field="_c" data-width="40" data-formatter="estadoFormatter">Estado</th>
+                        <th data-width="220" data-formatter="opcionFormatter"></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+<div id="modal-servicio" class="modal fade" role="dialog" tabindex="-1" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="panel panel-oscuro">
+            <div class="panel-heading">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> TIPO DE SERVICIO</h6>
+            </div>
+            <div class="panel-body">
+                <form class="form-horizontal">
+                    <div class="form-group form-group-sm">
+                        <label for="_id" class="col-sm-3 control-label">ID</label>
+                        <div class="col-sm-6">
+                            <input disabled="disabled" class="form-control" id="_id" placeholder="Identificador" type="text">
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="help-block"></p>
+                        </div>
+                    </div>
+                    <div class="form-group form-group-sm">
+                        <label for="_descripcion" class="col-sm-3 control-label">Descripcion</label>
+                        <div class="col-sm-6">
+                            <input class="form-control" id="_descripcion" placeholder="Descripcion de servicio" type="text">
+                        </div>
+                        <div class="col-sm-3">
+                            <p class="help-block"></p>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="_estado" class="col-sm-3 control-label">Estado</label>
+                        <div class="col-sm-6">
+                            <div class="checkbox block">
+                                <label><input type="checkbox" id="_estado"></label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="panel-footer">
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                            <button role="button" class="btn btn-primary" onclick="fnGuardar()"><i class="fa fa-save fa-lg"></i> Guardar</button>
+                            <button role="button" class="btn btn-default" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+ 

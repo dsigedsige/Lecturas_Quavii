@@ -1,0 +1,349 @@
+﻿@{
+    ViewBag.Title = "IndexCambioEstado_Masivo";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+  
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/angular/angular.js")
+
+<style>
+    hr {
+        display: block;
+        height: 1px;
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 1em 0;
+        padding: 0;
+    }
+
+
+    .modal-dialog {
+        width: 300px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+ 
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+    table td:nth-child(1) {
+        width: 100px;
+    }
+
+    table td:nth-child(2) {
+        width: 100px;
+    }
+
+    table td:nth-child(3) {
+        width: 100px;
+    }
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+</style>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+    var app = angular.module('myApp', []);
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $(function () {
+            $('#id_fecha_ini').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../CambioEstado_Masivo/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                $scope.Obj_List_Servicios = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.Obj_List_Locales = [];
+        $scope.Listado_Locales = function () {
+            var variables = {
+                method: 'POST',
+                url: '../CambioEstado_Masivo/ListandoLocal',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Locales = [];
+                $scope.Obj_List_Locales = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.InicializandoVariables = function () {
+            $scope.id_tipoServicio = '0';            
+            $scope.id_operario = '0';
+            $scope.id_local = '0';
+            $scope.Listado_Servicios()
+            $scope.Listado_Locales();
+            setTimeout(function () {
+                var cbo_servicio = document.getElementById('id_servicio');
+                var cbo_operario = document.getElementById('cbo_operario');
+                cbo_servicio.value = '0';
+                cbo_operario.value = '0';
+            }, 500);
+        }
+ 
+        $scope.GenerarCambioEstado = function () {
+
+            var id_local = document.getElementById('id_local').value;
+            var id_servicio = document.getElementById('id_servicio').value;
+            var cbo_operario = document.getElementById('cbo_operario').value;
+            var id_fecha_ini = document.getElementById('id_fecha_ini').value;
+
+            //if (id_local == '0' || id_local == '0' || id_local == undefined) {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local.',
+            //        type: 'error'
+            //    });
+            //    return;
+            //}
+            if (id_servicio == '0' || id_servicio == '0' || id_servicio == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+            if (id_fecha_ini == '' || id_fecha_ini == '' || id_fecha_ini == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione una Fecha',
+                    type: 'error'
+                });
+                return;
+            }
+
+            (new PNotify({
+                title: 'Sistemas Confirmacion ',
+                text: 'Esta seguro de Cambiar de Estado?, una vez cambiado no hay marcha atras..',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+                
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../CambioEstado_Masivo/GenerarCambioEstado_Masivo',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        local: 1,
+                        servicio: id_servicio,
+                        operario: cbo_operario,
+                        fecha_Asigna: id_fecha_ini
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data == 'OK' || data == '"OK"') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Proceso de Cambio de Estado Masivo, Realizado Correctamente.',
+                            type: 'success'
+                        });
+                    } else {
+                        alert(data)
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                }); 
+            }).on('pnotify.cancel', function () {
+ 
+            });
+        }
+
+        $scope.Obj_List_Operario = [];
+        $scope.Listado_Operarios = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.Obj_List_Operario = [];
+                    $scope.Obj_List_Operario = data;
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+        }
+        $scope.Listado_Operarios();
+
+    });
+       
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> CAMBIO DE ESTADO MASIVO</h6>
+        </div>
+        <div class="panel-body">           
+           <div class="container">
+                        <div class="row">
+                            <div class="col-lg-2">
+
+                            </div>
+                            <div class="col-lg-8" >
+                                <div class="well" style="background: #314b75; color: white;">
+                                    <center>
+                                        <form class="form-inline">
+                                            <div class="form-group" style="padding-left: 15px;display:none">
+                                                <label for="id_local" style="font-size:11px">Local:</label>
+                                                <select id="id_local" class="form-control" ng-model="id_local">
+                                                    <option value=0>--[ Seleccione ]-- </option>
+                                                    <option ng-repeat="item in Obj_List_Locales" value="{{item.id_Local}}">
+                                                        {{item.nombre_local}}
+                                                    </option>
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group" style="padding-left: 15px;">
+                                                <label for="id_servicio" style="font-size:11px">Servicio:</label>
+                                                <select id="id_servicio" class="form-control" ng-model="id_tipoServicio">
+                                                    <option value=0>--[ Seleccione ]-- </option>
+                                                    <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                                        {{item.nombre_tiposervicio}}
+                                                    </option>
+                                                </select>
+                                            </div>
+
+
+                                            <div class="form-group" style="padding-left: 15px;">
+                                                <label for="cbo_operario" style="font-size:11px">Operario:</label>
+                                                <select id="cbo_operario" class="form-control" ng-model="id_operario">
+                                                    <option value=0>--[ TODOS ]-- </option>
+                                                    <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                                        {{item.id_Operario}} : {{item.desc_operario}}
+                                                    </option>
+                                                </select>
+                                            </div>
+
+
+                                            <div class="form-group" style="padding-left: 15px; margin-top: 1px;">
+                                                <label for="id_fecha_ini" style="font-size:11px">Fecha menor igual a : </label>
+                                                <input class="form-control" style="width: 150px;" id="id_fecha_ini" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                            </div>
+                                            <hr size="1" color="#EEBF31">
+                                            <br />
+                                            <div class="form-group" style=" margin-top: -15px;margin-bottom: -7px;">
+                                                <button class="btn btn-danger" style=" font-size: 14px;" ng-click="GenerarCambioEstado();"><span class="glyphicon glyphicon-refresh"></span> Cambiar Estado</button>
+                                            </div>
+                                        </form>
+                                    </center>
+                                </div>
+                            </div>
+                            <div class="col-lg-2">
+
+                            </div>
+                        </div>
+                    </div>      
+        </div>
+
+    </div>
+</body>
+</html>

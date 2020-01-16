@@ -1,0 +1,1243 @@
+﻿@{
+    ViewBag.Title = "Verificacion de Fotos";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+<link href="~/Content/style.css" rel="stylesheet" />
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+<link href="~/Content/lightbox/css/ekko-lightbox.css" rel="stylesheet" />
+<script src="~/Content/lightbox/js/ekko-lightbox.min.js"></script>
+<script src="~/Content/jQueryRotate/jQueryRotate.js"></script>
+
+ 
+<script src="~/Content/angularfire/firebase.js"></script>
+<script src="~/Content/angularfire/angularfire.min.js"></script>
+
+
+<style>
+    hr {
+        display: block;
+        height: 1px;
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 1em 0;
+        padding: 0;
+    }
+
+
+    .modal-dialog {
+        width: 300px;
+    }
+
+    .modal-img {
+        width: 80%;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+
+    table td:nth-child(1) {
+        width: 100px;
+    }
+
+    table td:nth-child(2) {
+        width: 100px;
+    }
+
+    table td:nth-child(3) {
+        width: 100px;
+    }
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+    .thumbnails img {
+        width: 80%;
+        height: 100%;
+    }
+
+    .rotate-button {
+        position: absolute;
+        right: 0;
+    }
+
+    .modal-body .ekko-lightbox-item {
+        overflow: hidden;
+    }
+
+    .ekko-lightbox-container {
+        height: 600px !important;
+    }
+
+    img {
+        vertical-align: middle;
+        height: 98%;
+    }
+
+    .list-group-item { 
+        font-size: 9px;
+        text-align: left;
+| 
+    }
+</style>
+
+<script>
+    //lightbox.option({
+    //    'resizeDuration': 200,
+    //    'wrapAround': true
+    //})
+</script>
+
+<script type="text/javascript">
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+
+    var app = angular.module('myApp', ['firebase']);
+    app.directive('numericOnly', function () {
+        return {
+            require: 'ngModel',
+            link: function (scope, element, attr, ngModelCtrl) {
+                function fromUser(text) {
+                    if (text) {
+                        var transformedInput = text.replace(/[^0-9.]/g, '');
+
+                        if (transformedInput !== text) {
+                            ngModelCtrl.$setViewValue(transformedInput);
+                            ngModelCtrl.$render();
+                        }
+                        return transformedInput;
+                    }
+                    return undefined;
+                }
+                ngModelCtrl.$parsers.push(fromUser);
+            }
+        };
+    });
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q, $firebaseArray) {
+
+ 
+
+        $(function () {
+            $('#id_fecha').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+            //lightbox.option({
+            //    'resizeDuration': 200,
+            //    'wrapAround': true
+            //})
+
+        });
+
+
+        $(document).on('click', '[data-toggle="lightbox"]', function (event) {
+            event.preventDefault();
+            $(this).ekkoLightbox({
+                onShow: function () {
+                    $('.ekko-lightbox-container').append('<div class="rotate-button"><a href="#" class="pull-right rotate" style="font-size: 12px;padding: 3px 4px; color :#337ab7;"><i class="fa fa-repeat" style="Color:#337ab7; font-size: 30px" aria-hidden="true"></i> Girar  </a> </div>')
+
+                    var degrees = 0;
+                    $('.rotate').bind('click', function (event) {
+                        event.preventDefault();
+                        var $lightboxphoto = $('.ekko-lightbox').children().find('img');
+                        degrees += 90;
+                        $lightboxphoto.css('-ms-transform', 'rotate(' + degrees + 'deg)');
+                        $lightboxphoto.css('-webkit-transform', 'rotate(' + degrees + 'deg)');
+                    });
+                },
+            });
+        });
+
+        $scope.Obj_List_Servicios = [];
+        $scope.Listado_Servicios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListandoServicios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Servicios = [];
+                $scope.Obj_List_Servicios = data;
+
+
+                setTimeout(function () { 
+                    $('#cbo_servicio').val(1).trigger('change'); 
+                }, 200);
+
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        } 
+
+        $scope.ListaLocales = [];
+        $scope.listando_Locales = function () {
+            var variables = {
+                method: 'post',
+                url: '../AsignaOrdenTrabajo/ListandoLocales',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $scope.ListaLocales = data;
+
+                    setTimeout(function () {
+                        $('#cbo_local').val(0).trigger('change');
+                    }, 200);
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        $scope.listando_Locales();
+
+        $scope.Obj_List_Observaciones = [];
+        $scope.Listado_Observaciones = function () {
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListandoObservaciones',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Observaciones = [];
+                $scope.Obj_List_Observaciones = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+        $scope.Listado_Observaciones();
+
+        $scope.InicializandoVariables = function () {
+            $scope.id_local = '0';
+            $scope.id_tipoServicio = '1';
+            $scope.id_sector = '0';
+            $scope.id_operario = '0';
+            $scope.id_obervacion = '0';
+            $scope.Listado_Servicios()
+        }
+
+        var pictures = $scope.pictures = [];
+
+        $scope.totalFotos = 0;
+        $scope.totalMarcado = 0;
+        $scope.totalSinMarcar = 0;
+
+        $scope.MostrarInformacion = function (value) {
+
+            var cbo_local = document.getElementById('cbo_local');
+            var cbo_servicio = document.getElementById('cbo_servicio').value;
+            var id_fecha = document.getElementById('id_fecha').value;
+
+            var cbo_obervacion = document.getElementById('cbo_obervacion').value;
+            var cbo_supervisor = document.getElementById('cbo_supervisor').value;
+            var cbo_Operario_supervisor = document.getElementById('cbo_Operario_supervisor').value;
+
+
+            if (cbo_servicio == '0' || cbo_servicio == '0' || cbo_servicio == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+            if (id_fecha == '' || id_fecha == '' || id_fecha == undefined) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione una Fecha',
+                    type: 'error'
+                });
+                return;
+            }
+            if (cbo_supervisor == '' || cbo_supervisor == '-1' || cbo_supervisor == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un supervisor',
+                    type: 'error'
+                });
+                return;
+            }
+
+            $('.sige-load').show();
+
+            pictures = $scope.pictures = [];
+            $scope.totalFotos = 0;
+            var urlAux = "";
+            if (value == 1) {
+                $scope.showNormal = true;
+                urlAux = "../VerificacionFotos/ListandoFotosLecturas";
+            } else {
+                $scope.showNormal = false;
+                urlAux = "../VerificacionFotos/ListandoFotosLecturas_sinObs";
+            }
+            console.log(urlAux);
+            var variables = {
+                method: 'POST',
+                url: urlAux,
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    local: cbo_local,
+                    fecha: id_fecha,
+                    servicio: cbo_servicio,
+                    operario: 0,
+                    observacion: cbo_obervacion,
+                    id_supervisor: cbo_supervisor,
+                    id_operario_supervisor: cbo_Operario_supervisor
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+
+                $scope.totalFotos = 0;
+                $scope.totalMarcado = 0;
+                $scope.totalSinMarcar = 0;
+
+                $scope.totalFotos = data.length;
+
+                for (var i = 0; i < data.length; i++) {
+                    pictures.push({
+                        url: data[i].fotourl,
+                        id_Lectura: data[i].id_Lectura,
+                        id_operario: data[i].id_Operario_Lectura,
+                        operario: data[i].operario,
+                        token: data[i].token,
+                        suministro: data[i].suministro_lectura,
+                        medidor: parseInt(data[i].medidor_lectura),
+                        latitud: data[i].latitud_lectura,
+                        longitud: data[i].longitud_lectura,
+                        lectura_movil: data[i].lectura_movil,
+                        usuario_modificacion: data[i].usuario_modificacion,
+                        fecha_modificacion: data[i].fecha_modificacion,
+                    });
+                }
+
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+        $scope.Ver_Ubicacion_Mapa = function (latitud, longitud) {
+            $('#myModal').modal();
+            var imagen_mapa = "";
+            imagen_mapa = document.getElementById('id_Imagen_mapa');
+            imagen_mapa.src = 'http://maps.googleapis.com/maps/api/staticmap?center=' + latitud + ',' + longitud + '&zoom=15&scale=false&size=600x380&maptype=roadmap&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:A%7C' + latitud + ',' + longitud + '';
+        }
+
+        $scope.EnviarFotosVerificar = function () {
+            var flag_marco = false;
+            var List_codigos = [];
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro de Enviar estas Fotos a verificar ?',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                flag_marco = MarcoCheck();
+                if (flag_marco == false) {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione al menos un registro.',
+                        type: 'error'
+                    });
+                    return;
+                }
+                List_codigos = ListaMarcoCheck();
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../VerificacionFotos/VerificacionFotos',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        lecturas: List_codigos.toString()
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data == 'OK' || data == '"OK"') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Proceso Verificar Fotos, Realizado Correctamente.',
+                            type: 'success'
+                        });
+                        //------ Enviando a firebase ---
+                        $scope.Enviar_NotificacionOperario();
+
+                    } else {
+                        alert(data)
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+            }).on('pnotify.cancel', function () {
+
+            });
+        }
+
+        $scope.EnviarFotosSinObservacion = function () {
+            var List_codigos = [];
+
+            if ($scope.pictures.length == 0) {
+                return;
+            }
+
+            (new PNotify({
+                title: 'Sistemas Confirmación ',
+                text: 'Esta seguro que todas las Fotos NO tienen Observaciones ?, una vez enviado no hay marcha Atras..!',
+                icon: 'glyphicon glyphicon-question-sign',
+                hide: false,
+                confirm: {
+                    confirm: true
+                },
+                buttons: {
+                    closer: false,
+                    sticker: false
+                },
+                history: {
+                    history: false
+                }
+            })).get().on('pnotify.confirm', function () {
+
+                List_codigos = ListaRelacionLecturas();
+
+                $('.sige-load').show();
+                var variables = {
+                    method: 'POST',
+                    url: '../VerificacionFotos/EnviarFotosSinObservacion',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        lecturas: List_codigos.toString()
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    if (data == 'OK' || data == '"OK"') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Proceso Verificar Fotos, Realizado Correctamente.',
+                            type: 'success'
+                        });
+                    } else {
+                        alert(data)
+                    }
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                });
+
+            }).on('pnotify.cancel', function () {
+
+            });
+        }
+
+        function MarcoCheck() {
+            var flag_marco = false;
+            for (var i = 0; i < $scope.pictures.length; i++) {
+                if ($scope.pictures[i].checkeado == true) {
+                    flag_marco = true;
+                    break;
+                }
+            }
+            return flag_marco;
+        }
+
+        function ListaMarcoCheck() {
+            var List_id = [];
+            for (var i = 0; i < $scope.pictures.length; i++) {
+                if ($scope.pictures[i].checkeado == true) {
+                    List_id.push($scope.pictures[i].id_Lectura)
+                }
+            }
+            return List_id;
+        }
+
+        function ListaRelacionLecturas() {
+            var List_id = [];
+            for (var i = 0; i < $scope.pictures.length; i++) {
+                List_id.push($scope.pictures[i].id_Lectura)
+            }
+            return List_id;
+        }
+
+        $scope.ContadorCheck = function () {
+            $scope.totalMarcado = 0;
+            $scope.totalSinMarcar = 0;
+
+            for (var i = 0; i < pictures.length; i++) {
+                if ($scope.pictures[i].checkeado == true) {
+                    $scope.totalMarcado += 1;
+                }
+            }
+            $scope.totalSinMarcar = parseInt($scope.totalFotos) - parseInt($scope.totalMarcado);
+            return true;
+        }
+
+        $scope.RecepcionFotos = function () {
+
+            var _fecha = document.getElementById('id_fecha').value;
+            var _servicio = document.getElementById('cbo_servicio').value;
+
+            if (_servicio == '' || _servicio == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if (_fecha == '') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor ingrese o seleccione una Fecha.',
+                    type: 'error'
+                });
+                return;
+            }
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../EnviarTrabajoCliente_LDS/RecepcionFotos',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    fechaAsigna: _fecha,
+                    servicio: _servicio
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas.!',
+                        text: 'Proceso realizado Correctamente..',
+                        type: 'success'
+                    });
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+        $scope.Enviar_NotificacionOperario = function () {
+            var List_codigos_OP = [];
+            var List_id = [];
+            var operario = 0;
+            var flag_operario = '';
+
+            if ($scope.pictures.length == 0) {
+                return;
+            }
+
+            List_codigos_OP = ListaRelacionOperarios();
+            console.log(List_codigos_OP);
+            for (var i = 0; i < List_codigos_OP.length; i++) {
+                if (i == 0) {
+                    List_id.push(List_codigos_OP[i])
+                    flag_operario = List_codigos_OP[i];
+                } else {
+                    if (flag_operario != List_codigos_OP[i]) {
+                        List_id.push(List_codigos_OP[i]);
+                        flag_operario = List_codigos_OP[i];
+                    }
+                }
+            }
+
+            var Cant_Global = List_id.length;
+
+            var EnviarNotification = function (index) {
+                if (Cant_Global == index) {
+                    return;
+                }
+
+                operario = List_id[index];
+
+                var refNotification = new Firebase('https://dsigenotification.firebaseio.com/');
+                var notificationAlert = $firebaseArray(refNotification);
+
+                var person = {
+                    idOperario: operario,
+                    value: 4
+                }
+
+                notificationAlert.$loaded(function (res) {
+                    res.forEach(function (item, index) {
+                        if (item.idOperario == operario && item.value == 4) {
+                            res.$remove(item);
+                        }
+                    })
+                    $timeout(function () {
+                        notificationAlert.$add(person).then(function (ref) {
+                            EnviarNotification(index + 1)
+                        });
+                    }, 2000)
+                })
+            }
+
+            EnviarNotification(0);
+        }
+        
+
+        function ListaRelacionOperarios() {
+            var List_id = [];
+            for (var i = 0; i < $scope.pictures.length; i++) {
+                if ($scope.pictures[i].checkeado == true) {
+                    List_id.push($scope.pictures[i].id_operario)
+                }
+            }
+            return List_id;
+        }
+
+        $scope.showLoaderHistorico = false;
+        var itemImg;
+        $scope.agrandarphoto = function (item, index) {
+            itemImg = item;
+            degrees = 0;
+            $scope.paramsDetail = item;
+            $('#ModalImagen').modal("show");
+            getHistorico(item);
+
+        }
+        var getHistorico = function (item) {
+            $scope.listHistorico = [];
+            $scope.showLoaderHistorico = true;
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListaHistoricoLectura',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                params: {
+                    suministro: item.suministro
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.showLoaderHistorico = false;
+                $scope.listHistorico = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        var degrees = 0;
+        $scope.rotateImg = function () {
+            degrees += 90;
+            console.log($('#imgRotate'));
+            $("#imgRotate").rotate(degrees);
+        }
+
+        $scope.NextImage = function (value) {
+            if (value == 0) {
+                console.log('Enviamos a verificar');
+                //$scope.Enviar_NotificacionOperario_Unit(itemImg.token);
+
+               enviarVerificarFoto(itemImg).then(function (res) {
+                    var index = $scope.pictures.indexOf(itemImg);
+                    $scope.pictures.splice(index, 1);
+
+                    // UNA VEZ QUE ELIMINAMOS EL INDEX OBSERVADO, EL SIGUIENTE TOMA SU LUGAR COMO INDEX.
+                    $timeout(function () {
+                        $scope.paramsDetail = $scope.pictures[index];
+                        itemImg = $scope.pictures[index];
+                        getHistorico(itemImg);
+                    }, 500)
+
+                }, function (err) {
+                    console.log(err);
+                })
+
+            } else if (value == 1) {
+                console.log('Foto sin observación');
+                enviarSinObservacion(itemImg).then(function (res) {
+                    var index = $scope.pictures.indexOf(itemImg);
+                    $scope.pictures.splice(index, 1);
+
+                    // UNA VEZ QUE ELIMINAMOS EL INDEX OBSERVADO, EL SIGUIENTE TOMA SU LUGAR COMO INDEX.
+                    $timeout(function () {
+                        $scope.paramsDetail = $scope.pictures[index];
+                        itemImg = $scope.pictures[index];
+                        getHistorico(itemImg);
+                    }, 500)
+
+                }, function (err) {
+                    console.log(err);
+                })
+            };
+
+        }
+        $scope.showLoaderVerificar = false;
+        var enviarVerificarFoto = function (item) {
+           
+            var q = $q.defer();
+            $scope.showLoaderVerificar = true;
+            var List_codigos = [item.id_Lectura];
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/VerificacionFotos',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    lecturas: List_codigos.toString()
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Proceso de Relectura, Realizado Correctamente.',
+                        type: 'success'
+                    });
+                    //------ Enviando a firebase ---
+                    $scope.Enviar_NotificacionOperario_Unit(item.token);
+                    $scope.showLoaderVerificar = false;
+                    q.resolve('success');
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                q.reject('failet');
+            });
+            return q.promise;
+        }
+
+        var enviarSinObservacion = function (item) {
+            var q = $q.defer();
+            $scope.showLoaderVerificar = true;
+            var List_codigos = [item.id_Lectura];
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/EnviarFotosSinObservacion',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    lecturas: List_codigos.toString()
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Proceso Foto sin Observación, Realizado Correctamente.',
+                        type: 'success'
+                    });
+                    $scope.showLoaderVerificar = false;
+                    q.resolve('success');
+                } else {
+                    q.resolve('success');
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                q.reject('failet')
+            });
+
+            return q.promise;
+        }
+
+        $scope.Enviar_NotificacionOperario_Unit = function (token) {
+
+            if (token != '' || token != null || token != undefined) {
+               $.ajax({
+                    url: "https://fcm.googleapis.com/fcm/send",
+                    type: "POST",
+                    contentType: "application/json",
+                    headers: {
+                        Authorization: 'key=' + 'AAAAsJw4ZN4:APA91bG345DhNU5oydFUuZIg2ROQ2OmefAgnpJFalOUCElqCMG7IuPd5JaDEwlnMzsqCwu8RHWDKIIi8lP4QNrBGf_jRu0ZNk7haqPj7H8Es6WXsC-SDm8-hpAbaXPxdxEqws8vWq0bf'
+                    },
+                    data: JSON.stringify({
+                        "to": token,
+                        "notification": {
+                            "title": "Lectura de Medidores",
+                            "body": "Tienes Lecturas Observadas, toca aqui para verlo.."
+                        },   
+                        "data": {
+                            "update": "si"
+                        }
+                    }),
+                    success: function (result) {
+                        console.log(result);
+                    },
+                    error: function (result) {
+                        console.log(result);
+                    }
+                });
+           }
+        }
+
+        $scope.ActualizarLectura = function (item) {
+            $scope.showLoaderVerificar = true;
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/Update_LecturaActual',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_lectura: item.id_Lectura,
+                    lectura_actual: item.lectura_movil
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Proceso Cambio de Lectura, Realizado Correctamente.',
+                        type: 'success'
+                    });
+                    $scope.showLoaderVerificar = false;
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+        $scope.Show_auditoria = function (item) {
+            new PNotify({
+                title: 'Auditoria',
+                text: '<p style="font-family: tahoma;font-size: 12px;">Usuario Modificacion: <strong style="font-family: tahoma;font-size: 13px;">' + item.usuario_modificacion + '</strong>  </p> ' +
+                      '<p style="font-family: tahoma;font-size: 12px;">Fecha Modificacion: <strong style="font-family: tahoma;font-size: 13px;"> ' + item.fecha_modificacion + '</strong> </p>',
+                type: 'info',
+                width: '400px',
+                min_height: '100px'
+            });
+        }
+
+        $scope.ListaSupervisor = [];
+        $scope.listando_Supervisor = function () {
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../asignar_supervisor/ListandoSupervisor_usuario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.ListaSupervisor = data;
+                    let cant = $scope.ListaSupervisor.length;
+
+                    setTimeout(function () {
+                        if (cant > 1) {
+                            $scope.id_supervisor = $scope.ListaSupervisor[1].id_Usuario;
+                            $('#cbo_supervisor').val($scope.id_supervisor).trigger('change');
+                        } else {
+                            $scope.id_supervisor = '0';
+                            $('#cbo_supervisor').val(0).trigger('change');
+                        }
+                    }, 200);
+
+                })
+                .error(function () {
+                    $('.sige-load').hide();
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+        $scope.listando_Supervisor();
+
+        $scope.ListaUsuario_Operarios = [];
+        $scope.Change_listando_Usuario_Operarios = function (obj_id_supervisor) {
+            if (obj_id_supervisor == 0 || obj_id_supervisor == '0') {
+                $scope.ListaUsuario_Operarios = [];
+                return;
+            }
+
+            var variables = {
+                method: 'post',
+                url: '../asignar_supervisor/ListandoUsuario_Operarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_supervisor: obj_id_supervisor
+                }
+            }
+
+            $('.sige-load').show();
+            $scope.ListaUsuario_Operarios = [];
+            $http(variables)
+                .success(function (data) {
+                    $('.sige-load').hide();
+                    $scope.ListaUsuario_Operarios = data;
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+        };
+
+
+    });
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro" style="margin-top: -13px;">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> VERIFICACIÓN DE FOTOS</h6>
+        </div>
+        <div class="panel-body">
+            <div id="Contenedor">
+                <form class="form-inline">
+                    <div class="well" style="background: #314b75; color: white; margin-bottom: -10px; margin-top: -5px;">
+                        <div class="row" style=" margin-top: -20px; margin-bottom: -20px;">
+                            <div class="col-lg-12">
+                                <center>
+
+
+
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="cbo_local" style="font-size:11px; margin-top: 5px;">Local:</label>
+                                        <select id="cbo_local" class="form-control" ng-model="id_local">
+                                            <option value=0>--[ Seleccione ]-- </option>
+                                            <option ng-repeat="item in ListaLocales" value="{{item.loc_id}}">
+                                                {{item.loc_nombre}}
+                                            </option>
+                                        </select>
+                                    </div>
+
+
+
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="cbo_servicio" style="font-size:11px; margin-top: 5px;">Servicio:</label>
+                                        <select id="cbo_servicio" class="form-control" ng-model="id_tipoServicio">
+                                            <option value=0>--[ Seleccione ]-- </option>
+                                            <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                                {{item.nombre_tiposervicio}}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <label for="id_fecha" style="font-size:11px">Fecha: </label>
+                                        <input class="form-control" style="width: 150px;" id="id_fecha" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                    </div>
+
+
+
+                                    <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                        <label for="_supervisor" class="control-label">Supervisor</label>
+                                        <select id="cbo_supervisor" class="form-control" ng-model="id_supervisor" ng-change="Change_listando_Usuario_Operarios(id_supervisor); ">
+                                            <option ng-repeat="item in ListaSupervisor" value="{{item.id_Usuario}}">
+                                                {{item.supervisor}}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                        <label for="_supervisor" class="control-label">Operarios</label>
+                                        <select id="cbo_Operario_supervisor" class="form-control">
+                                            <option value=0>--[ TODOS ]-- </option>
+                                            <option ng-repeat="item in ListaUsuario_Operarios" value="{{item.id_Operario}}">
+                                                {{item.desc_operario}}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                        <label for="cbo_obervacion" style="font-size:11px">Observacion:</label>
+                                        <select id="cbo_obervacion" class="form-control" ng-model="id_obervacion">
+                                            <option value=0>--[ Todos ]-- </option>
+                                            <option ng-repeat="item in Obj_List_Observaciones" value="{{item.id_Observacion}}">
+                                                {{item.descripcion_observacion}}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="padding-left: 15px; margin-top: 5px;">
+                                        <button class="btn btn-primary btn-sm" style=" font-size: 14px;" ng-click="MostrarInformacion(1);"><span class="glyphicon glyphicon-refresh"></span> Mostrar</button>
+                                        <button class="btn btn-success btn-sm" ng-click="MostrarInformacion(2);"><span class="glyphicon glyphicon-picture"></span> Fotos sin Observación</button>
+                                    </div>
+                                </center>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+            <br />
+            <div class="form-group" style="padding-left: 15px; margin-top: 5px; text-align:center">
+                <span class="label label-primary" style=" font-size :13px;">(*) Total Fotos : {{totalFotos}}</span>
+
+                <span class="label label-primary" style=" font-size :13px;">(*) Marcados : {{totalMarcado}}</span>
+
+                <span class="label label-primary" style=" font-size :13px;">(*) Sin Marcar : {{totalSinMarcar}}</span>
+            </div>
+            <hr />
+            <div id="galeria" class="table table-responsive">
+                <div class="thumbnails">
+                    <div class="col-md-1" style=" text-align: center;" ng-repeat="pic in pictures">
+ 
+                        <span class="label label-default" style=" font-size: 9px;    padding: 1px;">Cod_Int : {{pic.id_Lectura}} </span>
+                        <span class="label label-default" style=" font-size: 9px;    padding: 1px;">Suminstr : {{pic.suministro}}</span>
+                        <span class="label label-default" style=" font-size: 9px;    padding: 1px;">Medidor : {{pic.medidor}}</span>
+                        <span class="label label-default" style=" font-size: 10px;    padding: 0px;">Lectura : {{pic.lectura_movil}}</span>     
+       
+                        <a style="cursor:pointer;">
+                            <img ng-src="{{pic.url}}" style="width: 100px; height: 100px; " ng-click=" agrandarphoto(pic,$index);">
+                        </a>
+                        <div style="margin-top:2px;margin-bottom: -6px; text-align:center">
+                            <span class="label label-primary ">{{$index + 1}}</span>
+                            @*<span class="label label-warning" style=" font-size: 11px; cursor:pointer" ng-click="Ver_Ubicacion_Mapa(pic.latitud, pic.longitud);"> Ver Ubicación</span>*@
+                        </div>
+                        <hr />
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" style="padding-left: 15px; margin-top: 5px; text-align:center" ng-if="showNormal">
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="myModal" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="panel panel-oscuro" style="width:600px;">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> UBICACIÓN EN GOOGLE MAPS.</h6>
+                </div>
+
+                <div class="modal-content" style="width:600px;">
+                    <div class="modal-body">
+                        <img id="id_Imagen_mapa" class="img-responsive img-rounded" alt="Mapa" style="width:100%;height:auto;">
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <div id="ModalImagen" class="modal fade" role="dialog">
+        <div class="modal-dialog modal-img">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <a ng-click="rotateImg();" class="pull-right rotate" style="    margin-top: -10px; font-size: 12px; padding: 3px 4px;  color: white;  margin-right: 20px;cursor:pointer"><i class="fa fa-repeat" style="Color:#337ab7; font-size: 30px" aria-hidden="true"></i>Girar</a>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> Detalle de Foto</h6>
+                </div>
+
+                <div class="modal-content">
+                    <div class="modal-body">
+
+                        <div class="row">
+                            <center>
+                                <div class="loader" ng-if="showLoaderVerificar" style=" margin-bottom: 15px;"></div>
+                            </center>
+                            <div class="col-md-6">
+                                <center>
+                                    <div class="loader" ng-if="showLoaderHistorico" style=" margin-bottom: 15px;"></div>
+                                    <h3>Historico</h3>
+                                    <br />
+                                </center>
+                                <table class="table  table-responsive table-bordered  table-condensed " border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                    <thead>
+                                        <tr>
+                                            <th>Servicio</th>
+                                            <th>Suministro</th>
+                                            <th>Lectura</th>
+                                            <th>Observacion</th>
+                                            <th>Fecha</th>
+                                            <th>Consumo</th>
+
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="item in listHistorico">
+                                            <td>{{item.TipoServicio}}</td>
+                                            <td>{{item.suministro_lectura}}</td>                                                   
+                                            <td style="text-align:right">{{item.Lectura}}</td>
+                                            <td>{{item.Observacion}}</td>
+                                            <td>{{item.fechaAsignacion_lectura}}</td>                                    
+                                            <td style="text-align:right"> <b style="font-family: tahoma;">{{item.consumo}} </b></td>
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <p style="font-size:14px;">
+                                    Suministro : {{paramsDetail.suministro}}  | Medidor : {{paramsDetail.medidor}}  | Lectura : <input type="text" numeric-only style="width:80px;" ng-model="paramsDetail.lectura_movil" />
+                                    <button role="button" class="btn btn-default" ng-click="ActualizarLectura(paramsDetail)"><i class="fa fa-close fa-lg"></i> Cambiar</button>
+                                </p>
+                                <img id="imgRotate" src="{{paramsDetail.url}}" class="img-responsive img-rounded" alt="Mapa" style="width:450px;height:450px;">
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+
+                            <div class="col-sm-4">
+
+                            </div>
+                            <div class="col-sm-3">
+
+                                <button role="button" ng-if="showNormal" id="btnCancelar" class="btn btn-danger" ng-click="NextImage(0)"><i class="fa fa-ban fa-lg"></i> Enviar Relectura</button>
+                            </div>
+                            <div class="col-sm-3">
+
+                                <button role="button" ng-if="showNormal" id="btnCancelar" class="btn btn-success" ng-click="NextImage(1)"><i class="fa fa-check fa-lg"></i> Sin Observación</button>
+                            </div>
+
+                            <div class="col-sm-2">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,2561 @@
+﻿@{
+    ViewBag.Title = "Index Programacion Trabajos";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+@Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+@Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+@Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+@Scripts.Render("~/Scripts/jquery.fileDownload.js")
+@Scripts.Render("~/Content/angular/angular.js")
+@Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+<script src="~/Content/jQueryRotate/jQueryRotate.js"></script>
+
+<style>
+    .disabledContent {
+        pointer-events: none;
+        opacity: 0.6;
+    }
+
+    .modal-img {
+        width: 80%;
+    }
+
+    .contentAsignados {
+        border: solid 2px #83d9ee;
+        height: 20px;
+        width: 40px;
+        background-color: #89e4fa;
+    }
+
+    #map, #mapNot {
+        height: 600px;
+        width: 100%;
+    }
+    /* Optional: Makes the sample page fill the window. */ savechanges html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .tblTD td {
+        width: 100% !important;
+    }
+
+    body {
+        color: #7991a5;
+    }
+
+    p {
+        margin: 0 0 0px;
+    }
+
+    #fotos {
+        top: 0%;
+        left: 60%;
+        outline: none;
+    }
+
+    .iconArrow {
+        position: absolute;
+        z-index: 1;
+        color: #34495e;
+        top: 200px;
+        left: -20px;
+        font-size: 31px;
+    }
+
+    #modal_detalle {
+        top: 0%;
+        right: 359px;
+        outline: none;
+    }
+
+
+    .modal_dialog_movil {
+        width: 300px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 10px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    #Principal {
+        width: 98%;
+        height: auto;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    #Principal {
+        width: 98%;
+        height: 600px;
+    }
+
+    #Contenedor {
+        width: 98%;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+    table td:nth-child(1) {
+        width: 5px;
+    }
+
+    table td {
+        width: 100px;
+    }
+
+    .checkbox input[type=checkbox], .checkbox-inline input[type=checkbox], .radio input[type=radio], .radio-inline input[type=radio] {
+        position: absolute;
+        margin-top: 4px \9;
+        margin-left: 2px;
+        MARGIN-TOP: -4px;
+    }
+</style>
+
+<script type="text/javascript">
+
+    var urlIcon = "../Content/Imagen/markets/";
+
+    var imgPrueba = "../Content/Imagen/markets/asd.png";
+    var imgNo = "../Content/Imagen/noimage.png";
+    var iconAzul = "../Content/Imagen/m_blue.png";
+    var iconNegro = "../Content/Imagen/novisita.png";
+    //var iconRojo = "../../Content/Imagen/red-pin1.png";
+    var iconRojo = "../Content/Imagen/m_red.png";
+    var iconOperario = "../Content/Imagen/jefe_on.png";
+
+    function soloNumeros(e) {
+        var key = window.Event ? e.which : e.keyCode
+        return (key >= 48 && key <= 57)
+    }
+
+
+    var app = angular.module('myApp', []);
+    app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+
+        $(function () {
+            $('#id_fecha_asignacion,#id_fecha_asignacion_send').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        });
+
+        setTimeout(function () {
+            // inicializando el ComboBuscador
+            $("#id_operador").select2();
+        }, 500);
+        $scope.id_local = "0";
+        $scope.Obj_List_Locales = [];
+        $scope.Listado_Locales = function () {
+            var variables = {
+                method: 'POST',
+                url: '../DistribucionTrabajos/ListandoLocal',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Obj_List_Locales = [];
+                $scope.Obj_List_Locales = data;
+                $timeout(function () {
+                    $scope.id_local = String(data[0].id_Local);
+
+                }, 100)
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.listResumenTrabajos = [];
+
+        var GetListado_Resumen_Trabajos = function () {
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/ListandoResumenTrabajos',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                params: {
+                    fecha: $('#id_fecha_asignacion').val(),
+                    id_servicio: $('#id_Servicio').val(),
+                }
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $scope.listResumenTrabajos = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        $scope.listDetalleTrabajos = [];
+
+        var GetListado_Detalle_Trabajos = function () {
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/ListandoDetalleTrabajos',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                params: {
+                    fecha: $('#id_fecha_asignacion').val(),
+                    id_servicio: $('#id_Servicio').val(),
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+
+                $scope.listDetalleTrabajos = data;
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        $scope.Lista_Operarios = [];
+        $scope.Listando_Operarios = function () {
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/ListandoOperarios',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.Lista_Operarios = [];
+                $scope.Lista_Operarios = data;
+                setTimeout(function () {
+                    $('#id_operador').val('0').trigger('change');
+                    return;
+                }, 300);
+
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.Listando_Operarios();
+
+        $scope.objFiltros = {
+            pendientes: true,
+            asignados: true,
+            verificaciones: false,
+            asignarTodos: true,
+            verHistorial: false,
+        }
+        $scope.disabledContent = "";
+
+        $scope.changeTipoProceso = function (value, tip) {
+            if (value) {
+                if (tip == 1) {
+                    $scope.objFiltros.asignados = false;
+                    $scope.objFiltros.verificaciones = false;
+                    $scope.objFiltros.asignarTodos = true;
+                    $scope.objFiltros.verHistorial = false;
+                    $scope.disabledContent = "";
+                } else if (tip == 2) {
+                    $scope.objFiltros.pendientes = false;
+                    $scope.objFiltros.verificaciones = false;
+                    $scope.objFiltros.asignarTodos = false;
+                    $scope.objFiltros.verHistorial = true;
+                    $scope.disabledContent = "disabledContent";
+                } else if (tip == 3) {
+                    $scope.objFiltros.asignados = false;
+                    $scope.objFiltros.pendientes = false;
+                    $scope.objFiltros.asignarTodos = false;
+                    $scope.objFiltros.verHistorial = true;
+                    $scope.disabledContent = "disabledContent";
+                }
+                $scope.ActualizarInformacion_mapas();
+            } else {
+                if (tip == 1) {
+                    $scope.objFiltros.pendientes = true;
+                } else if (tip == 2) {
+                    $scope.objFiltros.asignados = true;
+                } else if (tip == 3) {
+                    $scope.objFiltros.verificaciones = true;
+                }
+                $scope.ActualizarInformacion_mapas();
+            }
+        }
+
+        $scope.Mostrar_informacion = function () {
+            InicializarMapa();
+            $scope.ActualizarInformacion();
+            $scope.ActualizarInformacion_mapas();
+            getListadoOperariosZona();
+        }
+
+        var limpiarTodo = function () {
+            markers.forEach(function (marker, index) {
+                var estado = marker.title.split('|')[2];
+                var idLectura = marker.title.split('|')[1];
+                if (estado == 3 || estado == 5) {
+                    // PENDIENTE
+
+
+                    for (var i = 0; i < listUbicacionesAux.length ; i++) {
+                        if (listUbicacionesAux[i].id_lectura == idLectura) {
+                            listUbicacionesAux[i].Color = listUbicacionesAux[i].Color == "Rojo" ? "pendiente" : listUbicacionesAux[i].Color;
+                            marker.setIcon(urlIcon + listUbicacionesAux[i].Color + ".png");
+                        }
+                    }
+
+                }
+            });
+            txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+            //markers = [];
+            //generarMarkets_new(listUbicacionesAux, 1);
+        }
+        $scope.ActualizarInformacion = function () {
+            GetListado_Resumen_Trabajos();
+            GetListado_Detalle_Trabajos();
+            txtTotalAsig.innerHTML = "Total Asig. : 0";
+        }
+
+        $scope.ActualizarInformacion_mapas = function () {
+
+            getListadoLecturasDia_new(3);
+
+
+            txtTotalAsig.innerHTML = "Total Asig. : 0";
+        }
+
+
+        $scope.changeTipoFiltro = function (value, tip) {
+            if (value) {
+                if (tip == 1) {
+                    $scope.objFiltros.asignarTodos = true;
+                    $scope.objFiltros.verHistorial = false;
+                } else if (tip == 2) {
+                    $scope.objFiltros.asignarTodos = false;
+                    $scope.objFiltros.verHistorial = true;
+
+                }
+            } else {
+                if (tip == 1) {
+                    $scope.objFiltros.asignarTodos = true;
+                } else if (tip == 2) {
+                    $scope.objFiltros.verHistorial = true;
+                }
+            }
+        }
+
+        var getTipoProcesoAndIcon = function () {
+            var tipoProceso = 0;
+            var icon = "";
+
+            if ($scope.objFiltros.pendientes) {
+                tipoProceso = 1;
+                icon = iconRojo;
+            } else if ($scope.objFiltros.asignados) {
+                tipoProceso = 2;
+                icon = iconAzul;
+            } else if ($scope.objFiltros.verificaciones) {
+                tipoProceso = 3;
+                icon = iconOperario;
+            }
+
+            return {
+                tipoProceso: tipoProceso,
+                icon: icon
+            }
+        }
+
+        var getTipoProcesoAndIcon_new = function (opcionFiltro) {
+            var tipoProceso = 0;
+            var icon = "";
+
+            if (opcionFiltro == 1) {
+                tipoProceso = 1;
+                icon = iconRojo;
+            } else if (opcionFiltro == 2) {
+                tipoProceso = 2;
+                icon = iconAzul;
+            } else if (opcionFiltro == 3) {
+                tipoProceso = 3;
+                icon = iconOperario;
+            }
+
+            return {
+                tipoProceso: tipoProceso,
+                icon: icon
+            }
+        }
+        var getListadoOperariosZona = function () {
+
+            var params = {
+                id_local: 1,
+                fecha: $('#id_fecha_asignacion').val(),
+                id_servicio: $('#id_Servicio').val(),
+                tipoProceso: 0
+            }
+
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/ListadoOperariosZona',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: params
+            }
+
+            $http(variables)
+            .success(function (data) {
+                data.forEach(function (item) {
+                    item['check'] = false;
+                })
+                $scope.listOperariosZona = data;
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+        var listUbicacionesAux = [];
+        var getListadoLecturasDia_new = function (opcionFiltro) {
+
+            $('.sige-load').show();
+            var pendientesAux = $scope.objFiltros.pendientes == true ? 1 : 0;
+            var asignadoAux = $scope.objFiltros.asignados == true ? 1 : 0;
+            var verificadoAux = $scope.objFiltros.verificaciones == true ? 1 : 0;
+
+
+            var params = {
+                id_local: 1,
+                fecha: $('#id_fecha_asignacion').val(),
+                id_servicio: $('#id_Servicio').val(),
+                tipoProceso: 0,
+                pendiente: pendientesAux,
+                asignado: asignadoAux,
+                verificado: verificadoAux
+            }
+
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/ListadoLecturasDia',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: params
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                var Obj_resultado = data;
+                listUbicacionesAux = data;
+                if (Obj_resultado.length > 0 || Obj_resultado.length > '0') {
+                    generarMarkets_new(data, 1);
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        var getListadoLecturasDia = function () {
+            var objAux = getTipoProcesoAndIcon();
+
+            var tipoProceso = objAux.tipoProceso;
+            var icon = objAux.icon;
+
+            $('.sige-load').show();
+            var params = {
+                id_local: 1,
+                fecha: $('#id_fecha_asignacion').val(),
+                id_servicio: $('#id_Servicio').val(),
+                tipoProceso: tipoProceso
+            }
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/ListadoLecturasDia',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: params
+            }
+
+            $http(variables)
+            .success(function (data) {
+                generarMarkets(data, icon);
+                $('.sige-load').hide();
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.verMapaOperario = function (item) {
+
+
+            $scope.selectPosition(item);
+            /*map = new google.maps.Map(document.getElementById('map'), {
+                center: latLng,
+                zoom: 12
+            });
+            var marker = new google.maps.Marker({
+                position: latLng,
+                map: map,
+                title: item.id_Operario + '|' + item.id_Operario,
+                icon: iconOperario
+            });
+
+            google.maps.event.addListener(marker, 'click', (function (marker, index) {
+                return function () {
+                    var idOperario = marker.title.split('|')[0];
+                    getPersonalResumen(idOperario);
+                }
+            })(marker, 1));
+
+            $scope.objFiltros.verificaciones = true;
+            $scope.objFiltros.asignados = false;
+            $scope.objFiltros.pendientes = false;
+            $scope.objFiltros.asignarTodos = false;
+            $scope.objFiltros.verHistorial = true;
+            $scope.disabledContent = "disabledContent";*/
+        };
+
+        var rectangle;
+        var map;
+        var infoWindow;
+        var myLatLng = { lat: -11.991943, lng: -77.005195 };
+        var area1 = 0;
+        var area2 = 0;
+        var area3 = 0;
+        var area4 = 0;
+        var count = 0;
+
+        var map = null;
+        var txtTotalAsig;
+        $(document).ready(function () {
+            //$timeout(function () {
+            //    map = new google.maps.Map(document.getElementById('map'), {
+            //        center: { lat: -11.991943, lng: -77.005195 },
+            //        zoom: 12
+            //    });
+            //}, 1000);
+
+            $timeout(function () {
+                InicializarMapa();
+            }, 1000);
+            txtTotalAsig = document.getElementById('txtTotalAsig');
+        });
+
+        var markers = [];
+        var generarMarkets = function (data, icon) {
+            markers = [];
+            var latLng = {
+                lat: parseFloat(data[0].latitud_lectura),
+                lng: parseFloat(data[0].longitud_lectura)
+            }
+
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: latLng,
+                zoom: 12
+            });
+            var infoWindow = new google.maps.InfoWindow();
+            data.forEach(function (item, index) {
+                var latLng = {
+                    lat: parseFloat(item.latitud_lectura),
+                    lng: parseFloat(item.longitud_lectura)
+                }
+                var marker = new google.maps.Marker({
+                    position: latLng,
+                    map: map,
+                    title: item.suministro_lectura + '|' + item.id_lectura,
+                    icon: icon
+                });
+                markers.push(marker);
+                google.maps.event.addListener(marker, 'click', (function (marker, index) {
+
+                    return function () {
+                        // SOLO QUE SELECCIONE 1 X 1 CUANDO EL TIPO DE PROCESO ES 1
+                        var tipoProceso = getTipoProcesoAndIcon().tipoProceso;
+
+                        if (tipoProceso == 1) {
+                            if ($scope.objFiltros.verHistorial) {
+                                //FUNCIÓN DE VER RESUMEN DE SUMINSITRO
+                                return;
+                            }
+                            // SI NO
+                            if (marker.icon == iconAzul) {
+                                marker.setIcon(iconRojo);
+                            } else {
+                                marker.setIcon(iconAzul);
+                            }
+                            txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+                        } else if (tipoProceso == 2) {
+                            var idSuministro = marker.title.split('|')[0];
+                            // FUNCI´PNO DE VER RESUMEN DE SUMINISTRO
+                        } else if (tipoProceso == 3) {
+                            var idOperario = marker.title.split('|')[0];
+                            getPersonalResumen(idOperario);
+                        }
+                        //
+
+
+                        //infoWindow.setContent('<p>Suministro : ' + item.suministro_lectura + '</p>');
+                        //infoWindow.open(map, marker);
+                    }
+                })(marker, index));
+            })
+            map.addListener('click', function (e) {
+                if (!$scope.showRectangle) {
+                    return;
+                }
+                area1 = e.latLng.lat();
+                area2 = e.latLng.lng();
+                generarPoligono();
+                // SOLO QUE GENERE EL POLIGONO CUANDO EL TIPO DE PROCESO ES 1
+                /* var tipoProceso = getTipoProcesoAndIcon().tipoProceso;
+
+                 if (tipoProceso != 1) {
+                     return;
+                 }
+                 //
+
+                 count++;
+
+                 if (count == 3) {
+                     area1 == 0;
+                     area2 == 0;
+                     area3 == 0;
+                     area4 == 0;
+                     count = 1;
+                     rectangle.setMap(null);
+                     for (var i = 0; i < markers.length; i++) {
+                         if (markers[i].icon == iconRojo) {
+                             markers[i].setIcon(iconAzul)
+                         }
+                     }
+                 }
+                 if (count == 1) {
+                     area1 = e.latLng.lat();
+                     area2 = e.latLng.lng();
+                 } else if (count == 2) {
+                     area3 = e.latLng.lat();
+                     area4 = e.latLng.lng();
+                     generarPoligono();
+                 }*/
+
+
+                //placeMarkerAndPanTo(e.latLng, map);
+            });
+        }
+        var myVar = null;
+        var changeColorRectangle = function () {
+            for (var i = 0; i < markers.length; i++) {
+                var latlng = {
+                    lat: markers[i].position.lat(),
+                    lng: markers[i].position.lng()
+                }
+                var markerDentro = rectangle.getBounds().contains(new google.maps.LatLng(latlng.lat, latlng.lng));
+                if (markerDentro) {
+                    var estado = markers[i].title.split('|')[2];
+                    if (estado == 3 || estado == 5) {
+                        markers[i].setIcon(urlIcon + "asignadoAux.png");
+                    }
+                }
+                else {
+                    var estado = markers[i].title.split('|')[2];
+                    if (estado == 3 || estado == 5) {
+                        //markers[i].setIcon(urlIcon + "pendiente.png");
+                    }
+
+                }
+            };
+
+            txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+        }
+
+        var changeColorPolyLine = function () {
+            var bounds = new google.maps.LatLngBounds();
+            poly.getPath().forEach(function (element, index) {
+                bounds.extend(element);
+            });
+            for (var i = 0; i < markers.length; i++) {
+                var latlng = {
+                    lat: markers[i].position.lat(),
+                    lng: markers[i].position.lng()
+                };
+
+
+
+                var markerDentro = bounds.contains(new google.maps.LatLng(latlng.lat, latlng.lng));
+
+                console.log(markerDentro);
+                if (markerDentro) {
+                    var estado = markers[i].title.split('|')[2];
+
+                    if (estado == 3 || estado == 5) {
+                        markers[i].setIcon(urlIcon + "asignadoAux.png");
+                    }
+
+                }
+                //else {
+                //    markers[i].setIcon(iconRojo);
+                //}
+            };
+
+            txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+        }
+
+        var stopFunction = false;
+        var showNewRect = function () {
+            if (stopFunction) {
+                return;
+            }
+            changeColorRectangle();
+        }
+        var endDrags = function () {
+            stopFunction = false;
+            changeColorRectangle();
+        }
+        var startDrangs = function () {
+            stopFunction = true;
+        }
+
+        var rectangle = null;
+        var generarPoligono = function () {
+
+            if (rectangle != null) {
+                rectangle.setMap(null);
+            }
+            var bounds = {
+                north: area1,
+                south: area1,
+                east: area2,
+                west: area2
+            };
+
+
+            // Define the rectangle and set its editable property to true.
+            rectangle = new google.maps.Rectangle({
+                bounds: bounds,
+                editable: true,
+                draggable: true
+            });
+
+            rectangle.setMap(map);
+            /*setTimeout(function () {
+                alert("Hello");
+                var ok = rectangle.getBounds().contains(new google.maps.LatLng(-11.992152893894795, -77.00262007934572))
+
+            }, 3000);*/
+            changeColorRectangle();
+            // Add an event listener on the rectangle.
+            rectangle.addListener('bounds_changed', showNewRect);
+            rectangle.addListener('dragend', endDrags);
+            rectangle.addListener('dragstart', startDrangs)
+
+
+        }
+
+        var getPersonalResumen = function (idOperario) {
+            $('.sige-load').show();
+            var params = {
+                fecha: $('#id_fecha_asignacion').val(),
+                id_Operario: idOperario
+            }
+
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/ListadoResumenOperario',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: params
+            }
+
+            $http(variables)
+            .success(function (data) {
+                $("#ModalDatosOperario").modal();
+                $scope.objOperario = data[0];
+                $('.sige-load').hide();
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+        $scope.OpenModalOperarios = function () {
+            $("#modalOperarios").modal();
+        }
+
+        $scope.GuardarInformacion = function () {
+            var list = verMarcadosSum();
+
+            if ($('#id_operador').val() == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'No ha seleccionado un Operario, vuelva a intentar ! ',
+                    type: 'error'
+                });
+                return;
+            }
+            if (list.length == 0) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'No ha seleccionado suministros, vuelva a intentar !',
+                    type: 'error'
+                });
+                return;
+            }
+            $('.sige-load').show();
+
+            var params = {
+                listLecturas: list,
+                id_operario: $('#id_operador').val(),
+                tipoServicio: 1,
+                fecha_asignacion: $('#id_fecha_asignacion_send').val()
+            }
+            var variables = {
+                method: 'POST',
+                url: '../RecepcionLecturas/GuardarLecturasDia',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: params
+            }
+
+            $http(variables)
+            .success(function (data) {
+
+                if (data == '"success"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Proceso realizado exitosamente.',
+                        type: 'success'
+                    });
+                    $timeout(function () {
+                        $scope.Mostrar_informacion();
+                    },200)
+
+                } else {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Ocurrió un error en el proceso, volver a intentar !.',
+                        type: 'error'
+                    });
+                }
+                $('#modalOperarios').modal('toggle');
+                $('.sige-load').hide();
+                $scope.ActualizarInformacion();
+
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+        var verMarcadosSum = function () {
+            var countOK = 0;
+            var result = [];
+            for (var i = 0; i < markers.length; i++) {
+                if (markers[i].icon == urlIcon + "asignadoAux.png") {
+                    countOK++;
+                    var datosSum = markers[i].title.split('|');
+                    result.push({
+                        suministro_lectura: datosSum[0],
+                        id_Suministro: datosSum[1]
+                    })
+                }
+            }
+            return result;
+        }
+
+        $scope.countAsignados = 0;
+        var verMarcadosCount = function () {
+            var countOK = 0;
+            for (var i = 0; i < markers.length; i++) {
+                if (markers[i].icon == urlIcon + "asignadoAux.png") {
+                    countOK++;
+                }
+            }
+            return countOK;
+        }
+        $scope.showFiltros = true;
+        $scope.numberCol = 9;
+        $scope.position = "left";
+        $scope.mostrarTodo = function () {
+            if ($scope.position == "right") {
+                $scope.showFiltros = true;
+                $scope.numberCol =9;
+                $scope.position = "left";
+            } else {
+                $scope.showFiltros = false;
+                $scope.numberCol = 10;
+                $scope.position = "right";
+            }
+        }
+
+        $scope.numberCol2 = 4;
+        $scope.position2 = "right";
+        $scope.mostrarTodo2 = function () {
+            if ($scope.position2 == "left") {
+                $scope.numberCol2 = 4;
+                $scope.position2 = "right";
+            } else {
+                $scope.numberCol2 = 10;
+                $scope.position2 = "left";
+            }
+        }
+        $scope.showRectangle = false;
+        $scope.colorRectangle = "#34495e";
+        $scope.showPolyLine = false;
+        $scope.colorPolyLine = "#34495e";
+
+        $scope.activarDibujo = function (value) {
+            if (rectangle != null) {
+                rectangle.setMap(null)
+            }
+            if (poly != null) {
+                poly.setMap(null);
+            };
+            if (value == 2) {
+                $scope.showRectangle = true;
+                $scope.showPolyLine = false;
+                $scope.colorRectangle = "#E91E63";
+                $scope.colorPolyLine = "#34495e";
+
+            } else if (value == 1) {
+                disable();
+                if (poly != null) {
+                    poly.setMap(null);
+                };
+
+                google.maps.event.addDomListener(map.getDiv(), 'mousedown', function (e) {
+                    drawFreeHand()
+                });
+
+                $scope.showRectangle = false;
+                $scope.showPolyLine = true;
+                $scope.colorRectangle = "#34495e";
+                $scope.colorPolyLine = "#E91E63";
+            }
+        }
+
+        // POLYLINE FUNCIONES
+        var poly = null;
+        function drawFreeHand() {
+            //the polygon
+            poly = new google.maps.Polyline({ map: map, clickable: false });
+            //move-listener
+            var move = google.maps.event.addListener(map, 'mousemove', function (e) {
+                poly.getPath().push(e.latLng);
+            });
+            //mouseup-listener
+            google.maps.event.addListenerOnce(map, 'mouseup', function (e) {
+                google.maps.event.removeListener(move);
+                var path = poly.getPath();
+                poly.setMap(null);
+                poly = new google.maps.Polygon({ map: map, path: path });
+                google.maps.event.clearListeners(map.getDiv(), 'mousedown');
+                enable();
+
+                changeColorPolyLine();
+
+                //console.log(bounds.contains(new google.maps.LatLng(-11.992152893894795, -77.00262007934572)));
+                //return bounds;
+                //var ok = poly.getBounds().contains(new google.maps.LatLng(-11.992152893894795, -77.00262007934572))
+                //console.log(ok);
+            });
+        }
+
+        function disable() {
+            map.setOptions({
+                draggable: false,
+                zoomControl: false,
+                scrollwheel: false,
+                disableDoubleClickZoom: false
+            });
+        }
+
+        function enable() {
+            map.setOptions({
+                draggable: true,
+                zoomControl: true,
+                scrollwheel: true,
+                disableDoubleClickZoom: true
+            });
+        }
+        //
+        $scope.limpiarDibujo = function () {
+            if (rectangle != null) {
+                rectangle.setMap(null);
+            }
+            if (poly != null) {
+                poly.setMap(null);
+            };
+
+            //RESETEAMOS PARAMETROS PARA GENERAR RECTANGULO
+            limpiarMarkers();
+        }
+
+        var limpiarMarkers = function () {
+            var countOK = 0;
+            var datosSum;
+
+            /*for (var i = 0; i < markers.length; i++) {
+                if (markers[i].icon == iconNegro) {
+                    countOK++;
+                    datosSum = markers[i].title.split('|');
+
+                    if (datosSum[2] == "3") {
+                        markers[i].setIcon(iconRojo);
+                    }
+                    else if (datosSum[2] == "5") {
+                        markers[i].setIcon(iconAzul);
+                    }
+                    else if (datosSum[2] == "0") {
+                        markers[i].setIcon(iconOperario);
+                    }
+                }
+            }*/
+            //InicializarMapa();
+            limpiarTodo();
+            txtTotalAsig.innerHTML = "Total Asig. : " + 0;
+            $scope.showRectangle = false;
+            $scope.colorRectangle = "#34495e";
+            $scope.showPolyLine = false;
+            $scope.colorPolyLine = "#34495e";
+        }
+
+        ///---CAMBIOS Julio cesar---
+
+        function InicializarMapa() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 12,
+                center: { lat: -11.991943, lng: -77.005195 },
+                mapTypeControl: true,
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_CENTER
+                },
+                scaleControl: true,
+                streetViewControl: true,
+                streetViewControlOptions: {
+                    position: google.maps.ControlPosition.LEFT_TOP
+                }
+            });
+            map.addListener('click', function (e) {
+                if (!$scope.showRectangle) {
+                    return;
+                }
+                area1 = e.latLng.lat();
+                area2 = e.latLng.lng();
+                generarPoligono();
+            });
+        };
+        markers = [];
+
+        var generarMarkets_new = function (data, tip) {
+            // INCIALIZANDO..
+            if (tip == 1) {
+
+
+                console.log('entroo aquiii  ----')
+                console.log(data);
+
+                var latLng = {
+                    lat: parseFloat(data[0].latitud_lectura),
+                    lng: parseFloat(data[0].longitud_lectura)
+                }
+
+                var infoWindow = new google.maps.InfoWindow();
+
+                data.forEach(function (item, index) {
+
+                    // PRUEBA
+                    /*if (index > 0 && index < 1000) {
+                        item.Estado = 3;
+                    } else {
+                        //return;
+                    }*/
+                    //
+                    var ContenidoMarker = '';
+                    if (item.Estado != 1) {
+                        var FechaHora = "";
+                        if (item.Estado == 3) {
+                            // PENDIENTE
+                        } else {
+                            FechaHora = item.FechaHora;
+                        }
+                        ContenidoMarker += '<div  id="_market" style="width:430px;height:130px;position:relative;">';
+                        ContenidoMarker += '<table><tr><td><strong >Suministro</strong></td><td style="width:100%">: ' + item.suministro_lectura + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Medidor</strong></td><td style="width:100%">: ' + item.Medidor + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Dirección</strong></td><td style="width:100%">: ' + item.Direccion + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Operador</strong></td><td style="width:100%">: ' + item.Operador + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Cliente</strong></td><td style="width:100%">: ' + item.Cliente + ' </td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Lectura</strong></td><td style="width:100%">: ' + item.Lectura + ' </td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Fecha</strong></td><td style="width:100%">: ' + FechaHora + ' </td></tr>';
+                        ContenidoMarker += '<tr><td colspan="2" style="text-align:center;"><strong><a class="clickEvent" id="' + item.suministro_lectura + '" href="#">Ver Historial</a></strong></td></tr>';
+
+                    }
+
+
+                    var latLng = {
+                        lat: parseFloat(item.latitud_lectura),
+                        lng: parseFloat(item.longitud_lectura)
+                    }
+                    // validación de IMAGEN
+                    var icon = "";
+                    if (item.Estado == 8 || item.Estado == 7) {
+                        //TRABAJADO
+                        icon = urlIcon + item.Color + ".png";
+                    } else if (item.Estado == 5) {
+                        // ASIGNADOS
+                        icon = urlIcon + item.Color + ".png";
+                    } else if (item.Estado == 3) {
+                        // PENDIENTE
+                        icon = urlIcon + "pendiente.png";
+                    } else if (item.Estado == 1) {
+
+                        // OPERARIO
+                        icon = iconOperario;
+
+                        var marker = new google.maps.Marker({
+                            position: latLng,
+                            map: map,
+                            title: String(item.suministro_lectura) + '|' + String(item.id_lectura) + '|' + String(item.Estado) + '|' + icon + '|' + String(item.Medidor) + '|' + String(item.Lectura) + '|' + item.Url,
+                            icon: icon,
+                            content: ContenidoMarker,
+                            optimized: false,
+                        });
+ 
+                        markers.push(marker);
+                        google.maps.event.addListener(marker, 'click', (function (marker, index) {
+                            return function () {
+                                var estado = marker.title.split('|')[2];
+                                var idLectura = marker.title.split('|')[1];
+
+
+                                if (!$scope.objFiltros.verHistorial) {
+                                    if (estado == 3 || estado == 5) {
+                                        // PENDIENTE
+
+                                        if (marker.icon == urlIcon + "asignadoAux.png") {
+                                            for (var i = 0; i < listUbicacionesAux.length ; i++) {
+                                                if (listUbicacionesAux[i].id_lectura == idLectura) {
+                                                    listUbicacionesAux[i].Color = listUbicacionesAux[i].Color == "Rojo" ? "pendiente" : listUbicacionesAux[i].Color;
+                                                    marker.setIcon(urlIcon + listUbicacionesAux[i].Color + ".png");
+                                                }
+                                            }
+                                        } else {
+                                            marker.setIcon(urlIcon + "asignadoAux.png");
+
+                                        }
+                                        txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+                                    }
+                                } else {
+                                    if (estado == 1) {
+                                        // OPERARIO
+                                        var idOperario = marker.title.split('|')[0];
+                                        getPersonalResumen(idOperario);
+                                    } else {
+                                        infoWindow.setContent('<center><h4><b>' + 'Detalle' + '</b></h4></center>' + marker.content);
+                                        infoWindow.open($scope.map, marker);
+                                    }
+
+                                }
+
+                                $timeout(function () {
+                                    $(".clickEvent").click(function (event) {
+                                        var suministro = (event.target.id);
+                                        $('#ModalImagen').modal("show");
+                                        var suministro = marker.title.split('|')[0];
+                                        var id_lectura = marker.title.split('|')[1];
+                                        var medidor = marker.title.split('|')[4];
+                                        var lectura_movil = marker.title.split('|')[5];
+                                        var url = marker.title.split('|')[6];
+                                        if (url == "") {
+                                            url = imgNo;
+                                        } else {
+                                            url = 'http://www.dsige.com/calidda/foto/' + url;
+                                        }
+                                        $scope.paramsDetail = {
+                                            suministro: suministro,
+                                            medidor: medidor,
+                                            id_lectura: id_lectura,
+                                            lectura_movil: lectura_movil,
+                                            url: url
+                                        }
+                                        getHistorico(suministro);
+                                    });
+                                }, 500)
+
+
+                                // SOLO QUE SELECCIONE 1 X 1 CUANDO EL TIPO DE PROCESO ES 1
+                                /* if (tipoProceso == 1) {
+                                     //if ($scope.objFiltros.verHistorial) {
+                                     //    //FUNCIÓN DE VER RESUMEN DE SUMINSITRO
+                                     //    return;
+                                     //}
+                                     //// SI NO
+                                     if (marker.icon == iconAzul) {
+                                         marker.setIcon(iconRojo);
+                                     } else {
+                                         marker.setIcon(iconAzul);
+                                     }
+                                     txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+                                 } else if (tipoProceso == 2) {
+                                     var idSuministro = marker.title.split('|')[0];
+                                 } else if (tipoProceso == 3) {
+
+                                 }*/
+                            }
+                        })(marker, index));
+                    }
+                    //
+
+                })
+
+            } else {
+
+
+                var latLng = {
+                    lat: parseFloat(data[0].latitud_lectura),
+                    lng: parseFloat(data[0].longitud_lectura)
+                }
+
+                var infoWindow = new google.maps.InfoWindow();
+
+                data.forEach(function (item, index) {
+
+                    var ContenidoMarker = '';
+                    if (item.Estado != 1) {
+                        var FechaHora = "";
+                        if (item.Estado == 3) {
+                            // PENDIENTE
+                        } else {
+                            FechaHora = item.FechaHora;
+                        }
+                        ContenidoMarker += '<div  id="_market" style="width:430px;height:130px;position:relative;">';
+                        ContenidoMarker += '<table><tr><td><strong >Suministro</strong></td><td style="width:100%">: ' + item.suministro_lectura + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Medidor</strong></td><td style="width:100%">: ' + item.Medidor + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Dirección</strong></td><td style="width:100%">: ' + item.Direccion + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Operador</strong></td><td style="width:100%">: ' + item.Operador + '</td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Cliente</strong></td><td style="width:100%">: ' + item.Cliente + ' </td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Lectura</strong></td><td style="width:100%">: ' + item.Lectura + ' </td></tr>';
+                        ContenidoMarker += '<tr><td><strong>Fecha</strong></td><td style="width:100%">: ' + FechaHora + ' </td></tr>';
+                        ContenidoMarker += '<tr><td colspan="2" style="text-align:center;"><strong><a class="clickEvent" id="' + item.suministro_lectura + '" href="#">Ver Historial</a></strong></td></tr>';
+
+
+
+                        var latLng = {
+                            lat: parseFloat(item.latitud_lectura),
+                            lng: parseFloat(item.longitud_lectura)
+                        }
+
+                        // OPERARIO
+                        // validación de IMAGEN
+                        var icon = "";
+                        if (item.Estado == 8 || item.Estado == 7) {
+                            //TRABAJADO
+                            icon = urlIcon + item.Color + ".png";
+                        } else if (item.Estado == 5) {
+                            // ASIGNADOS
+                            icon = urlIcon + item.Color + ".png";
+                        } else if (item.Estado == 3) {
+                            // PENDIENTE
+                            icon = urlIcon + "pendiente.png";
+                        }
+
+                        var marker = new google.maps.Marker({
+                            position: latLng,
+                            map: map,
+                            title: String(item.suministro_lectura) + '|' + String(item.id_lectura) + '|' + String(item.Estado) + '|' + icon + '|' + String(item.Medidor) + '|' + String(item.Lectura) + '|' + item.Url,
+                            icon: icon,
+                            content: ContenidoMarker,
+                            optimized: false,
+                        });
+                        markers.push(marker);
+                        google.maps.event.addListener(marker, 'click', (function (marker, index) {
+                            return function () {
+                                var estado = marker.title.split('|')[2];
+                                var idLectura = marker.title.split('|')[1];
+
+
+                                if (!$scope.objFiltros.verHistorial) {
+                                    if (estado == 3 || estado == 5) {
+                                        // PENDIENTE
+
+                                        if (marker.icon == urlIcon + "asignadoAux.png") {
+                                            for (var i = 0; i < listUbicacionesAux.length ; i++) {
+                                                if (listUbicacionesAux[i].id_lectura == idLectura) {
+                                                    listUbicacionesAux[i].Color = listUbicacionesAux[i].Color == "Rojo" ? "pendiente" : listUbicacionesAux[i].Color;
+                                                    marker.setIcon(urlIcon + listUbicacionesAux[i].Color + ".png");
+                                                }
+                                            }
+                                        } else {
+                                            marker.setIcon(urlIcon + "asignadoAux.png");
+
+                                        }
+                                        txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+                                    }
+                                } else {
+                                    if (estado == 1) {
+                                        // OPERARIO
+                                        var idOperario = marker.title.split('|')[0];
+                                        getPersonalResumen(idOperario);
+                                    } else {
+                                        infoWindow.setContent('<center><h4><b>' + 'Detalle' + '</b></h4></center>' + marker.content);
+                                        infoWindow.open($scope.map, marker);
+                                    }
+
+                                }
+
+                                $timeout(function () {
+                                    $(".clickEvent").click(function (event) {
+                                        var suministro = (event.target.id);
+                                        $('#ModalImagen').modal("show");
+                                        var suministro = marker.title.split('|')[0];
+                                        var id_lectura = marker.title.split('|')[1];
+                                        var medidor = marker.title.split('|')[4];
+                                        var lectura_movil = marker.title.split('|')[5];
+                                        var url = marker.title.split('|')[6];
+                                        if (url == "") {
+                                            url = imgNo;
+                                        } else {
+                                            url = 'http://www.dsige.com/calidda/foto/' + url;
+                                        }
+                                        $scope.paramsDetail = {
+                                            suministro: suministro,
+                                            medidor: medidor,
+                                            id_lectura: id_lectura,
+                                            lectura_movil: lectura_movil,
+                                            url: url
+                                        }
+                                        getHistorico(suministro);
+                                    });
+                                }, 500)
+
+
+                                // SOLO QUE SELECCIONE 1 X 1 CUANDO EL TIPO DE PROCESO ES 1
+                                /* if (tipoProceso == 1) {
+                                     //if ($scope.objFiltros.verHistorial) {
+                                     //    //FUNCIÓN DE VER RESUMEN DE SUMINSITRO
+                                     //    return;
+                                     //}
+                                     //// SI NO
+                                     if (marker.icon == iconAzul) {
+                                         marker.setIcon(iconRojo);
+                                     } else {
+                                         marker.setIcon(iconAzul);
+                                     }
+                                     txtTotalAsig.innerHTML = "Total Asig. : " + verMarcadosCount();
+                                 } else if (tipoProceso == 2) {
+                                     var idSuministro = marker.title.split('|')[0];
+                                 } else if (tipoProceso == 3) {
+
+                                 }*/
+                            }
+                        })(marker, index));
+                    }
+                    //
+                })
+
+            }
+
+        }
+        var degrees = 0;
+        $scope.rotateImg = function () {
+            degrees += 90;
+
+            $("#imgRotate").rotate(degrees);
+        }
+        var degreesNot = 0;
+        $scope.rotateImgNot = function () {
+            degreesNot += 90;
+
+            $("#imgRotateNot").rotate(degreesNot);
+        }
+
+
+        $scope.ActualizarLectura = function (item) {
+
+            $scope.showLoaderVerificar = true;
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionLecturas/Update_LecturaActual',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_lectura: item.id_lectura,
+                    lectura_actual: item.lectura_movil
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Proceso Cambio de Lectura, Realizado Correctamente.',
+                        type: 'success'
+                    });
+                    $scope.showLoaderVerificar = false;
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+            });
+        }
+
+
+
+        $scope.showLoaderHistorico = false;
+        var getHistorico = function (suministro) {
+            $scope.listHistorico = [];
+            $scope.showLoaderHistorico = true;
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/ListaHistoricoLectura',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                params: {
+                    suministro: suministro
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $scope.showLoaderHistorico = false;
+                $scope.listHistorico = data;
+
+            })
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+
+
+        $scope.changeTipoProceso_new = function (value, tip) {
+            RemoveMarker(null);
+            markers = [];
+            $scope.ActualizarInformacion_mapas();
+        }
+        $scope.selectPosition = function (item) {
+
+            for (var i = 0; i < markers.length; i++) {
+                var estado = markers[i].title.split('|')[2];
+                var nrodni = markers[i].title.split('|')[1];
+
+                if (estado == 1 && nrodni == item.nroDoc_Operario) {
+                    markers[i].setAnimation(google.maps.Animation.BOUNCE);
+                    var lat = markers[i].position.lat();
+                    var long = markers[i].position.lng();
+                    focusOperarioMarket(lat, long);
+                } else {
+                    markers[i].setAnimation(null);
+                }
+            }
+        }
+
+        $scope.NextImage = function (value) {
+            var itemImg = $scope.paramsDetail;
+            if (value == 0) {
+
+                enviarVerificarFoto(itemImg).then(function (res) {
+                    var index = $scope.pictures.indexOf(itemImg);
+                    $scope.pictures.splice(index, 1);
+
+                    // UNA VEZ QUE ELIMINAMOS EL INDEX OBSERVADO, EL SIGUIENTE TOMA SU LUGAR COMO INDEX.
+                    $timeout(function () {
+                        //$scope.paramsDetail = $scope.pictures[index];
+                        //itemImg = $scope.pictures[index];
+                        //getHistorico(itemImg);
+                    }, 500)
+
+                }, function (err) {
+                    console.log(err);
+                })
+
+            } else if (value == 1) {
+
+                enviarSinObservacion(itemImg).then(function (res) {
+                    var index = $scope.pictures.indexOf(itemImg);
+                    $scope.pictures.splice(index, 1);
+
+                    // UNA VEZ QUE ELIMINAMOS EL INDEX OBSERVADO, EL SIGUIENTE TOMA SU LUGAR COMO INDEX.
+                    $timeout(function () {
+                        //$scope.paramsDetail = $scope.pictures[index];
+                        //itemImg = $scope.pictures[index];
+                        //getHistorico(itemImg);
+                    }, 500)
+
+                }, function (err) {
+                    console.log(err);
+                })
+            };
+
+        }
+
+
+        $scope.showLoaderVerificar = false;
+        var enviarVerificarFoto = function (item) {
+            var q = $q.defer();
+            $scope.showLoaderVerificar = true;
+            var List_codigos = [item.id_lectura];
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/VerificacionFotos',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    lecturas: List_codigos.toString()
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Proceso enviar a relectura, Realizado Correctamente.',
+                        type: 'success'
+                    });
+                    //------ Enviando a firebase ---
+                    $scope.Enviar_NotificacionOperario_Unit(item.id_operario);
+                    $scope.showLoaderVerificar = false;
+                    q.resolve('success');
+                } else {
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                q.reject('failet');
+            });
+            return q.promise;
+        }
+
+        var enviarSinObservacion = function (item) {
+            var q = $q.defer();
+            $scope.showLoaderVerificar = true;
+            var List_codigos = [item.id_lectura];
+            var variables = {
+                method: 'POST',
+                url: '../VerificacionFotos/EnviarFotosSinObservacion',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    lecturas: List_codigos.toString()
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                $('.sige-load').hide();
+                if (data == 'OK' || data == '"OK"') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Proceso Foto sin Observación, Realizado Correctamente.',
+                        type: 'success'
+                    });
+                    $scope.showLoaderVerificar = false;
+                    q.resolve('success');
+                } else {
+                    q.resolve('success');
+                    alert(data)
+                }
+            })
+            .error(function () {
+                $('.sige-load').hide();
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+                q.reject('failet')
+            });
+
+            return q.promise;
+        }
+        $scope.selectPositionSum = function (item) {
+
+            var icon = urlIcon + item.nroDoc_Operario + ".png";
+            var marker = buscarIcon(icon);
+
+            if (marker == null) {
+                return;
+            } else {
+                var lat = marker.position.lat();
+                var long = marker.position.lng();
+
+                focusOperarioMarket(lat, long);
+            }
+
+        }
+
+        $scope.addMarkets = function (values) {
+
+
+            if (values.check) {
+                var listAux = [];
+
+                listUbicacionesAux.forEach(function (item, index) {
+
+                    if (item.Color == values.nroDoc_Operario && item.Estado != 1) {
+                        console.log('item')
+                        console.log(item)
+                        listAux.push(item);
+                    }
+                });
+                generarMarkets_new(listAux, 2);
+            } else {
+                var icon = urlIcon + values.nroDoc_Operario + ".png";
+                var count = 0;
+                markers.forEach(function (item, index) {
+                    if (item.icon == icon) {
+                        item.setMap(null);
+
+                    }
+                })
+                console.log(count);
+            }
+
+            console.log('Cantidad Markets : ' + markers.length);
+        }
+        var buscarIcon = function (icon) {
+            var markersAux = "";
+            for (var i = 0; i < markers.length; i++) {
+                if (markers[i].icon == icon) {
+                    markersAux = markers[i];
+                    markers[i].setAnimation(google.maps.Animation.BOUNCE);
+                } else {
+                    markers[i].setAnimation(null);
+                }
+            }
+            return markersAux;
+        }
+
+        var focusOperarioMarket = function (Latitud, Longitud) {
+            var latLng = {
+                lat: parseFloat(Latitud),
+                lng: parseFloat(Longitud)
+            }
+            map.setCenter(latLng)
+            map.setZoom(16);
+            //map.setAnimation(google.maps.Animation.BOUNCE);
+        }
+        function RemoveMarker(map) {
+            for (var i = 0; i < markers.length; i++) {
+                markers[i].setMap(map);
+            }
+        }
+
+        // FUNCIONES Y VARIABLES DE NOTIFICACIÓN
+
+        var iconInicio = "../Content/Imagen/markets/pendiente.png";
+        var iconFinal = "../Content/Imagen/markets/asignado.png";
+        var getDateNow =  function(){
+            var hoy = new Date();
+            var dd = hoy.getDate();
+            var mm = hoy.getMonth() + 1;
+            var yyyy = hoy.getFullYear();
+
+
+            var fechaHoy = dd+'/'+mm+'/'+yyyy;
+            //var fechaHoy = '17/12/2018'
+            return fechaHoy;
+        }
+        var minuto = (1000 * 60) * 3;
+        var myVar = setInterval(getReporte, minuto);
+
+        function myTimer() {
+            console.log('Entro11- kevin salazar ramos jeje');
+        }
+        function getReporte() {
+
+            var tipoNot = 1;
+            var variables = {
+                method: 'POST',
+                url: '../ReporteRelacionLecturas/getReporteAlejadoCorLdsNot',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: {
+                    id_servicio: 1,
+                    id_sector: 10,
+                    fecha_asignacion: getDateNow(),
+                    tipo: tipoNot
+                }
+            }
+            $http(variables)
+            .success(function (data) {
+                console.log(data.length);
+                $scope.Obj_Lista_Reporte_Cab_Not = data;
+                var total = 0;
+                $scope.Obj_Lista_Reporte_Cab_Not.forEach(function (item, index) {
+                    total += parseFloat(item.Cantidad);
+                });
+
+                var totalPanel = document.getElementById('textPanel');
+                totalPanel.innerText = "Not (" + total + ")";
+
+
+
+            })
+
+            .error(function () {
+
+
+            });
+        }
+        // INICIALIZAMOS REPORTE
+        getReporte();
+
+        $scope.verDetalle = function (item) {
+            $('.sige-load').show();
+            var tipoNot = 1;
+            var params = {
+                id_servicio: 1,
+                id_sector: 10,
+                fecha_asignacion: getDateNow(),
+                id_operario: item.id_operario_lectura
+            };
+
+            $('.sige-load').show();
+            var variables = {
+                method: 'POST',
+                url: '../ReporteRelacionLecturas/getReporteAlejadoCorLdsDetNot',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8'
+                },
+                data: params
+            }
+            $http(variables)
+            .success(function (data) {
+                console.log(data);
+                $('.sige-load').hide();
+                $("#myModalNot").modal('show');
+                $scope.Obj_Lista_Reporte_Det = data;
+
+            })
+
+            .error(function () {
+                alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+            });
+        }
+        $scope.iconArrow = "right";
+        $scope.contentAll = "6";
+        $scope.mostrarTodo = function () {
+            if ($scope.iconArrow == "right") {
+                $scope.iconArrow = "left";
+                $scope.contentAll = "12";
+            } else {
+                $scope.iconArrow = "right";
+                $scope.contentAll = "6";
+            }
+
+        }
+
+        $scope.imgFoto = "";
+        $scope.showMapRango = true;
+        $scope.verFoto = function (item) {
+            var url = 'http://www.dsige.com/calidda/foto/' + item.URL;
+            $scope.imgFoto = url;
+            $scope.showMapRango = false;
+            console.log(url);
+        }
+        $scope.verMapa = function (item) {
+            $scope.imgFoto = "";
+            $scope.showMapRango = true;
+            $scope.metroDistancia = item.Metros
+
+            $timeout(function () {
+                var latLngLectura = {
+                    lat: parseFloat(item.latitud_lectura),
+                    lng: parseFloat(item.longitud_lectura)
+                }
+                map = new google.maps.Map(document.getElementById('mapNot'), {
+                    center: latLngLectura,
+                    zoom: 19
+                });
+
+                generarMarkets_new_2(item);
+            },200)
+
+
+        }
+        markers = [];
+
+        var generarMarkets_new_2 = function (item) {
+
+            var latLngLectura = {
+                ubicacion: {
+                    lat: parseFloat(item.latitud_lectura),
+                    lng: parseFloat(item.longitud_lectura)
+                },
+                icon: iconInicio
+
+            }
+            var latLngMovil = {
+                ubicacion: {
+                    lat: parseFloat(item.latitudMovil_lectura),
+                    lng: parseFloat(item.longitudMovil_lectura)
+                },
+                icon: iconFinal
+
+            }
+            var listUbicaciones = [];
+            var lineSymbol = {
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW
+            };
+            listUbicaciones.push(latLngLectura);
+            listUbicaciones.push(latLngMovil);
+            // POLYLINE
+            var flightPlanCoordinates = [];
+            flightPlanCoordinates.push(latLngLectura.ubicacion);
+            flightPlanCoordinates.push(latLngMovil.ubicacion);
+            var flightPath = new google.maps.Polyline({
+                path: flightPlanCoordinates,
+                icons: [{
+                    icon: lineSymbol,
+                    offset: '100%'
+                }],
+                geodesic: true,
+                strokeColor: '#1a252f',
+                strokeOpacity: 1.0,
+                strokeWeight: 2,
+                scale: 4
+            });
+
+            flightPath.setMap(map);
+            //
+            console.log('listUbicaciones xxxx')
+            console.log(listUbicaciones)
+
+            for (var i = 0; i < listUbicaciones.length; i++) {
+
+
+                var infoWindow = new google.maps.InfoWindow();
+
+
+                var ContenidoMarker = '';
+
+
+                ContenidoMarker += '<div  id="_market" style="width:430px;height:130px;position:relative;">';
+                ContenidoMarker += '<table><tr><td><strong >Suministro</strong></td><td style="width:100%">: ' + item.suministro_lectura + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Medidor</strong></td><td style="width:100%">: ' + item.medidor_lectura + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Dirección</strong></td><td style="width:100%">: ' + item.direccion_lectura + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Operador</strong></td><td style="width:100%">: ' + item.Operario + '</td></tr>';
+                ContenidoMarker += '<tr><td><strong>Lectura</strong></td><td style="width:100%">: ' + item.confirmacion_Lectura + ' </td></tr>';
+                ContenidoMarker += '<tr><td><strong>Fecha</strong></td><td style="width:100%">: ' + item.fechaLecturaMovil_lectura + ' </td></tr>';
+                //ContenidoMarker += '<tr><td colspan="2" style="text-align:center;"><strong><a class="clickEvent" id="' + item.suministro_lectura + '" href="#">Ver Historial</a></strong></td></tr>';
+
+                var marker = new google.maps.Marker({
+                    position: listUbicaciones[i].ubicacion,
+                    map: map,
+                    //title: String(item.suministro_lectura) + '|' + String(item.id_lectura) + '|' + String(item.Estado) + '|' + icon + '|' + String(item.Medidor) + '|' + String(item.Lectura) + '|' + item.Url,
+                    icon: listUbicaciones[i].icon,
+                    content: ContenidoMarker,
+                    optimized: false,
+                    //animation: google.maps.Animation.BOUNCE
+                });
+                markers.push(marker);
+                google.maps.event.addListener(marker, 'click', (function (marker, index) {
+                    return function () {
+                        infoWindow.setContent('<center><h4><b>' + 'Detalle' + '</b></h4></center>' + marker.content);
+                        infoWindow.open($scope.map, marker);
+                    }
+                })(marker, i));
+            }
+
+
+
+
+        }
+
+
+        // FIN DE NOTIFICACIONES
+
+    });
+
+
+
+</script>
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+
+
+
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();Listado_Locales();">
+
+
+    <!-- Notification design-->
+    <!-- CONTENIDO NOTIFICACIÓN -->
+
+    <div class="notificacion" id="panelNot" style="display:none">
+        <div class="panel-body">
+            <div class="row">
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" onclick="ocultarNot();">&times;</button>
+                                <h4 class="modal-title">Registros alejados</h4>
+
+                            </div>
+                            <div style="height:450px;overflow:auto">
+                                <table id="table-consulta_lec" class="table table-responsive table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th data-field="_b">Operario</th>
+                                            <th data-field="_k">Cantidad</th>
+                                            <th>Detalle</th>
+                                            <!--<th ng-if="showLibro">Detalle Obs</th>-->
+
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="item in Obj_Lista_Reporte_Cab_Not" style="    font: menu;    font-size: 10px;    font-weight: 600;    color: #786e6e;">
+                                            <th data-field="_b">{{item.id_operario_lectura}}</th>
+                                            <th data-field="_b">{{item.Cantidad}}</th>
+
+                                            <th style="     text-decoration: underline;    color: #E91E63;    cursor: pointer;" ng-click="verDetalle(item);">Ver Detalle</th>
+                                            <!--<th ng-if="showLibro"  style="     text-decoration: underline;    color: #E91E63;    cursor: pointer;" ng-click="verDetalleObs(item);">Ver Detalle Obs</th>-->
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="myModalNot" class="modal fade" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog" style="    width: 80%">
+            <!-- Modal content-->
+            <div class="modal-content">
+                <form class="form-horizontal" id="FormUsuario">
+                    <div class="modal-header" style="display: -webkit-inline-box;">
+                        <button type="button" class="close" data-dismiss="modal" style="position: absolute;
+    right: 20px;">
+                            &times;
+                        </button>
+                        <h4 class="modal-title">Detalle de Lecturas </h4>
+                        <div class="form-group">
+                            <input type="text" class="form-control" ng-model="search" style="margin-left:60px;" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Busqueda por Observación">
+                        </div>
+                    </div>
+                    <div class="modal-body ">
+                        <div class="panel panel-default">
+                            <div class="row">
+                                <i ng-click="mostrarTodo();" class="fa fa-arrow-{{iconArrow}} fa-5x iconArrow" style=" top: -40px;left: 600px;"></i>
+                                <div class="col-md-{{contentAll}}">
+                                    <div style="height:650px;overflow:auto">
+                                        <table id="" class="table table-responsive table-bordered">
+                                            <thead>
+                                                <tr style="    font: menu;    font-size: 11px;    font-weight: 600;    color: #786e6e;">
+                                                    <th data-field="_b">Ver</th>
+                                                    <!--<th data-field="_b" ng-if="showLibro">Observacion</th>-->
+                                                    <th>Ver Foto</th>
+                                                    <th data-field="_b">SuministroLectura</th>
+                                                    <th data-field="_b">Observación</th>
+                                                    <th data-field="_b">Medidor_Lectura</th>
+                                                    <th data-field="_b">Dirección_Lectura</th>
+                                                    <th data-field="_b">Latitud_Lectura</th>
+                                                    <th data-field="_b">Longitud_Lectura</th>
+                                                    <th data-field="_b">Operario</th>
+                                                    <th data-field="_b">FechaLectura Movil</th>
+                                                    <th data-field="_b">ConfirmaciónLectura</th>
+
+                                                    <th data-field="_b">LatitudMovil_Lectura</th>
+                                                    <th data-field="_b">LongitudMovil_Lectura</th>
+                                                    <th data-field="_b">Metros</th>
+
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+
+                                                <tr ng-repeat="item in Obj_Lista_Reporte_Det | filter : {Observacion_lectura : search}" style="    font: menu;    font-size: 10px;    font-weight: 600;    color: #786e6e;">
+                                                    <td ng-click="verMapa(item);" style="     text-decoration: underline;    color: #E91E63;    cursor: pointer;">Ver</td>
+                                                    <!--<td ng-if="showLibro">{{item.Observacion}}</td>-->
+                                                    <td ng-click="verFoto(item);" style="     text-decoration: underline;    color: #E91E63;    cursor: pointer;">{{item.tieneFoto_lectura}}</td>
+                                                    <td>{{item.suministro_lectura}}</td>
+                                                    <td>{{item.Observacion_lectura}}</td>
+                                                    <td>{{item.medidor_lectura}}</td>
+                                                    <td>{{item.direccion_lectura}}</td>
+                                                    <td>{{item.latitud_lectura}}</td>
+                                                    <td>{{item.longitud_lectura}}</td>
+                                                    <td>{{item.Operario}}</td>
+                                                    <td>{{item.fechaLecturaMovil_lectura}}</td>
+                                                    <td>{{item.confirmacion_Lectura}}</td>
+
+                                                    <td>{{item.latitudMovil_lectura}}</td>
+                                                    <td>{{item.longitudMovil_lectura}}</td>
+                                                    <td>{{item.Metros}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-6" ng-if="showMapRango">
+                                    <br />
+                                    <div class="row" style="margin-left:20px;">
+                                        <div class="col-lg-1">
+                                            <p style="font:menu;color:#4d4d4d">Lds</p>
+                                        </div>
+                                        <div class="col-lg-1" style="     font: menu;    text-align: center;    background-color: #e74c3c;    height: 20px;    color: white;    font-weight: 600;">
+
+                                        </div>
+                                        <div class="col-lg-1">
+                                            <p style="font:menu;color:#4d4d4d">Movil</p>
+                                        </div>
+                                        <div class="col-lg-1" style=" margin-left:20px;   font: menu;    text-align: center;    background-color: #3b57e5;    height: 20px;    color: white;    font-weight: 600;">
+
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <p style="font:menu;color:#4d4d4d;font-size:15px !important;">Distancia : {{metroDistancia | number : 3}} Metros.</p>
+                                        </div>
+                                    </div>
+                                    <br />
+                                    <div id="mapNot"></div>
+                                </div>
+                                <div class="col-md-6" ng-if="!showMapRango">
+                                    <a ng-click="rotateImgNot();" class="pull-right rotate" style="    margin-top: -10px; font-size: 12px; padding: 3px 4px;  color: white;  margin-right: 20px;cursor:pointer"><i class="fa fa-repeat" style="Color:#337ab7; font-size: 30px" aria-hidden="true"></i>Girar</a>
+                                    <img id="imgRotateNot" src="{{imgFoto}}" style="width: 90%;    margin-top: 100px;" />
+                                </div>
+                            </div>
+
+
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" data-dismiss="modal">Cancelar</button>
+                        @*<input type="submit" value="validar" class="btn btn-danger" ng-click="alert()" />*@
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- FIN DE CONTENIDO NOTIFICACIÓN-->
+    <!-- End Notification design-->
+
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> Programación de Trabajos</h6>
+        </div>
+        <div class="panel-body">
+            <div id="Contenedor">
+                <div class="container">
+                    <div class="row" style="    display: flex;    overflow: auto;">
+                        <div class="col-md-{{numberCol2}}" ng-show="showFiltros">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label for="id_local" style="font-size:11px">Local:</label>
+                                    <select id="id_local" style="width: 100%;" class="form-control" ng-model="id_local">
+                                        <option value=0>--[ Seleccione ]-- </option>
+                                        <option ng-repeat="item in Obj_List_Locales" value="{{item.id_Local}}">
+                                            {{item.nombre_local}}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="_supervisor" class="control-label">Servicios</label>
+                                    <select id="id_Servicio" style="width: 100%;" class="form-control">
+                                        <option value="1" selected>Lectura</option>
+                                        <option value="2">Verificación</option>
+                                    </select>
+                                </div>
+
+
+
+
+
+                                <div class="col-md-3">
+                                    <label for="_usuario" style="font-size:11px">F. de Asig.</label>
+                                    <input class="form-control" style="width: 100%;" id="id_fecha_asignacion" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                </div>
+
+                                <div class="col-lg-3" style="text-align:center;margin-top:18px;">
+                                    <div class="form-group">
+
+                                        <a href="#" class="btn btn-info btn-block" ng-click="Mostrar_informacion();"><span class="glyphicon glyphicon-refresh"></span>Actualiz.</a>
+                                        <a href="#" class="btn btn-success " ng-show="ok" ng-click="verMarcadosSum();"><span class="glyphicon glyphicon-refresh"></span> Ver Marcados</a>
+                                    </div>
+                                </div>
+
+
+                            </div>
+                            <div class="row">
+
+                                <br />
+                                <div id="" class="table-responsive">
+                                    <table id="" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                        <thead>
+                                            <tr>
+                                                <th>Total Cargados</th>
+                                                <th>Asignados</th>
+                                                <th>Pendientes</th>
+                                                <th>Ejecutados</th>
+                                                <th>Avance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="item in listResumenTrabajos" style="color:#34495e">
+                                                <td>{{item.Asignado}}</td>
+                                                <td>{{item.Asignado}}</td>
+                                                <td>{{item.PendDia}}</td>
+                                                <td>{{item.Ejecutado}}</td>
+                                                <td>%{{item.Porcentaje}}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <i ng-click="mostrarTodo2();" class="fa fa-arrow-{{position2}} fa-5x iconArrow" style=" top: 120px;    left: 5px;"></i>
+                                </div>
+                                <div id="Principal" class="table-responsive">
+                                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                        <thead>
+                                            <tr>
+                                                <th>Cod. Lect</th>
+                                                <th>Apellidos Oper.</th>
+                                                <th>Cant. Asig</th>
+                                                <th>Ejecutado</th>
+                                                <th>Pendientes</th>
+                                                <th>% Avan</th>
+                                                <th>Minimo</th>
+                                                <th>Maximo</th>
+                                                <th>totalHora</th>
+                                                <th>Ubi. Actual</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="item in listDetalleTrabajos" style="color:#34495e">
+                                                <td>{{item.id_Operario}}</td>
+                                                <td>{{item.apellidos_operario}}</td>
+                                                <td>{{item.Asignado}}</td>
+                                                <td>{{item.Ejecutado}}</td>
+                                                <td>{{item.PendDia}}</td>
+                                                <td>%{{item.Porcentaje}}</td>
+                                                <td>{{item.Minimo}}</td>
+                                                <td>{{item.Maximo}}</td>
+                                                <td>{{item.totalHora}}</td>
+                                                <td><a href="#" ng-click="verMapaOperario(item)">Ver</a></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-md-{{numberCol}}">
+                            <hr style="border-top: 2px solid #34495e;" />
+                            <div class="row">
+
+                                <div class="col-md-8">
+                                    <fieldset style="border:1px solid">
+                                        <legend align="center">Filtros en mapa</legend>
+
+                                        <div class="col-md-4">
+                                            <div class="checkbox">
+                                                <label><input type="checkbox" ng-model="objFiltros.pendientes" value="" ng-click="changeTipoProceso_new(objFiltros.pendientes,1);"><i style="margin-left:20px; color:red">Ver Pendiente por Asignar</i></label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="checkbox">
+                                                <label><input type="checkbox" ng-model="objFiltros.asignados" value="" ng-click="changeTipoProceso_new(objFiltros.asignados,2);"><i style="margin-left:20px;color:#3279b7;">Ver Asignados</i></label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="checkbox">
+                                                <label><input type="checkbox" ng-model="objFiltros.verificaciones" value="" ng-click="changeTipoProceso_new(objFiltros.verificaciones,3);"><i style="margin-left:20px; color:green;">Ver Verificaciones</i></label>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+                                </div>
+
+                                <div class="col-md-4 {{disabledContent}}">
+                                    <fieldset style="border:1px solid">
+                                        <legend align="center">Herramientas de Asignación</legend>
+                                        <div class="col-md-6" ng-if="ok">
+                                            <div class="checkbox">
+                                                @*<label><input type="checkbox" ng-model="objFiltros.asignarTodos" ng-click="changeTipoFiltro(objFiltros.asignarTodos,1)" value=""><i style="margin-left:20px;">Todos</i></label>*@
+                                                <label><input type="checkbox" ng-model="objFiltros.asignarTodos" value=""><i style="margin-left:20px;">Todos</i></label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="checkbox">
+                                                @*<label><input type="checkbox" ng-model="objFiltros.verHistorial" ng-click="changeTipoFiltro(objFiltros.verHistorial,2)" value=""><i style="margin-left:20px;">Ver Información</i></label>*@
+                                                <label><input type="checkbox" ng-model="objFiltros.verHistorial" value=""><i style="margin-left:20px;">Ver Información</i></label>
+                                            </div>
+                                        </div>
+
+                                    </fieldset>
+                                    <br>
+
+                                </div>
+
+                            </div>
+
+                            <div class="col-lg-3">
+                                <div class="form-group">
+                                    <a href="#" class="btn btn-success btn-block" ng-click="OpenModalOperarios();"><span class="glyphicon glyphicon-refresh"></span> Guardar</a>
+                                    <i ng-click="mostrarTodo();" class="fa fa-arrow-{{position}} fa-5x iconArrow"></i>
+
+                                </div>
+                            </div>
+                            <div class="col-lg-1" ng-show="objFiltros.pendientes">
+                                <div class="contentAsignados"></div>
+                            </div>
+                            <div class="col-lg-3" ng-show="objFiltros.pendientes">
+                                <p id="txtTotalAsig">Total Asig. : 0</p>
+                            </div>
+                            <div class="col-lg-5" style="">
+
+                                <i ng-click="activarDibujo(1);" class="fa fa-compress fa-2x" style="color:{{colorPolyLine}};"></i>
+                                <i ng-click="activarDibujo(2);" class="fa fa-check-square-o fa-2x" style="color:{{colorRectangle}};    margin-left: 20px;"></i>
+                                <i ng-click="limpiarDibujo();" class="fa fa-trash fa-2x" style="color:#34495e;margin-left: 20px;"></i>
+                            </div>
+
+
+                            <div id="map"></div>
+
+                            <div class="row" ng-show="ok">
+                                <br />
+                                <fieldset style="border:1px solid">
+                                    <legend align="center">Datos del Suministro</legend>
+                                    <div class="col-md-6">
+                                        <div class="checkbox">
+                                            <label><input type="checkbox" value=""><i style="margin-left:20px;">Todos</i></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="checkbox">
+                                            <label><input type="checkbox" value=""><i style="margin-left:20px;">Ver Historial</i></label>
+                                        </div>
+                                    </div>
+
+                                </fieldset>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <hr style="border-top: 2px solid #34495e;" />
+                            <fieldset style="border:1px solid; padding-left:10px;padding-right:10px;    margin-right: -50px;">
+                                <legend align="center">Lista de Operarios x Zona</legend>
+                                <div style="height:600px;overflow:auto">
+                                    <table id="" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                        <thead>
+                                            <tr>
+                                                <th>Select</th>
+                                                <th>Operario</th>
+                                                <th>Cant. Zona</th>
+                                                <th>Total</th>
+                                                <th>Color</th>
+
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr style="color:#34495e; cursor:pointer;" ng-repeat="item in listOperariosZona">
+                                                <td><input type="checkbox" class="form-check-input" ng-model="item.check" ng-click="addMarkets(item)" ng-checked="item.check"></td>
+                                                <td>{{item.id_operario_lectura}}</td>
+                                                <td>{{item.cant_zona}}</td>
+                                                <td>{{item.cant_sum}}</td>
+                                                <td ng-click="selectPositionSum(item);"><img src="~/Content/Imagen/markets/{{item.nroDoc_Operario}}.png" /></td>
+
+
+                                            </tr>
+
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </fieldset>
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+                <br />
+                <div class="form-group" style="padding-left: 15px;">
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <div id="ModalImagen" class="modal fade" role="dialog">
+        <div class="modal-dialog modal-img">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <a ng-click="rotateImg();" class="pull-right rotate" style="    margin-top: -10px; font-size: 12px; padding: 3px 4px;  color: white;  margin-right: 20px;cursor:pointer"><i class="fa fa-repeat" style="Color:#337ab7; font-size: 30px" aria-hidden="true"></i>Girar</a>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> Detalle de Foto</h6>
+                </div>
+
+                <div class="modal-content">
+                    <div class="modal-body">
+
+                        <div class="row">
+                            <center>
+                                <div class="loader" ng-if="showLoaderVerificar" style=" margin-bottom: 15px;"></div>
+                            </center>
+                            <div class="col-md-6">
+                                <center>
+                                    <div class="loader" ng-if="showLoaderHistorico" style=" margin-bottom: 15px;"></div>
+                                    <h3>Historico</h3>
+                                    <br />
+                                </center>
+                                <table class="table  table-responsive table-bordered  table-condensed " border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                                    <thead>
+                                        <tr>
+                                            <th>Suministro</th>
+                                            <th>Lectura</th>
+                                            <th>Mes</th>
+                                            <th>Consumo</th>
+
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="item in listHistorico">
+                                            <td>{{item.Suministro}}</td>
+                                            <td>{{item.Lectura}}</td>
+                                            <td>{{item.Mes}}</td>
+                                            <td>{{item.consumo}}</td>
+
+                                        </tr>
+
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <p style="font-size:14px;">
+                                    Suministro : {{paramsDetail.suministro}}  | Medidor : {{paramsDetail.medidor}}  | Lectura : <input type="text" numeric-only style="width:80px;" ng-model="paramsDetail.lectura_movil" />
+                                    <button role="button" class="btn btn-default" ng-click="ActualizarLectura(paramsDetail)"><i class="fa fa-close fa-lg"></i> Cambiar</button>
+                                </p>
+                                <img id="imgRotate" src="{{paramsDetail.url}}" class="img-responsive img-rounded" alt="Mapa" style="width:450px;height:450px;">
+                            </div>
+                        </div>
+
+
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+
+                            <div class="col-sm-4">
+
+                            </div>
+                            <div class="col-sm-3">
+
+                                <button role="button" id="btnCancelar" class="btn btn-danger" ng-click="NextImage(0)"><i class="fa fa-ban fa-lg"></i> Enviar a Relectura</button>
+                            </div>
+                            <div class="col-sm-3">
+
+                                <button role="button" id="btnCancelar" class="btn btn-success" ng-click="NextImage(1)"><i class="fa fa-check fa-lg"></i> Sin Observación</button>
+                            </div>
+
+                            <div class="col-sm-2">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="modalOperarios" class="modal fade bd-example-modal-sm" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md" style=" width: 350px;">
+
+            <div class="modal-content">
+                <div class="modal-header">
+                    Seleccionar Operario
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group" style="padding-left: 5px; padding-right: 5px;padding-top: 10px">
+                        <label for="_Lecturista" class="control-label">Lecturista :</label>
+                        <div class="form-group form-group-sm">
+                            <select id="id_operador" style="width:300px;    height: 22px;" ng-model="id_operario">
+                                <option value=0>--[ SELECCIONE ]-- </option>
+                                <option ng-repeat="item in Lista_Operarios" value="{{item.id_Operario}}">
+                                    {{item.id_Operario}}  :  {{item.operario}}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="_usuario" style="font-size:11px">F. de Asignación:</label>
+                        <input class="form-control" style="width: 150px;" id="id_fecha_asignacion_send" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                        <br />
+                        <a href="#" class="btn btn-success btn-block" ng-click="GuardarInformacion();"><span class="glyphicon glyphicon-refresh"></span> Guardar</a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="ModalDatosOperario" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel"></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row ">
+                        <fieldset style="border:1px solid">
+                            <legend align="center">Datos del Operario</legend>
+                            <div class="container">
+
+                                <div class="form-group row">
+                                    <label for="staticEmail" class="col-sm-1 col-form-label">Cliente </label>
+                                    <div class="col-sm-5">
+                                        <input type="text" ng-model="objOperario.Cliente" class="form-control">
+                                    </div>
+                                    <label for="staticEmail" class="col-sm-1 col-form-label">Operario</label>
+                                    <div class="col-sm-5">
+                                        <input type="text" ng-model="objOperario.Operario" class="form-control">
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Asignado</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.Asignado" class="form-control">
+                                    </div>
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Pendiente</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.Pendientes" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Ejecutado</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.Ejecutado" class="form-control">
+                                    </div>
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Efectivos</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.Efectivos" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">No Efectivos</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.NoEfectivos" class="form-control">
+                                    </div>
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Avance</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.Avance" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Hora Inicio</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.HoraInicio" class="form-control">
+                                    </div>
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Hora Final</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.HoraFinal" class="form-control">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Hora General</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.HorasGeneral" class="form-control">
+                                    </div>
+                                    <label for="staticEmail" class="col-sm-2 col-form-label">Promedio</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" ng-model="objOperario.Promedio" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </fieldset>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+﻿@{
+    ViewBag.Title = "Inicio";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+
+@section instances{
+    @Scripts.Render("~/Scripts/jquery-1.11.3.min.js")
+    @Scripts.Render("~/Scripts/camera.js")
+}
+@section scripts{
+    <script type="text/javascript">
+    </script>
+}
+
+<div id="carousel" class="carousel slide" data-ride="carousel" data-interval="5000">
+    <!-- Indicators -->
+<ol class="carousel-indicators" style="text-align:center; padding-top:inherit;">
+    <li data-target="#carousel-example-generic" data-slide-to="0" class="active"></li>
+    <li data-target="#carousel-example-generic" data-slide-to="1"></li>
+    <li data-target="#carousel-example-generic" data-slide-to="2"></li>
+</ol>
+
+<!-- Wrapper for slides -->
+<div class="carousel-inner" style="text-align: -webkit-center">
+
+    <div class="item active">
+        <img src="~/Content/Imagen/Logo_Veritas.jpeg" alt="..." style="height: 550px;">
+    </div>
+    <div class="item">
+        <img src="~/Content/Imagen/Logo_Veritas.jpeg" alt="..." style="height: 550px;">
+
+    </div>
+    <div class="item">
+        <img src="~/Content/Imagen/Logo_Veritas.jpeg" alt="..." style="height: 550px; ">
+    </div>
+</div>
+</div>
+
+
+

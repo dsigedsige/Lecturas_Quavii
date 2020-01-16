@@ -1,0 +1,818 @@
+﻿ @using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Importacion de archivos ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+
+
+    @Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+    @Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-filestyle.min.js")
+
+    @Scripts.Render("~/Scripts/jquery.fileDownload.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    @Scripts.Render("~/Content/AnglarUpload/angular-file-upload.min.js")
+
+
+    <style>
+
+        .form-control {
+            font-size: 11px;
+            width: 100%;
+            height: 28px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+        .btn {
+            font-size: 12px;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 600px;
+        }
+
+        input[type="text"] {
+            font-size: 11px;
+        }
+
+        label {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        #Principal {
+            width: 98%;
+            height: 600px;
+        }
+                
+       #mensajeCorrecto {
+            width: 20%;
+            height: 0px; 
+        }
+
+         #mensajeIncorrecto {
+            width: 20%;
+            height: 0px;
+        }
+
+         #Contenedor {
+            width: 98%;
+        }
+      #Marco {
+          padding-left : 5px;
+          padding-top : 15px;
+          margin: -10px;
+ 
+        }      
+ 
+        .datepicker {
+            width: 200px;
+        }        
+
+        .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th { 
+            vertical-align:  middle; 
+        }
+
+
+        input[type=checkbox], input[type=radio] {
+            margin: -4px 0 0;
+        }
+
+        th {
+            text-align: left;
+        }
+    </style>
+
+
+    <script type="text/javascript">
+
+        var app = angular.module('myApp', []);
+        app.controller('MainCtrl', function ($scope, $http, $timeout, $q) {
+            $scope.name = 'World';
+            $scope.files = [];
+            $scope.checkedallR = true;
+
+            $(function () {
+                $('#id_fecha_asignacion').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'es',
+                    autoclose: true
+                });
+            });
+
+       
+            console.log('$scope.files')
+            console.log($scope.files)
+
+
+            $scope.InicializandoVariables = function () {
+                $scope.id_tipoServicio = '0';
+                $scope.Listado_Servicios()
+                setTimeout(function () {
+                    var cbo_servicio = document.getElementById('id_servicio');
+                    cbo_servicio.value = '0';
+                }, 500);
+
+            }
+
+
+            $scope.Obj_List_Servicios = [];
+            $scope.Listado_Servicios = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../Importar_ArchivoTXT/ListandoServicios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    $scope.Obj_List_Servicios = [];
+                    $scope.Obj_List_Servicios = data;
+                })
+
+                .error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                });
+            }
+ 
+
+
+            $scope.addIdChecked_All = function (checked) {
+                for (var i = 0; i < $scope.files.length; i++) {
+                    if ($scope.files[i].flag_inserto == false) {
+                        if ($scope.files[i].color == false) {
+                            $scope.files[i].checkeado = checked;
+                        }
+                    } else {
+                        $scope.files[i].checkeado = false;
+                    }
+                }
+            }
+
+            function Marcados() {
+                var estado = false;
+                for (var i = 0; i < $scope.files.length; i++) {
+                    if ($scope.files[i].flag_inserto == false) {
+                        if ($scope.files[i].color == false) {
+                            if ($scope.files[i].checkeado == true) {
+                                estado = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                return estado;
+            }
+            
+            $scope.SubirArchivos = function (url, name) {
+
+                var nombreArchivo = '';
+                $('.sige-load').show();
+
+                arrayFinal = [];
+                nombreArchivo = '';
+                nombreArchivo = name;
+
+                $http.get(url)
+                       .then(function (result) {
+                           var data = result.data;
+                           data = data.split('\n');
+                           for (var i = 0; i < data.length ; i++) {
+                               var arrayText = data[i].split('\t');
+                               arrayFinal.push({
+                                   Item: arrayText[0],
+                                   Instalacion: arrayText[1],
+                                   Equipo: arrayText[2],
+                                   Aparato: arrayText[3],
+                                   Tipo_calle: arrayText[4],
+                                   Nombre_Calle: arrayText[5],
+                                   Altura_Calle: arrayText[6],
+                                   Numero_Edificio: arrayText[7],
+                                   Numero_Departamento: arrayText[8],
+                                   Detalle_adicional_ubicacion: arrayText[9],
+                                   Piso: arrayText[10],
+                                   Vivienda_Principal: arrayText[11],
+                                   Detalle_Construccion: arrayText[12],
+                                   Conjunto_Vivienda: arrayText[13],
+                                   Manzana_Lote: arrayText[14],
+                                   Distrito: arrayText[15],
+                                   Codigo_postal: arrayText[16],
+                                   Poblacion: arrayText[17],
+                                   Emplazamiento: arrayText[18],
+                                   Suplemento_emplazamiento: arrayText[19],
+                                   Lectura_anterior: '',
+                                   Fecha_planificada_lectura_anterior: arrayText[20],
+                                   Fecha_planificada_lectura_actual: arrayText[21],
+                                   Fecha_planificada_lectura_proxima: arrayText[22],
+                                   Interlocutor_comercial: arrayText[23],
+                                   Cuenta_contrato: arrayText[24],
+                                   Tipo_Cliente: arrayText[25],
+                                   Categoria: arrayText[26],
+                                   Secuencia_lectura: arrayText[27],
+                                   Unidad_lectura: arrayText[28],
+                                   Numero_lecturas_estimadas: arrayText[29],
+                                   Marca_primera_lectura: arrayText[30],
+                                   Empresa_Lectora: arrayText[31],
+                                   Campo1: '',
+                                   Campo2: '',
+                                   Cliente: arrayText[34],
+                                   Nota_ubicacion_aparato: arrayText[35],
+                                   Nota_dos_ubicacion_aparato: arrayText[36],
+                                   Secuencia: arrayText[37],
+                                   nombre_archivo: nombreArchivo
+                               })
+                           }
+                           $http.post('../Importar_ArchivoTXT/saveTextToServidor', arrayFinal)
+                             .success(function (result) {
+                                 var res = result.split('|');
+                                 if (res[0] == 0 || res[0] == "0") {
+                                     console.log(res[1])
+                                 } else {
+                                     new PNotify({
+                                         title: 'Sistemas',
+                                         text: 'Proceso realizado exitosamente.',
+                                         type: 'success'
+                                     });
+                                 }
+                                 MostrarOcultarBoton(name)
+                                 $('.sige-load').hide();
+                             })
+                             .error(function (err) {
+                                 console.log(err)
+                                 $('.sige-load').hide();
+                             })
+
+                       }, function (error) {
+                           $('.sige-load').hide();
+                           console.log(error)
+                       })
+            }
+            
+            function MostrarOcultarBoton(name) {
+                for (var i = 0; i < $scope.files.length; i++) {
+                    if ($scope.files[i].name == name) {
+                        $scope.files[i].disabled = true
+                        $scope.files[i].color = true
+                        break;
+                    }
+                }
+            }
+
+            $scope.VerificarExitenciaArchivo = function () {
+                    var fechaAsignacion = document.getElementById('id_fecha_asignacion').value;
+
+                    if (fechaAsignacion == '') {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                            type: 'danger'
+                        });
+                        return;
+                    }
+
+                    var variables = {
+                        method: 'POST',
+                        url: '../Importar_ArchivoTXT/VerificandoArchivos',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8'
+                        },
+                        data: {
+                            fechaAsignacion: fechaAsignacion
+                        }
+                    }
+                    $http(variables)
+                    .success(function (data) {
+
+                         angular.forEach(data, function (obj, key) {
+                            for (var i = 0; i < $scope.files.length; i++) {      
+                                if ($scope.files[i].name == obj.nombre_ArchivoImportado) {
+                                    $scope.files[i].flag_inserto = true;
+                                }
+                            }
+                        });
+ 
+
+                    })
+                    .error(function () {
+                        alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                    });       
+
+            }
+
+
+            $scope.CargarArchivos = function () {
+
+                var fechaAsignacion = document.getElementById('id_fecha_asignacion').value;
+                var cboServicio = document.getElementById('id_servicio').value;
+
+                if (fechaAsignacion == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+
+                if (cboServicio == '0' || cboServicio == 0 || cboServicio == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor seleccione el Tipo de Servicio.',
+                        type: 'error'
+                    });
+                    return;
+                }
+
+                var nombreArchivo = '';
+                $scope.ArchivosMarcados = [];
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Importar_ArchivoTXT/VerificandoArchivos',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fechaAsignacion: fechaAsignacion,
+                        TipoServicio: cboServicio
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+                    angular.forEach(data, function (obj, key) {
+                        for (var i = 0; i < $scope.files.length; i++) {
+                            if ($scope.files[i].name == obj.nombre_ArchivoImportado) {
+                                $scope.files[i].flag_inserto = true;
+                                $scope.files[i].checkeado = false;
+                                $scope.files[i].disabled = true;
+                            }
+                        }
+                    });
+
+                    var arrayFinal = [];
+                    if (Marcados() == false) {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Por favor marque al menos un Item. Muchas gracias.',
+                            type: 'danger'
+                        });
+                        $('.sige-load').hide();
+                        return;
+                    }
+
+                    angular.forEach($scope.files, function (item) {
+                        if (item.flag_inserto == false) {
+                            if (item.color == false) {
+                                if (item.checkeado == true) {
+                                    $scope.ArchivosMarcados.push(item._file);
+                                }
+                            }
+                        }
+                    });
+       
+                    var miPeticion = function (data, fechaAsigna) {
+
+                        fechaAsigna = document.getElementById('id_fecha_asignacion').value;
+                        cboServicio = document.getElementById('id_servicio').value;
+
+                        var Result = {};
+                        var q = $q.defer();
+
+                        var file = data;
+                        var uploadUrl = '../Importar_ArchivoTXT/saveTextToServidor';
+                        var fd = new FormData();
+                        fd.append('file', file);
+                        fd.append('fechaAsignacion', fechaAsigna);
+                        fd.append('TipoServicio', cboServicio);
+                        $http.post(uploadUrl, fd, {
+                            transformRequest: angular.identity,
+                            headers: { 'Content-Type': undefined }
+                        }).success(function (result) {
+                            q.resolve(result)
+                        })
+                        .error(function (err) {
+                            q.reject(err);
+                        })
+                         return q.promise;
+                    }
+
+                    var Getdata = function (indice) {
+                        var file;
+                        var i = 0;
+                        angular.forEach($scope.ArchivosMarcados, function (item) {
+                            if (i == indice) {
+                                file = item;
+                            }
+                            i++;
+                        });
+                        return file;
+                    }
+
+                    var enviarPeticiones = function (indice, fechaAsigna) {                                        
+                        if (indice < $scope.ArchivosMarcados.length) {
+                            var file_data = Getdata(indice);
+
+                            miPeticion(file_data, fechaAsigna)
+                            .then(function (result) {
+                                var res = result.split('|');
+                                if (res[0] == 0 || res[0] == "0") {
+                                    console.log('Error Archivo nro.' + indice + ':' + res[1])
+                                    MostrarOcultarBoton(file_data.name)
+                                    enviarPeticiones(indice + 1);
+                                } else {
+                                    MostrarOcultarBoton(file_data.name)
+                                    enviarPeticiones(indice + 1);
+                                }
+                            }, function (error) {
+                                console.log(error)
+                                MostrarOcultarBoton(file_data.name)
+                                enviarPeticiones(indice + 1);
+                            })
+                                  
+                        } else {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso Concluyo exitosamente.',
+                                type: 'success'
+                            });
+                            $('.sige-load').hide();
+                        }
+                    }
+
+                    enviarPeticiones(0, fechaAsignacion);
+            
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+                
+            }
+            
+            $scope.uploadFile = function () { 
+
+                var fechaAsignacion = document.getElementById('id_fecha_asignacion').value;
+
+                if (fechaAsignacion == '') {
+                    new PNotify({
+                        title: 'Sistemas',
+                        text: 'Por favor ingrese o seleccione una Fecha de Asignación.',
+                        type: 'danger'
+                    });
+                    return;
+                }
+ 
+                var nombreArchivo = '';
+                $scope.ArchivosMarcados = [];
+                $('.sige-load').show();
+
+                var variables = {
+                    method: 'POST',
+                    url: '../Importar_ArchivoTXT/VerificandoArchivos',
+
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        fechaAsignacion: fechaAsignacion
+                    }
+                }
+                $http(variables)
+                .success(function (data) {
+
+                    angular.forEach(data, function (obj, key) {
+                       for (var i = 0; i < $scope.files.length; i++) {
+                            if ($scope.files[i].name == obj.nombre_ArchivoImportado) {                          
+                                $scope.files[i].flag_inserto = true;
+                                $scope.files[i].checkeado = false;
+                                $scope.files[i].disabled = true;                               
+                            }
+                        }
+                    });
+
+                    var arrayFinal = [];
+                    if (Marcados() == false) {
+                        new PNotify({
+                            title: 'Sistemas',
+                            text: 'Por favor marque al menos un Item. Muchas gracias.',
+                            type: 'danger'
+                        });
+                        $('.sige-load').hide();
+                        return;
+                    }
+                    
+                    angular.forEach($scope.files, function (item) {
+                        if (item.flag_inserto == false) {
+                            if (item.color == false) {
+                                if (item.checkeado == true) {
+                                    $scope.ArchivosMarcados.push(item);
+                                }
+                            }
+                        }
+                    });
+
+                    //cambiando todoo
+                    var mifuncion = function (url, nombreArchivosSelec, fechaAsignacion) {
+                        var Result = {};
+                        var q = $q.defer();
+                        var processed = 0;
+                        $http.get(url)
+                                .then(function (result) {
+                                    var data = result.data;
+                                    data = data.split('\n');
+                                    arrayFinal = [];
+
+                                    for (var i = 0; i < data.length ; i++) {
+                                        processed++;
+                                        var arrayText = data[i].split('\t');
+                                        arrayFinal.push({
+                                            Item: arrayText[0],
+                                            Instalacion: arrayText[1],
+                                            Equipo: arrayText[2],
+                                            Aparato: arrayText[3],
+                                            Tipo_calle: arrayText[4],
+                                            Nombre_Calle: arrayText[5],
+                                            Altura_Calle: arrayText[6],
+                                            Numero_Edificio: arrayText[7],
+                                            Numero_Departamento: arrayText[8],
+                                            Detalle_adicional_ubicacion: arrayText[9],
+                                            Piso: arrayText[10],
+                                            Vivienda_Principal: arrayText[11],
+                                            Detalle_Construccion: arrayText[12],
+                                            Conjunto_Vivienda: arrayText[13],
+                                            Manzana_Lote: arrayText[14],
+                                            Distrito: arrayText[15],
+                                            Codigo_postal: arrayText[16],
+                                            Poblacion: arrayText[17],
+                                            Emplazamiento: arrayText[18],
+                                            Suplemento_emplazamiento: arrayText[19],
+                                            Lectura_anterior: '',
+                                            Fecha_planificada_lectura_anterior: arrayText[20],
+                                            Fecha_planificada_lectura_actual: arrayText[21],
+                                            Fecha_planificada_lectura_proxima: arrayText[22],
+                                            Interlocutor_comercial: arrayText[23],
+                                            Cuenta_contrato: arrayText[24],
+                                            Tipo_Cliente: arrayText[25],
+                                            Categoria: arrayText[26],
+                                            Secuencia_lectura: arrayText[27],
+                                            Unidad_lectura: arrayText[28],
+                                            Numero_lecturas_estimadas: arrayText[29],
+                                            Marca_primera_lectura: arrayText[30],
+                                            Empresa_Lectora: arrayText[31],
+                                            Campo1: '',
+                                            Campo2: '',
+                                            Cliente: arrayText[34],
+                                            Nota_ubicacion_aparato: arrayText[35],
+                                            Nota_dos_ubicacion_aparato: arrayText[36],
+                                            Secuencia: arrayText[37],
+                                            nombre_ArchivoImportado: nombreArchivosSelec,
+                                            fecha_Asignacion: fechaAsignacion
+                                        })
+                                        if (processed == data.length) {
+                                            q.resolve(arrayFinal)
+                                        }
+                                    }
+                                }
+                                , function (error) {
+                                    console.log(error)
+                                })
+                        return q.promise;
+                    }
+
+                    var miPeticion = function (data) {
+                        var Result = {};
+                        var q = $q.defer(); 
+                        $http.post('../Importar_ArchivoTXT/saveTextToServidor', data)
+                        .success(function (result) {
+                            q.resolve(result)
+                        })
+                        .error(function (err) {
+                            console.log(err)
+                        })
+                        return q.promise;
+                    }
+
+                    var Geturl = function (indice) {
+                        var urlLista = '';
+                        for (var i = 0; i < $scope.ArchivosMarcados.length; i++) {
+                            if (i == indice) {
+                                urlLista = $scope.ArchivosMarcados[i].url + '|' + $scope.ArchivosMarcados[i].name;
+                                break;
+                            }
+                        }
+                        return urlLista;
+                    }
+
+                    var enviarPeticiones = function (indice) {
+                        var cons = Geturl(indice);
+                        var res = cons.split('|');
+                        var UrlTXT = res[0];
+                        var nombreArchivosSelec = res[1];
+
+                        if (indice < $scope.ArchivosMarcados.length) {
+                            mifuncion(UrlTXT, nombreArchivosSelec, fechaAsignacion)
+                                    .then(function (data) {
+                                        console.log(data)
+                                        miPeticion(data)
+                                        .then(function (result) {                              
+
+                                            var res = result.split('|');
+                                            if (res[0] == 0 || res[0] == "0") {
+                                                console.log('Error Archivo nro.' + indice + ':' + res[1])
+                                                //MostrarOcultarBoton(nombreArchivosSelec)
+                                                enviarPeticiones(indice + 1);
+                                            } else {
+                                                MostrarOcultarBoton(nombreArchivosSelec)
+                                                enviarPeticiones(indice + 1);
+                                            }
+                                        }, function (error) {
+                                            console.log(error)
+                                        })
+                                    })
+                        } else {
+                            new PNotify({
+                                title: 'Sistemas',
+                                text: 'Proceso Concluyo exitosamente.',
+                                type: 'success'
+                            });
+                            $('.sige-load').hide();
+                        }
+                    }
+
+                    enviarPeticiones(0);
+                })
+                .error(function () {
+                    alert('Lo sentimos, Ocurrio un problema, vuelva a intentar.')
+                });
+
+            }
+        });
+
+        app.directive('ngFileModel', ['$parse', function ($parse, $scope) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attrs) {
+                    var model = $parse(attrs.ngFileModel);
+                    var isMultiple = attrs.multiple;
+                    var modelSetter = model.assign;
+                    var values = [];
+                    element.bind('change', function () {
+                        angular.forEach(element[0].files, function (item) {
+
+                            if (item.name.indexOf('.txt') != -1) {
+                                var value = {
+                                    checkeado: true,
+                                    disabled: false,
+                                    color: false,
+                                    flag_inserto:false,
+                                    name: item.name,
+                                    size: item.size,
+                                    type: item.type,
+                                    url: URL.createObjectURL(item),
+                                    _file: item
+                                };
+                                values.push(value);
+                            }
+         
+                        });           
+                        scope.$apply(function () {
+                            if (isMultiple) {
+                                modelSetter(scope, values);
+                            } else {
+                                modelSetter(scope, values[0]);
+                            }
+                        });
+                    });
+                }
+            };
+        }]);
+
+    </script>
+
+}
+
+<!DOCTYPE html>
+<html ng-app="myApp">
+<body ng-controller="MainCtrl" ng-init="InicializandoVariables();">
+    <div class="panel panel-oscuro">
+        <div class="panel-heading">
+            <h6><i class="fa fa-table fa-lg"></i> IMPORTAR ARCHIVOS DE TEXTO</h6>
+        </div>
+        <div class="panel-body">
+            <br />
+            <div id="Contenedor">
+                <form class="form-inline">
+                    <div class="row">
+                        <div class="form-group ">
+                            <div class="col-md-12">
+                                <input type="file" class="filestyle" ng-file-model="files" multiple data-placeholder="Ningun Archivo Seleccionado" data-buttonname="btn-primary" data-size="sm" data-buttonbefore="true" data-buttontext="  Seleccionar Archivo..">
+
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="_usuario" style="font-size:11px">Fecha de Asignación:</label>
+                            <input class="form-control" style="width: 150px;" id="id_fecha_asignacion" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                        </div>
+
+                        <div class="form-group" style="padding-left: 6px;">
+                            <label for="id_servicio" style="font-size:11px">Servicio:</label>
+                            <select id="id_servicio" class="form-control" ng-model="id_tipoServicio">
+                                <option value=0>--[ Seleccione ]-- </option>
+                                <option ng-repeat="item in Obj_List_Servicios" value="{{item.id_TipoServicio}}">
+                                    {{item.nombre_tiposervicio}}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="float:right">
+                            @*<button id="btn_subir" type="button" class="btn btn-primary btn-sm" onclick="window.location.reload(true)"><i class="fa fa-file-excel-o"></i> Nueva Importacion</button>
+        <button id="btn_subir" type="button" class="btn btn-success btn-sm" ng-click="CargarArchivos();"><span class="glyphicon glyphicon-upload"></span> Subir Archivo</button>*@
+
+
+
+                            <button class="btn btn-primary" ng-click="CargarArchivos();"><span class="glyphicon glyphicon-open"></span> Subir</button>
+                            <button class="btn btn-success" onclick="window.location.reload(true)"><span class="glyphicon glyphicon-plus"></span> Nuevo</button>
+
+                        </div>
+
+
+                    </div>
+                    <br />
+                    <div class="row">
+                        <div class="col-xs-12 col-md-12">
+                            <fieldset class="fieldset-border">
+                                <legend> Leyenda </legend>
+                                <div id="Marco">
+                                    <input id="mensajeCorrecto" type="text" ng-disabled="true" class="alert alert-success" value="Archivos cargados correctamente.." placeholder="Archivos cargados correctamente.." />
+                                    <input id="mensajeIncorrecto" type="text" ng-disabled="true" class="alert alert-danger" value="Archivos cargados anteriormente..." placeholder="Archivos cargados anteriormente..." />
+                                </div>
+                            </fieldset>
+                        </div>
+                    </div>
+
+                </form>
+                <br />
+                <div id="Principal" class="table-responsive">
+                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">#</th>
+                                <th style="width:50px;">
+                                    <div class="checkbox clip-check check-danger checkbox-inline">
+                                        <input type="checkbox" id="checkboxAll" value="1" ng-model="checkedallR" ng-click="addIdChecked_All(checkedallR)">
+                                        <label for="checkboxAll">
+
+                                        </label>
+                                    </div>
+                                </th>
+                                <th>NOMBRE DE ARCHIVO</th>
+                                @*<th>TAMAÑO</th>
+                                    <th>TIPO</th>*@
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="item in files" ng-style="item.color === true && {'background-color':'#93d893'}  || item.flag_inserto===true && {'background-color':'red'} ||   item.color === false && {'background-color':'white'}">
+                                <td>
+                                    {{$index + 1}}
+                                </td>
+                                <td>
+                                    <div class="checkbox clip-check check-primary checkbox-inline">
+                                        <input type="checkbox" id="checkbox{{$index}}" ng-disabled="item.disabled" value="1" ng-model="item.checkeado">
+                                        <label for="checkbox{{$index}}">
+                                        </label>
+                                    </div>
+                                </td>
+                                <td>{{item.name}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+</body>
+</html>
+
+

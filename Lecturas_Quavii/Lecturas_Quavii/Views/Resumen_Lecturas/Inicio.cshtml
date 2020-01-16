@@ -1,0 +1,958 @@
+﻿@using System.Configuration
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Resumen de Lecturas ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    @Scripts.Render("~/Content/pdf/jspdf.js")
+    @Scripts.Render("~/Content/pdf/pdfFromHTML.js")
+    @Scripts.Render("~/Content/pdf/jspdf.plugin.autotable.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+
+@Styles.Render("~/Content/dataTables-bootstrap/css/dataTables.bootstrap.min.css")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/jquery.dataTables.min.js")
+@Scripts.Render("~/Content/dataTables-bootstrap/js/dataTables.bootstrap.min.js")
+
+
+
+
+}
+
+@section styles{
+
+ <style type="text/css">
+    body {
+        font-size: 9.5px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .fixed-table-toolbar .search {
+        line-height: 0;
+    }
+
+    .nav-tabs {
+        border-bottom: 0;
+    }
+
+    .modal-dialog {
+        width: 1200px;
+    }
+
+    .anchoCarousel {
+        width: 600px;
+    }
+
+
+    .datepicker {
+        width: 200px;
+        top: 150px !important;
+    }
+</style>
+
+    
+
+}
+
+@section scripts{
+    <script type="text/javascript">
+
+        var $ruta = '@ConfigurationManager.AppSettings["servidor-foto-lectura"]';
+
+
+        //oculto los divs de consultas
+        $(function () {
+            //$('#lectura').hide();
+            $('#relectura').hide();
+        })
+
+        //inicializando fechas
+        $(function () {
+            $('#f_inicial').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        $(function () {
+            $('#f_final').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+
+        //fin inicializando fechas
+
+        $(window).resize(function () {
+            $('#table-consulta_lec').bootstrapTable('resetView');
+            $('#table-consulta_reclec').bootstrapTable('resetView');
+        });
+
+        $(document).on('click', '#actualizar', function (e) {
+            var $local = $('#_local').val();
+            if ($local === '0') {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Local. Muchas gracias.',
+                    type: 'error'
+                });
+       
+                $('#table-consulta_lec td').remove();
+                $('#table-consulta_relec td').remove();
+                var msg = 'No se encontraron registros...';
+                $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+                $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+                return;
+            }
+            listaLecturaResumen();
+        });
+
+        function tabla_lectura(msg) {
+            $('#table-consulta_lec').bootstrapTable({
+                data: [
+                    {
+                        field: '_x',
+                        title: 'Item Name',
+                        sortable: true,
+                        editable: true,
+                        align: 'center'
+                    }
+                ]
+            });
+
+            $('#table-consulta_lec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+        function tabla_relectura(msg) {
+            $('#table-consulta_relec').bootstrapTable({
+                data: []
+            });
+
+            $('#table-consulta_relec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+        function listaLecturaResumen() {
+            var $servicio = '';
+ 
+            var list = [];
+
+            if ($("#idservicios").val() == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            if ($("#idservicios").val() == 0) {
+                $("#idservicios option").each(function () {
+                    var x = parseInt($(this).attr('value'))
+                    if (x == 0 || x == -1) {
+
+                    }
+                    else {
+                        list.push($(this).attr('value'));
+                    }
+
+                });
+
+            }
+            else {
+                list.push($("#idservicios").val());
+            }
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    $('.sige-load').show();
+                },
+                url: 'JsonListaLecturasResumen',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $('#_local').val(),
+                    __c: $('#f_inicial').val(),
+                    __d: $('#f_final').val(),
+                    __e: list.toString()
+                }),
+                success: function (response) {
+                    if (response == null) {
+                        tabla('No se encontraron registros...');
+                    } else {
+                        var servi = $('#options').prop('checked');
+                        if (servi === true) {
+                            $('#lectura').show();
+                            $('#table-consulta_lec').bootstrapTable('load', response);
+                            $('#table-consulta_lec').bootstrapTable('resetView');
+                            $('#relectura').hide();
+                        } else {
+                            $('#lectura').hide();
+                            $('#relectura').show();
+                            $('#table-consulta_relec').bootstrapTable('load', response);
+                            $('#table-consulta_relec').bootstrapTable('resetView');
+                        }
+                    }
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+        }
+
+
+        function fnDescargarExcel() {
+            $ajaxJson(
+                //'/Lecturas/Resumen_Lecturas/DescargaExcel',
+                '/Resumen_Lecturas/DescargaExcel',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-consulta_lec').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    //window.open('/Lecturas/Temp/' + __s.__a, '_blank');
+                    window.open('/Temp/' + __s.__a, '_blank');
+                }
+            );
+        }
+
+        //toggle button - cambio lectura - relectura
+        $(function () {
+            $('#servicio').change(function () {
+                listaLecturaResumen();
+            })
+        })
+
+        //toggle button - cambio lectura - relectura
+        $(function () {
+            $('#option1').change(function () {
+                listaLecturaResumen();
+            })
+        })
+
+        $(function () {
+            $('#option2').change(function () {
+                listaLecturaResumen();
+            })
+        })
+
+        $(function () {
+            $('#option3').change(function () {
+                listaLecturaResumen();
+            })
+        })
+
+
+        function checkFormat(__v, __r, __i) {
+            if (__r._v == 1 && __r._v == true) {
+                return {
+                    checked: true
+                };
+            }
+            return __v;
+        }
+
+        function opcionFormatter(__val, __row, __index) {
+            var $html = [];
+            $html.push('<button role="button" class="btn btn-warning" onclick="fnModalHistorico(\'' + __row._c + '\')"><i class="fa fa-list-alt fa-lg"></i> Histórico</button>');
+
+            return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">' + $html.join('') + '</div>';
+        }
+
+        function fotoFormatter(__val, __row, __index) {
+            if (__val == 'SI') {
+                return '<a onclick="galeriaFotos(' + __row._b + ');" href="#">' + __val + '</a>';
+            } else {
+                return __val;
+            }
+        }
+
+        function galeriaFotos(idLectura) {
+            $('#fotos').modal();
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) { },
+                url: 'FotosLectura',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    __a: idLectura
+                },
+                success: function (response) {
+                    $("div").remove("#x");
+                    $("div").remove("#y");
+                    var $DivCorre = $('#corre');
+                    var $DivOl = $('#ol');
+                    $.each(response, function (i, v) {
+                        if (i === 0) {
+                            $DivCorre.append('<div id="x" class="item active"><img src="' + $ruta + '/' + response[i]._r + '" alt="..." style="width: 320px; height: auto; text-align: center;" /></div>');
+                            //$DivOl.append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '" class="active"></li>');
+                        } else {
+                            $DivCorre.append('<div id="x" class="item"><img src="' + $ruta + '/' + response[i]._r + '" alt="..." style="width: 320px; height: auto; text-align: center;" /></div>');
+                            //$DivOl.append('<li data-target="#carousel-example-generic" data-slide-to="' + i + '"></li>');
+                        }
+                    });
+                    //$('.img-foto').attr('src', $ruta + '/' + __s._h);
+                },
+                error: function (xhr) {
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        }
+
+
+
+        function fnDescargaPendientes() {
+            $ajaxJson(
+                'DescargaPendientes',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-pendientes').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    window.open('/Lecturas/Temp/' + __s.__a, '_blank');
+                }
+            );
+        }
+
+        $("form").submit(function () {
+            console.log($(this).serializeArray());
+            return false;
+        });
+        // ANGULAR TIME - - - - - - - - - - -
+
+        var app = angular.module('appResumen', []);
+
+        app.directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit(attr.onFinishRender);
+                        });
+                    }
+                }
+            }
+        });
+
+        app.controller('ctrlResumen', function ($scope, $http, $window, $timeout) {
+
+         var oTable = null;
+         $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
+             oTable = $('#tbl_detallado').DataTable({
+                 "scrollX": true
+             });
+         });
+
+         $scope.Obj_List_Cabecera = [];
+         $scope.Listado_Cabecera_Lecturas = function () {
+
+             var local = document.getElementById('_local').value;
+             var servicio = document.getElementById('idservicios').value;
+             var fecha_ini = document.getElementById('f_inicial').value;
+             var fecha_fin = document.getElementById('f_final').value;
+
+
+             if (local == '' || local == 0) {
+                 new PNotify({
+                     title: 'Sistemas',
+                     text: 'Por favor seleccione un Local',
+                     type: 'error'
+                 });
+                 return;
+             }
+             if (servicio == '' || servicio == -1) {
+                 new PNotify({
+                     title: 'Sistemas',
+                     text: 'Por favor seleccione TODOS o un Tipo de Servicio',
+                     type: 'error'
+                 });
+                 return;
+             }
+
+             if (fecha_ini == '') {
+                 new PNotify({
+                     title: 'Sistemas',
+                     text: 'Por favor ingrese o seleccione una Fecha Inicial.',
+                     type: 'error'
+                 });
+                 return;
+             }
+
+
+             if (fecha_fin == '') {
+                 new PNotify({
+                     title: 'Sistemas',
+                     text: 'Por favor ingrese o seleccione una Fecha Final.',
+                     type: 'error'
+                 });
+                 return;
+             }
+
+             $('.sige-load').show();
+
+             var variables = {
+                 method: 'POST',
+                 url: '../Resumen_Lecturas/ListandoAgrupadoLecturas_new',
+                 headers: {
+                     'Content-Type': 'application/json; charset=utf-8'
+                 },
+                 data: {
+                     id_local: local,
+                     id_servicio: servicio,
+                     fechaini: fecha_ini,
+                     fechaFin: fecha_fin
+                 }
+             }
+             $http(variables)
+             .success(function (data) {
+                 $('.sige-load').hide();
+                 $scope.Obj_List_Cabecera = [];
+                 $scope.Obj_List_Cabecera = data;
+             })
+             .error(function () {
+                 $('.sige-load').hide();
+                 alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+             });
+         }
+
+         $scope.Obj_List_Detalle = [];
+         $scope.Listado_Detalle_Lecturas = function (operario, servicio) {
+
+             var local = document.getElementById('_local').value;
+             //var servicio = document.getElementById('idservicios').value;
+             var fecha_ini = document.getElementById('f_inicial').value;
+             var fecha_fin = document.getElementById('f_final').value;
+
+
+             if (local == '' || local == 0) {
+                 new PNotify({
+                     title: 'Sistemas',
+                     text: 'Por favor seleccione un Local',
+                     type: 'error'
+                 });
+                 return;
+             }
+             //if (servicio == '' || servicio == -1) {
+             //    new PNotify({
+             //        title: 'Sistemas',
+             //        text: 'Por favor seleccione TODOS o un Tipo de Servicio',
+             //        type: 'error'
+             //    });
+             //    return;
+             //}
+
+             if (fecha_ini == '') {
+                 new PNotify({
+                     title: 'Sistemas',
+                     text: 'Por favor ingrese o seleccione una Fecha Inicial.',
+                     type: 'error'
+                 });
+                 return;
+             }
+
+
+             if (fecha_fin == '') {
+                 new PNotify({
+                     title: 'Sistemas',
+                     text: 'Por favor ingrese o seleccione una Fecha Final.',
+                     type: 'error'
+                 });
+                 return;
+             }
+             $('.sige-load').show();
+
+             var variables = {
+                 method: 'POST',
+                 url: '../Resumen_Lecturas/ListandoDetalladoLecturas',
+                 headers: {
+                     'Content-Type': 'application/json; charset=utf-8'
+                 },
+                 data: {
+                     id_local: local,
+                     id_servicio: servicio,
+                     fechaini: fecha_ini,
+                     fechaFin: fecha_fin,
+                     ipOperario: operario
+                 }
+             }
+
+             $http(variables)
+             .success(function (data) {
+
+                 $('.sige-load').hide();
+                 if (oTable != null) {
+                     oTable.destroy();
+                 }
+                 $scope.Obj_List_Detalle = [];
+                 $scope.Obj_List_Detalle = data;
+
+                 $('#modal_detalle').modal({ show: 'false' });
+
+             })
+             .error(function () {
+                 $('.sige-load').hide();
+                 alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+             });
+         }
+
+         var listPhotos = [];
+         $scope.previusPhoto = function () {
+             var photo1 = document.getElementById('foto1');
+             photo1.src = listPhotos[0].url;
+         }
+         $scope.nextPhoto = function () {
+             var photo1 = document.getElementById('foto1');
+             if (listPhotos.length > 1) {
+                 photo1.src = listPhotos[1].url;
+             }
+         }
+
+         $scope.MostrarFotos = function (obj_data) {
+             $.ajax({
+                 async: true,
+                 beforeSend: function (xhr) { },
+                 url: '../Resumen_Lecturas/MostrandoFotos',
+                 type: 'POST',
+                 dataType: 'json',
+                 data: {
+                     id_lectura: obj_data.id_Lectura,
+                     idservicio: obj_data.id_servicio
+                 },
+                 success: function (response) {
+                     $("div").remove("#x");
+
+                     var $DivCorre = $('#corre');
+                     var $DivOl = $('#ol');
+                     listPhotos = [];
+
+                     $.each(response, function (i, v) {
+                         listPhotos.push({
+                             id: i,
+                             url: response[i].foto
+                         })
+
+                     });
+                     $DivCorre.append('<div id="x" class="item active"><img id="foto1" src="' + listPhotos[0].url + '" alt="..." style="width: 600px; height:auto; text-align: center;" /></div>');
+                     $('#fotos').modal();
+                 },
+                 error: function (xhr) {
+                     alert('Algo salió mal, por favor intente de nuevo.');
+                 }
+             });
+         }
+
+
+         $scope.Fn_Ver_Ubicacion_Mapa = function (rows) {
+             var imagen_mapa = "";
+             imagen_mapa = document.getElementById('id_Imagen_mapa');
+             imagen_mapa.src = '';
+
+             setTimeout(function () {
+                 imagen_mapa.src = 'http://maps.googleapis.com/maps/api/staticmap?center=' + rows.latitud_lectura + ',' + rows.longitud_lectura + '&zoom=15&scale=false&size=600x380&maptype=roadmap&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:A%7C' + rows.latitud_lectura + ',' + rows.longitud_lectura + '&key=AIzaSyApCbyiYKJMvWG_w-X856LA_OFuX8ZUKXA';
+             }, 500);
+         }
+
+            
+
+         function getDateNow() {
+             var meses = new Array("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre");
+             var diasSemana = new Array("Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado");
+             var f = new Date()
+             return diasSemana[f.getDay()] + ", " + f.getDate() + " de " + meses[f.getMonth()] + " de " + f.getFullYear();
+         };
+         function getDateHour() {
+             var f = new Date()
+             return f.getHours() + ':' + f.getMinutes() + ':' + f.getSeconds();
+         }
+         
+         $scope.exportToExcel = function (tableId) { // ex: '#my-table'
+
+            
+             $scope.exportHref = $scope.tableToExcel(tableId, 'Resumen de Lecturas');
+             
+          //   $timeout(function () { location.href = $scope.exportHref; }, 100); // trigger download
+         }
+
+         $scope.tableToExcel = function (tableId, worksheetName) {
+             var uri = 'data:application/vnd.ms-excel;base64,',
+                   template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>ResumenLectura</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>',
+                   base64 = function (s) { return $window.btoa(unescape(encodeURIComponent(s))); },
+                   format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+             var table = $(tableId),
+                          ctx = { worksheet: 'descar123', table: table.html() };
+                          
+             var link = document.createElement("a");
+             link.download = "ResumenLecturas.xls";
+             link.href = uri + base64(format(template, ctx));
+          
+
+             link.click()
+            
+         }
+
+         $scope.getPdf = function () {
+             var fechaini = document.getElementById('f_inicial').value;
+             var fechafin = document.getElementById('f_final').value;
+
+              var doc = new jsPDF('l','pt');
+
+              doc.setFontSize(15);
+              doc.setFont("helvetica");
+              doc.setFontType("bold");
+              doc.setTextColor(200, 0, 0);
+              doc.text(20, 30, 'Cobra Peru S.A')
+              doc.setFontSize(10);
+              doc.setTextColor(0);
+              doc.text(550, 30, 'Fecha de impresión : ' + getDateNow());
+              doc.text(550, 48, 'Hora de impresión : ' + getDateHour());
+              doc.setFontSize(11);
+              doc.text(368, 80, 'Resumen de Lecturas');
+        
+              doc.text(310, 100, 'Rango de fechas del' + fechaini + ' al ' + fechafin);
+              var res = doc.autoTableHtmlToJson(document.getElementById("tblLista"));
+             doc.autoTable(res.columns, res.data, {
+                 startY: doc.autoTableEndPosY() + 120,
+                 theme: 'grid',
+                 margin: { horizontal: 10 },
+                 styles: { overflow: 'linebreak' },
+                 bodyStyles: { valign: 'top' },
+                 columnStyles: { email: { columnWidth: 'wrap' } },
+             });
+             doc.output('dataurlnewwindow');
+
+         }
+     });
+
+        $(document).ready(function () {
+            CargarServicioxUsuario();
+        });
+
+
+        function CargarServicioxUsuario() {
+            var servicio = $("#idservicios");
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                cache: false,
+                dataType: "json",
+                CrossDomain: true,
+                success: function (response) {
+                    console.log(response);
+                    // var resultado = response.ListarUsuariosxCargoCreditoResult;
+                    // console.log(response.length);
+                    servicio.html("");
+                    if (parseInt(response.length) == parseInt(response[0].cantidad)) {
+                        // alert("correcto");
+                        // console.log("cccccc");
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        servicio.append('<option value="0" >Todos</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    } else {
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        for (var i = 0; i < response.length; i++) {
+                            servicio.append('<option value="' + response[i].id_TipoServicio +
+                                '">' + response[i].nombre_tiposervicio + '</option>');
+                        };
+                    }
+
+
+                },
+
+                error: function (result) {
+                    alert('ERROR.... en ' + result.status + '... ' + result.statusText);
+                }
+            });
+
+
+        }
+
+
+
+
+
+    </script>
+}
+
+<div class="panel panel-oscuro" ng-app="appResumen" ng-controller="ctrlResumen" id="resumenLecturas">
+    <div class="panel-heading">
+        <h6><i class="fa fa-table fa-lg"></i>RESUMEN DE LECTURAS</h6>
+    </div>
+    <div class="panel-body">
+        <div class="row">        
+ 
+            <div class="panel-body">
+
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="panel panel-info col-sm-12" style="background-color: #F8F8F8;">
+                            <div class="panel-body">
+                                <form class="form-inline">
+                                    <div class="form-group" style="padding-left: 15px; padding-right: 5px;">
+                                        <label for="_local" class="control-label">Local</label>
+                                        <select class="form-control" id="_local">
+                                            <option value="0" selected="selected">-- Seleccione --</option>
+                                            @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                            {
+                                                <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="padding-left: 15px; padding-right: 5px; width: 20%">
+                                        <label for="_supervisor" class="control-label">Servicios</label>
+                                        <select class="form-control" id="idservicios" style="width: 200px">
+                                            <option value="-1">Seleccione</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group form-group-sm" style="padding-left:15px;">
+                                        <label for="_fechaAsigna" class="control-label">Fecha Inicial</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input style="width:90px;" class="form-control" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group form-group-sm" style="padding-left:15px;">
+                                        <label for="_fechaAsigna" class="control-label">Fecha Final</label>
+                                        <div class="input-group">
+                                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                            <input style="width:90px;" class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="padding-left: 15px;">
+                                        <button role="button" class="btn btn-primary btn-sm" id="btn_actualizar" ng-click="Listado_Cabecera_Lecturas();"><i class="fa fa-refresh fa-lg"></i> Actualizar</button>
+                                    </div>
+
+                                </form>                               
+                            </div>                          
+                        </div>           
+                    </div> 
+                </div>
+
+                <div id="Principal" class="table-responsive">
+                    <table id="tblLista" class="table  table-bordered table-responsive" border="0" cellspacing="0" cellpadding="0" style="font-size:11px">
+                        <thead>
+                            <tr>
+                                <th>Operador</th>
+                                <th>Total</th>
+                                <th>Realizados</th>
+                                <th>Con Foto</th>
+                                <th>Pendientes</th>
+                                <th>% Avance</th>
+                                <th>Hora Inicio de Trabajo</th>
+                                <th>Hora Termino de Trabajo</th>
+                                <th>Horas Trabajadas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="item in Obj_List_Cabecera">
+                                <td style="cursor:pointer" ng-click="Listado_Detalle_Lecturas(item.id_ope,item.id_servicio );">{{item.des_ope}}</td>
+                                <td style="cursor:pointer" ng-click="Listado_Detalle_Lecturas(item.id_ope,item.id_servicio);">{{item.total}}</td>
+                                <td style="cursor:pointer" ng-click="Listado_Detalle_Lecturas(item.id_ope,item.id_servicio);">{{item.realizado}}</td>
+                                <td>{{item.conFoto}}</td>
+                                <td>{{item.pendiente}}</td>
+                                <td>{{item.avance}}</td>
+                                <td>{{item.f_ini | date:'dd MMM yyyy'}}</td>
+                                <td>{{item.f_fin | date:'dd MMM yyyy'}}</td>
+                                <td>{{item.horas}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>    
+            </div>
+        </div>
+    </div>
+
+    <div  class="panel-footer">
+        <div class="panel-body" style="height: 40px;">
+            <div class="col-sm-12" style="text-align:right;">
+
+                <div class="col-sm-12">
+                    <div class="form-group form-group-sm">
+                        <button role="button" class="btn btn-info btn-sm" ng-click="getPdf()"><i class="fa fa-download fa-lg"></i> Imprimir</button>
+                        <button role="button" class="btn btn-danger btn-sm" ng-click="exportToExcel('#table-consulta_relec');"><i class="fa fa-windows fa-lg"></i> Exportar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modal_detalle" class="modal fade bd-example-modal-lg " tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title" style=" font-size: 11px;"><i class="fa fa-cogs fa-lg"></i> DETALLE DE LECTURA</h6>
+                </div>
+                <div class="panel-body">
+                    <fieldset>
+                        <legend></legend>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <table id="tbl_detallado" class="table table-striped table-bordered" cellspacing="0" width="100%">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th> <div style="width:570px">Lecturista </div></th>
+                                            <th>Suministro</th>
+                                            <th>Medidor</th>
+                                            <th>Lectura</th>
+                                            <th>Observacion</th>
+                                            <th>Estado</th>
+                                            <th>Foto</th>
+                                            <th>Mapa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="row in Obj_List_Detalle" on-finish-render="ngRepeatFinished">
+                                            <td>{{$index + 1}}</td>
+                                            @*<td>{{row.operario}}</td>*@
+                                            <td> <div style="width:300px">{{row.operario}} </div></td>
+                                            <td>{{row.suministro_lectura}}</td>
+                                            <td>{{row.medidor_lectura}}</td>
+                                            <td>{{row.LecturaMovil_Lectura}}</td>
+                                            <td>{{row.abreviatura_observacion}}</td>
+                                            <td>{{row.descripcion_estado}}</td>
+                                            <td><a href="#" ng-click="MostrarFotos(row);">{{row.foto}}</a> </td>
+                                            <td align="center"><a ng-click="Fn_Ver_Ubicacion_Mapa(row)" href="#" data-toggle="modal" data-target="#modal-mapa">{{row.mapa}}</a></td>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Atras</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="fotos" class="modal fade bd-example-modal-lg " tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+        <div class="modal-dialog anchoCarousel modal-lg">
+            <div class="panel panel-oscuro">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title" style=" font-size: 11px;"><i class="fa fa-cogs fa-lg"></i> DETALLE DE FOTOS</h6>
+                </div>
+                <div class="panel-body">
+                    <fieldset>
+                        <legend></legend>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                                    <!-- Indicators -->
+                                    <!-- Wrapper for slides -->
+                                    <div class="carousel-inner" id="corre">
+                                    </div>
+
+                                    <!-- Controls -->
+                                    <a class="left carousel-control" href="#carousel-example-generic" ng-click="previusPhoto()" role="button" data-slide="prev" style="background-color:black;">
+                                        <span class="glyphicon glyphicon-chevron-left"></span>
+                                    </a>
+                                    <a class="right carousel-control" href="#carousel-example-generic" ng-click="nextPhoto()" role="button" data-slide="next" style="background-color:black;">
+                                        <span class="glyphicon glyphicon-chevron-right"></span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Atras</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-mapa" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="panel panel-oscuro" style="width:600px;">
+                <div class="panel-heading">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> UBICACIÓN EN GOOGLE MAPS.</h6>
+                </div>
+                <!-- Modal content-->
+                <div class="modal-content" style="width:600px;">
+                    <div class="modal-body">
+                        <img id="id_Imagen_mapa" class="img-responsive img-rounded" alt="No se puede mostrar" style="width:100%;height:auto;">
+                    </div>
+                    <div class="panel-footer">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                    <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

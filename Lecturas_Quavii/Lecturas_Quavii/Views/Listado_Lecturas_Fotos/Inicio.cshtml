@@ -1,0 +1,943 @@
+﻿ @using System.Configuration
+@using DSIGE
+@using DSIGE.Modelo
+@using DSIGE.Negocio
+
+@{
+    ViewBag.Title = ".:: Listado de Lecturas con Fotos ::.";
+    Layout = "~/Views/Shared/_LayoutPrincipal.cshtml";
+}
+
+@section instances{
+    @Styles.Render("~/Content/bootstrap-table/bootstrap-table.css")
+    @Scripts.Render("~/Content/bootstrap-table/bootstrap-table.js")
+    @Scripts.Render("~/Content/bootstrap-table/locale/bootstrap-table-es-MX.js")
+
+    @Scripts.Render("~/Content/bootstrap/js/bootstrap-toggle.min.js")
+    @Scripts.Render("~/Content/angular/angular.js")
+    @Styles.Render("~/Content/bootstrap/css/bootstrap-toggle.min.css")
+
+    @Styles.Render("~/Content/bootstrap-datepicker/css/bootstrap-datepicker.min.css")
+    @Scripts.Render("~/Content/bootstrap-datepicker/js/bootstrap-datepicker.min.js")
+    @Scripts.Render("~/Content/bootstrap-datepicker/locales/bootstrap-datepicker.es.min.js")
+}
+
+@section styles{
+
+<style>
+    #tblListaDetalleX {
+        height: 400px;
+        display: -moz-groupbox;
+        margin-bottom: 60px !important;
+    }
+
+    #tblListaDetalleX tr {
+        width: 100%;
+        display: inline-table;
+        table-layout: fixed;
+    }
+
+    #tblListaDetalleX tbody {
+        overflow-y: scroll;
+        height: 400px;
+        width: 98%;
+        position: absolute;
+    }
+
+    .modal_dsige {
+        width: 300px;
+    }
+
+    .modal_dsige2 {
+        width: 600px;
+    }
+
+    .form-control {
+        font-size: 11px;
+        width: 100%;
+        height: 28px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    .btn {
+        font-size: 12px;
+    }
+
+    #Principal {
+        width: 700px;
+        height: 500px;
+    }
+
+    input[type="text"] {
+        font-size: 11px;
+    }
+
+    label {
+        font-family: "Tahoma", "Geneva", sans-serif;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .colorItem {
+        background-color: #009688;
+    }
+
+
+    #Contenedor {
+        width: 100%;
+        margin-top: -25px;
+    }
+
+    #Marco {
+        padding-left: 5px;
+        padding-top: 15px;
+        margin: -10px;
+    }
+
+    .datepicker {
+        width: 200px;
+    }
+
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        padding: 2px;
+    }
+
+    .checkbox input[type=checkbox], .checkbox-inline input[type=checkbox], .radio input[type=radio], .radio-inline input[type=radio] {
+        margin-left: -9px;
+    }
+
+    table td:nth-child(1) {
+        width: 10px;
+    }
+
+    table td:nth-child(2) {
+        width: 100px;
+    }
+
+    table td:nth-child(3) {
+        width: 100px;
+    }
+
+    table td:nth-child(4) {
+        width: 100px;
+    }
+
+    table td:nth-child(5) {
+        width: 100px;
+    }
+
+    input[type=checkbox], input[type=radio] {
+        margin: -4px 0 0;
+    }
+
+    th {
+        text-align: left;
+    }
+
+    .disabledContent {
+        pointer-events: none !important;
+        opacity: 0.7 !important;
+    }
+
+    .checkbox-inline, .radio-inline {
+        padding-left: 25px;
+    }
+    .resaltado {
+        color: green;
+    }
+    .Julio table, th {
+        background-color: #019199 !important;
+        color: white !important;
+    }
+</style>
+
+}
+
+@section scripts{
+    <script type="text/javascript">
+        var checkCount;
+        var $ruta = '@ConfigurationManager.AppSettings["servidor-foto-lectura"]';
+
+        //oculto los divs de consultas
+        $(function () {
+            //$('#lectura').hide();
+            $('#relectura').hide();
+        })
+
+        //inicializando fechas
+        $(function () {
+            $('#f_inicial').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        $(function () {
+            $('#f_final').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'es',
+                autoclose: true
+            });
+        })
+        //fin inicializando fechas
+
+        $(window).resize(function () {
+            $('#table-consulta_lec').bootstrapTable('resetView');
+            $('#table-consulta_reclec').bootstrapTable('resetView');
+        });
+
+        $(document).on('click', '#actualizar', function (e) {
+            var $local = $('#_local').val();
+
+            if ($("#idservicios").val() == -1) {
+                new PNotify({
+                    title: 'Sistemas',
+                    text: 'Por favor seleccione un Servicio. Muchas gracias.',
+                    type: 'error'
+                });
+                return false;
+            }
+            //if ($local === '0') {
+            //    new PNotify({
+            //        title: 'Sistemas',
+            //        text: 'Por favor seleccione un Local. Muchas gracias.',
+            //        type: 'error'
+            //    });
+            //    $('#table-consulta_lec td').remove();
+            //    $('#table-consulta_relec td').remove();
+            //    var msg = 'No se encontraron registros...';
+            //    $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+            //    $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+            //    return;
+            //}
+            listaLecturaTomadaFoto();
+        });
+
+        function tabla_lectura(msg) {
+            $('#table-consulta_lec').bootstrapTable({
+                data: [
+                    {
+                        field: '_x',
+                        title: 'Item Name',
+                        sortable: true,
+                        editable: true,
+                        align: 'center'
+                    }
+                ]
+            });
+
+            $('#table-consulta_lec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_lec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+        function tabla_relectura(msg) {
+            $('#table-consulta_relec').bootstrapTable({
+                data: []
+            });
+
+            $('#table-consulta_relec > tbody > tr').not(function () {
+                if ($(this).has('th').length) { return true }
+            }).remove();
+
+            $('#table-consulta_relec > tbody').append('<tr class="no-records-found"><td colspan=\'19\'>' + msg + '</td></tr>');
+        }
+
+        function listaLecturaTomadaFoto() {
+             var $servicio = '';
+
+            var list = [];
+            if ($("#idservicios").val() == 0) {
+                $("#idservicios option").each(function () {
+                    var x = parseInt($(this).attr('value'))
+                    //  alert(x);
+                    if (x == 0 || x == -1) {
+
+                    }
+                    else {
+                        //  alert('opcion ' + $(this).text() + ' valor ' + $(this).attr('value'))
+                        list.push($(this).attr('value'));
+                    }
+
+                });
+
+            }
+            else {
+                list.push($("#idservicios").val());
+            }
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) {
+                    $('.sige-load').show();
+                },
+                url: 'JsonListaLecturaTomadaFoto',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    __a: $('#_local').val(),
+                    __c: $('#f_inicial').val(),
+                    __d: $('#f_final').val(),
+                    __e: $('#suministro').val(),
+                    __f: $('#medidor').val(),
+                    lista: list.toString(),
+                    id_operario: $("#_operario").val()
+                }),
+                success: function (response) {
+                    if (response == null) {
+                        tabla('No se encontraron registros...');
+                    } else {
+                        var servi = $('#servicio').prop('checked');
+
+                        if (servi === true) {
+
+                            $('#lectura').show();
+                            $('#table-consulta_lec').bootstrapTable('load', response);
+                            $('#table-consulta_lec').bootstrapTable('resetView');
+                            $('#relectura').hide();
+
+                            var i = -2;
+                            $('#table-consulta_relec').find('tr').each(function () {
+                                i = i + 1;
+                                $(this).find('td').eq(0).append('<td><input type="checkbox" id=check' + i + '></td>');
+                            });
+                            checkCount = i;
+
+                        } else {
+
+                            $('#lectura').hide();
+                            $('#relectura').show();
+                            $('#table-consulta_relec').bootstrapTable('load', response);
+                            $('#table-consulta_relec').bootstrapTable('resetView');
+
+                            var i = -2;
+                            $('#table-consulta_relec').find('tr').each(function () {
+                                i = i + 1;
+                                $(this).find('td').eq(0).append('<td><input type="checkbox" id=check' + i + '></td>');
+                            });
+                            checkCount = i;
+                        }
+                    }
+                },
+                complete: function () {
+                    $('.sige-load').hide();
+                },
+                error: function (xhr) {
+                    $('.sige-load').hide();
+                    alert("Algo salió mal, por favor intente de nuevo.");
+                }
+            });
+        }
+
+        function fnDescargaHistorico() {
+            $ajaxJson(
+                '/Calidda/Asigna_Lectura/DescargaHistorico',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-historico').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    window.open('/Lecturas/Temp/' + __s.__a, '_blank');
+                }
+            );
+        }
+
+        //toggle button - cambio lectura - relectura
+        $(function () {
+            $('#servicio').change(function () {
+                listaLecturaTomadaFoto();
+            })
+        })
+
+        $(function () {
+            $('#option1').change(function () {
+                listaLecturaTomadaFoto();
+            })
+        })
+
+        $(function () {
+            $('#option2').change(function () {
+                listaLecturaTomadaFoto();
+            })
+        })
+
+        $(function () {
+            $('#option3').change(function () {
+                listaLecturaTomadaFoto();
+            })
+        })
+
+
+        function checkFormat(__v, __r, __i) {
+            if (__r._v == 1 && __r._v == true) {
+                return {
+                    checked: true
+                };
+            }
+            return __v;
+        }
+
+        function opcionFormatter(__val, __row, __index) {
+            var $html = [];
+            $html.push('<button role="button" class="btn btn-warning" onclick="fnModalHistorico(\'' + __row._c + '\')"><i class="fa fa-list-alt fa-lg"></i> Histórico</button>');
+
+            return '<div class="btn-group btn-group-xs" role="group" aria-label="Mantenimiento">' + $html.join('') + '</div>';
+        }
+
+        //MOSTRANDO LAS FOTOS DE LA LECTURA
+
+        function fotoFormatter(__val, __row, __index) {
+
+            if (__row._q == 'SI') {
+                return '<a onclick="galeriaFotos(' + __row._a + ');" href="#">' + __val + '</a>';
+            } else {
+                return __val;
+            }
+        }
+
+        var listPhotos = [];
+        function previusPhoto() {
+            var photo1 = document.getElementById('foto1');
+            photo1.src = listPhotos[0].url;
+        }
+        function nextPhoto() {
+            var photo1 = document.getElementById('foto1');
+            if (listPhotos.length > 1) {
+                photo1.src = listPhotos[1].url;
+            }
+        }
+
+        function galeriaFotos(idLectura) {
+            $('#fotos').modal();
+
+            $.ajax({
+                async: true,
+                beforeSend: function (xhr) { },
+                url: 'FotosLectura',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    __a: idLectura
+                },
+                success: function (response) {
+
+                    $("div").remove("#x");
+                    $("div").remove("#y");
+                    var $DivCorre = $('#corre');
+                    var $DivOl = $('#ol');
+                    listPhotos = [];
+                    $.each(response, function (i, v) {
+                        listPhotos.push({
+                            id: i,
+                            url: response[i]._r
+                        })
+                    });
+                    $DivCorre.append('<div id="x" class="item active"><img id="foto1" src="' + listPhotos[0].url + '" alt="..." style="width: 320px; height: auto; text-align: center;" /></div>');
+
+                },
+                error: function (xhr) {
+                    alert('Algo salió mal, por favor intente de nuevo.');
+                }
+            });
+        }
+
+        // MOSTRANDO EL MAPA
+
+        function MapaFormatter(__val, __row, __index) {
+
+            if (__row._o == 'Ver') {
+
+                return '<a onclick="Fn_Ver_Ubicacion_Mapa(' + __row._s + ',' + __row._t + ');" href="#">' + __val + '</a>';
+            } else {
+                return __val;
+            }
+        }
+
+        function Fn_Ver_Ubicacion_Mapa(latitud, longitud) {
+            $('#myModal').modal();
+            var imagen_mapa = "";
+            imagen_mapa = document.getElementById('id_Imagen_mapa');
+            imagen_mapa.src = 'http://maps.googleapis.com/maps/api/staticmap?center=' + latitud + ',' + longitud + '&zoom=15&scale=false&size=600x380&maptype=roadmap&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:A%7C' + latitud + ',' + longitud + '';
+        }
+
+        function fnDescargaPendientes() {
+            $ajaxJson(
+                'DescargaPendientes',
+                function () {
+                    return {
+                        __a: JSON.stringify($('#table-pendientes').bootstrapTable('getData'))
+                    };
+                },
+                function (__s) {
+                    window.open('/Lecturas/Temp/' + __s.__a, '_blank');
+                }
+            );
+        }
+
+        $("form").submit(function () {
+            console.log($(this).serializeArray());
+            return false;
+        });
+
+
+        // ANGULAR TIME - - - - - - - - - - -
+
+        var app = angular.module('appFotos', []);
+
+        app.controller('ctrlInicio', function ($scope, $http, $window) {
+            var idsUrl = [];
+            var urlsCadena;
+            var load = document.getElementById('loader')
+
+            $scope.getDataFotos = function () {
+                load.style.display = '';
+                var fechaini = document.getElementById('f_inicial');
+                var fechafin = document.getElementById('f_final');
+                var checkMaster = document.getElementById('checkMaster');
+                var con;
+                if (checkMaster.checked == true) {
+                    con = 2;
+                } else {
+                    con = 1;
+                }
+                var req = {
+                    method: 'POST',
+                    url: 'JsonListaURlLectura',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        id: urlsCadena,
+                        fechaini: fechaini.value,
+                        fechafin: fechafin.value,
+                        con: con
+                    }
+                }
+
+                $http(req).success(function (data) {
+
+                    $scope.dataUrl = data;
+                    var urls = '';
+                    for (var i = 0; i < $scope.dataUrl.length; i++) {
+
+                        urls += $scope.dataUrl[i]._a + ','
+
+                    }
+                    urls = urls.slice(0, -1)
+                    var arrayurls;
+                    arrayurls = urls.split(',');
+                    var cantidad = arrayurls.length - 1;
+                    var i = -1;
+
+                    function MyTimerDowaloand() {
+                        i = i + 1;
+
+                        var suburls = arrayurls[i].split('|');
+                        var urll = "../Content/foto/foto/" + suburls[0];
+                        var nomFoto = suburls[1] + "_" + suburls[2] + ".jpg";
+                        var link = document.createElement("a");
+
+                        link.href = urll;
+                        link.download = nomFoto;
+                        link.click()
+                        if (i == cantidad) {
+                            load.style.display = 'none';
+                            clearTimeout(myVar);
+                        }
+                    };
+
+                    var myVar = setInterval(MyTimerDowaloand, 2000);
+
+                }).error(function () {
+                    alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                });
+            }
+
+            $scope.Obj_List_Operario = [];
+            $scope.Listado_Operarios = function () {
+                var variables = {
+                    method: 'POST',
+                    url: '../Ubicacion_Lecturas/ListandoOperarios',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    }
+                }
+                $http(variables)
+                    .success(function (data) {
+                        $scope.Obj_List_Operario = [];
+                        $scope.Obj_List_Operario = data;
+                        $scope.id_operario = '0';
+                    })
+                    .error(function () {
+                        alert('Ocurrio un problema con la conexion, vuelva a intentar.')
+
+                    });
+            }
+            $scope.Listado_Operarios();
+
+            $scope.actualizar = function () {
+                idsUrl = [];
+                urlsCadena = '';
+            }
+            $scope.dowloadFotos = function (urls) {
+                var req = {
+                    method: 'POST',
+                    url: 'dowloadFoto',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8'
+                    },
+                    data: {
+                        urlArray: urls
+                    }
+                }
+
+                $http(req).success(function (data) {
+
+                    console.log(data)
+                    load.style.display = 'none';
+                }).error(function () {
+                    console.log('Error..')
+
+                });
+            }
+
+            $(document).ready(function () {
+
+                $('#table-consulta_relec tbody').on('click', 'tr', function () {
+                    urlsCadena = '';
+                    var idSuministro = this.cells[1].textContent;
+                    var idcheck = 'check' + $(this).index();
+                    var check = document.getElementById(idcheck);
+
+                    if (check.checked == true) {
+                        idsUrl.push({
+                            url: idSuministro
+
+                        });
+
+                    } else {
+
+                        for (var i = 0; i < idsUrl.length; i++) {
+
+                            if (idsUrl[i].url == idSuministro) {
+                                idsUrl.splice(i, 1);
+                            }
+                        }
+
+                    }
+
+                    for (var i = 0; i < idsUrl.length; i++) {
+
+                        urlsCadena += idsUrl[i].url + ','
+                    }
+                    urlsCadena = urlsCadena.slice(0, -1)
+
+                });
+            });
+            $scope.exportToExcel = function (tableId) { // ex: '#my-table'
+                $scope.exportHref = $scope.tableToExcel(tableId, 'Listado de Lecturas con Fotos');
+                //   $timeout(function () { location.href = $scope.exportHref; }, 100); // trigger download
+            }
+
+            $scope.tableToExcel = function (tableId, worksheetName) {
+                var uri = 'data:application/vnd.ms-excel;base64,',
+                      template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>ListadoLecturaConFotos</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>',
+                      base64 = function (s) { return $window.btoa(unescape(encodeURIComponent(s))); },
+                      format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+                var table = $(tableId),
+                             ctx = { worksheet: 'descar123', table: table.html() };
+
+                var link = document.createElement("a");
+                link.download = "LecturasConFoto.xls";
+                link.href = uri + base64(format(template, ctx));
+
+                link.click()
+
+            }
+            $scope.checkAll = function () {
+
+                var checkMaster = document.getElementById('checkMaster')
+                if (checkMaster.checked == true) {
+
+                    for (var i = 0; i < checkCount + 1; i++) {
+                        var idcheck = 'check' + i;
+                        document.getElementById(idcheck).checked = true;
+                    }
+                } else {
+
+                    for (var i = 0; i < checkCount + 1; i++) {
+                        var idcheck = 'check' + i;
+                        document.getElementById(idcheck).checked = false;
+                    }
+                }
+            }
+        });
+        //
+
+
+        $(document).ready(function () {
+            CargarServicioxUsuario();
+        });
+
+
+        function CargarServicioxUsuario() {
+            var servicio = $("#idservicios");
+            //$.support.cors = true;
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("ListandoServicios", "Ubicacion_Operarios")',
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                async: false,
+                cache: false,
+                dataType: "json",
+                CrossDomain: true,
+                success: function (response) {
+ 
+                    servicio.html("");
+                    if (parseInt(response.length) == parseInt(response[0].cantidad)) {
+
+                        servicio.append('<option value="-1" >Seleccione</option>');
+                        servicio.append('<option value="0" >Todos</option>');
+
+                        for (var i = 0; i < response.length; i++) {
+                            if (response[i].id_TipoServicio == 1 || response[i].id_TipoServicio == 2 || response[i].id_TipoServicio == 3 || response[i].id_TipoServicio == 4 || response[i].id_TipoServicio == 9) {
+                                servicio.append('<option value="' + response[i].id_TipoServicio +
+                                    '">' + response[i].nombre_tiposervicio + '</option>');
+                            }
+                        };
+
+                    } else {
+                        servicio.append('<option value="-1" >Seleccione</option>');
+
+                        for (var i = 0; i < response.length; i++) {
+                            if (response[i].id_TipoServicio == 1 || response[i].id_TipoServicio == 2 || response[i].id_TipoServicio == 3 || response[i].id_TipoServicio == 4 || response[i].id_TipoServicio == 9) {
+                                servicio.append('<option value="' + response[i].id_TipoServicio +
+                                    '">' + response[i].nombre_tiposervicio + '</option>');
+                            }
+                        };
+                    }
+
+
+                },
+
+                error: function (result) {
+                    alert('ERROR.... en ' + result.status + '... ' + result.statusText);
+                }
+            });
+
+
+        }
+
+
+    </script>
+}
+
+    <div class="panel panel-oscuro" ng-app="appFotos" ng-controller="ctrlInicio">
+
+        <div class="panel panel-oscuro" style="margin-top: -13px;">
+            <div class="panel-heading">
+                <h6><i class="fa fa-table fa-lg"></i> LISTADO DE LECTURAS CON FOTOS</h6>
+            </div>
+            <div class="panel-body">
+                <div class="well" style="background: #314b75; color: white;     margin-top: -5px;">
+
+                    <div class="row" style="    margin-top: -17px;  margin-bottom: -10px;">
+                        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                            <div class="col-md-3"  >
+                                <label class="control-label">
+                                    Local
+                                </label>
+                                <select class="form-control" id="_local">
+                                    <option value="0" selected="selected">-- Seleccione --</option>
+                                    @foreach (Local oBj in new NLocal().NLista(new Request_Local_Select() { emp_id = ((Sesion)Session["Session_Usuario_Acceso"]).empresa.emp_id }))
+                                    {
+                                        <option value="@oBj.loc_id">@oBj.loc_nombre</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="_supervisor" class="control-label">Servicios</label>
+                                <select class="form-control" id="idservicios">
+                                    <option value="-1">- [ SELECCIONE ] -</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <br />
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                    <input name="suministro" id="suministro" class="form-control" placeholder="Suministro">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <br />
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                                    <input name="medidor" id="medidor" class="form-control" placeholder="Medidor">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="row" style="margin-bottom: -15px;">
+                        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                            <div class="col-md-3">
+                                <label for="_fechaAsigna" class="control-label">Fecha Inicial</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                    <input class="form-control julio" id="f_inicial" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="_fechaAsigna" class="control-label">Fecha Final</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                                    <input class="form-control" id="f_final" placeholder="dia/mes/año" type="text" value="@DateTime.Now.ToString("dd/MM/yyyy")" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="_operario" class="control-label">Lecturista :</label>
+                                <select id="_operario" class="form-control" ng-model="id_operario">
+                                    <option value=0>--[ TODOS ]-- </option>
+                                    <option ng-repeat="item in Obj_List_Operario" value="{{item.id_Operario}}">
+                                        {{item.id_Operario}}  :  {{item.desc_operario}}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <br />
+                                <div class="form-group form-group-sm">
+                                    <button role="button" class="btn btn-primary btn-sm" ng-click="actualizar()" id="actualizar"><i class="fa fa-refresh fa-lg"></i> Actualizar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="lectura">
+            <table id="table-consulta_lec"
+                   data-toggle="table"
+                   data-height="350"
+                   data-row-style="rowStyle"
+                   data-maintain-selected="true">
+                <thead>
+                    <tr>
+                        <th data-field="_a" style="display:none">Id</th>
+                        <th data-field="_b">Orden</th>
+                        <th data-field="_c" data-formatter="fotoFormatter">Suministro</th>
+                        <th data-field="_d">Medidor</th>
+                        <th data-field="_f">Dirección</th>
+                        <th data-field="_k">Lec. Actual</th>
+                        <th data-field="_l">Operador</th>
+                        <th data-field="_m">Fecha Lectura</th>
+                        <th data-field="_n">Observación</th>
+                        <th data-field="_o">Ubicación</th>
+                        <th data-field="_p">Notas</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+
+        <div id="relectura">
+            <table id="table-consulta_relec"
+                   data-toggle="table"
+                   data-height="350"
+                   data-row-style="rowStyle"
+                   data-maintain-selected="true">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" ng-click="checkAll()" id='checkMaster'></th>
+                        <th data-field="_a" style="display:none">Id</th>
+                        <th data-field="_b">Orden</th>
+                        <th data-field="_c" data-formatter="fotoFormatter">Suministro</th>
+                        <th data-field="_d">Medidor</th>
+                        <th data-field="_f">Dirección</th>
+                        <th data-field="_k">Lec. Actual</th>
+                        <th data-field="_l">Operador</th>
+                        <th data-field="_m">Fecha Lectura</th>
+                        <th data-field="_n">Observación</th>
+                        <th data-field="_o" data-formatter="MapaFormatter">Ubicación</th>
+                        <th data-field="_p">Notas</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+
+        <div id="fotos" class="modal fade">
+            <div class="modal-dialog" style="width: 320px; height:250px; text-align: center;">
+                <div class="modal-body" style="text-align: center; background-color: white;">
+
+                    <div id="carousel-example-generic" class="carousel slide" data-ride="carousel">
+                        <div class="carousel-inner" id="corre">
+                        </div>
+                        <a class="left carousel-control" href="#carousel-example-generic" onclick="previusPhoto()" role="button" data-slide="prev" style="background-color:black;">
+                            <span class="glyphicon glyphicon-chevron-left"></span>
+                        </a>
+                        <a class="right carousel-control" href="#carousel-example-generic" onclick="nextPhoto()" role="button" data-slide="next" style="background-color:black;">
+                            <span class="glyphicon glyphicon-chevron-right"></span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="myModal" class="modal fade" role="dialog">
+            <div class="modal-dialog">
+                <div class="panel panel-oscuro" style="width:600px;">
+                    <div class="panel-heading">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h6 class="modal-title"><i class="fa fa-cogs fa-lg"></i> UBICACIÓN EN GOOGLE MAPS.</h6>
+                    </div>
+                    <!-- Modal content-->
+                    <div class="modal-content" style="width:600px;">
+                        <div class="modal-body">
+                            <img id="id_Imagen_mapa" class="img-responsive img-rounded" alt="Cinque Terre" style="width:100%;height:auto;">
+                        </div>
+                        <div class="panel-footer">
+                            <div class="row">
+                                <div class="col-sm-12">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Mantenimiento" style="float: right;">
+                                        <button role="button" id="btnCancelar" class="btn btn-default" style="background-color: #fff;" data-dismiss="modal"><i class="fa fa-close fa-lg"></i> Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @*<div class="panel panel-info col-sm-12" style="background-color: #F8F8F8;">
+            <div class="panel-body" style="height: 40px;">
+                <div class="col-sm-12" style="text-align:right;">
+                    <div class="col-sm-12">
+                        <div class="form-group form-group-sm">
+                            <div id="loader" class="col-sm-7" style="text-align:center;display:none;">
+                                <img width="30" src="~/Content/Imagen/loader.gif" />
+                                <p style="font:menu; font-size:12px!;">Descargando fotos . . </p>
+                            </div>
+
+                            <button role="button" class="btn btn-success btn-sm" ng-click="getDataFotos()"><i class="fa fa-download fa-lg"></i> Descargar</button>
+                            <button role="button" class="btn btn-danger btn-sm" ng-click="tableToExcel('#table-consulta_relec');"><i class="fa fa-windows fa-lg"></i> Exportar</button>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>*@
+
+ 
+    </div>
