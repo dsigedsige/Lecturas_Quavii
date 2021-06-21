@@ -13,22 +13,22 @@ editando este archivo MSBuild. Para conocer más acerca de esto, visite http://g
       <publishTime>02/18/2019 12:06:38</publishTime>
     </File>
     <File Include="bin/DSIGE.Dato.dll">
-      <publishTime>01/14/2020 16:15:39</publishTime>
+      <publishTime>05/19/2021 12:52:11</publishTime>
     </File>
     <File Include="bin/DSIGE.Dato.pdb">
-      <publishTime>01/14/2020 16:15:39</publishTime>
+      <publishTime>05/19/2021 12:52:11</publishTime>
     </File>
     <File Include="bin/DSIGE.Modelo.dll">
-      <publishTime>01/07/2020 09:26:53</publishTime>
+      <publishTime>05/19/2021 12:52:09</publishTime>
     </File>
     <File Include="bin/DSIGE.Modelo.pdb">
-      <publishTime>01/07/2020 09:26:53</publishTime>
+      <publishTime>05/19/2021 12:52:09</publishTime>
     </File>
     <File Include="bin/DSIGE.Negocio.dll">
-      <publishTime>01/14/2020 16:15:39</publishTime>
+      <publishTime>05/19/2021 12:52:11</publishTime>
     </File>
     <File Include="bin/DSIGE.Negocio.pdb">
-      <publishTime>01/14/2020 16:15:39</publishTime>
+      <publishTime>05/19/2021 12:52:11</publishTime>
     </File>
     <File Include="bin/DSIGE.Web.dll">
       <publishTime>08/05/2019 18:13:06</publishTime>
@@ -88,10 +88,10 @@ editando este archivo MSBuild. Para conocer más acerca de esto, visite http://g
       <publishTime>12/02/2019 12:41:43</publishTime>
     </File>
     <File Include="bin/Lecturas_Quavii.dll">
-      <publishTime>01/16/2020 08:53:25</publishTime>
+      <publishTime>05/19/2021 12:52:12</publishTime>
     </File>
     <File Include="bin/Lecturas_Quavii.pdb">
-      <publishTime>01/16/2020 08:53:25</publishTime>
+      <publishTime>05/19/2021 12:52:12</publishTime>
     </File>
     <File Include="bin/Microsoft.Practices.EnterpriseLibrary.Common.dll">
       <publishTime>02/18/2019 12:06:37</publishTime>
@@ -3322,7 +3322,7 @@ editando este archivo MSBuild. Para conocer más acerca de esto, visite http://g
       <publishTime>02/18/2019 12:06:36</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>01/08/2020 14:39:26</publishTime>
+      <publishTime>05/19/2021 12:52:14</publishTime>
     </File>
     <File Include="XMLFile1.snippet">
       <publishTime>02/18/2019 12:06:36</publishTime>
